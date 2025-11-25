@@ -46,24 +46,7 @@ export async function POST(request: Request) {
         const requestId = (result as any).insertId;
         const applicationData = { name, email, phone, city, requestId };
 
-        // Send email notifications (don't block response on email sending)
-        Promise.all([
-            // Send confirmation email to applicant
-            sendEmail({
-                to: email,
-                subject: 'Application Received - The Kada Franchise',
-                html: applicationSubmittedEmail(applicationData),
-            }),
-            // Send notification to admin
-            sendEmail({
-                to: process.env.ADMIN_EMAIL || 'thekadaapp@gmail.com',
-                subject: `New Franchise Application from ${name} - ${city}`,
-                html: newApplicationEmail(applicationData),
-            }),
-        ]).catch(error => {
-            console.error('Email notification error:', error);
-            // Don't fail the request if email fails
-        });
+        // Email notifications are now deferred until the agreement step
 
         return NextResponse.json({
             message: 'Application submitted successfully',

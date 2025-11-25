@@ -25,6 +25,7 @@ interface ApplicationData {
     phone: string;
     city: string;
     requestId?: number;
+    rejectionReason?: string;
 }
 
 // Email to admin when new application is submitted
@@ -134,6 +135,7 @@ export function applicationRejectedEmail(data: ApplicationData): string {
                     <div class="info-box">
                         <p><strong>Application Status:</strong> <span class="status-rejected">Not Approved</span></p>
                         <p><strong>City:</strong> ${data.city}</p>
+                        ${data.rejectionReason ? `<p><strong>Reason:</strong> ${data.rejectionReason}</p>` : ''}
                     </div>
                     
                     <p>This decision may be due to various factors including current market conditions, location availability, or other business considerations.</p>

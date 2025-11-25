@@ -8,7 +8,8 @@ export async function GET() {
             query: `
                 ALTER TABLE franchise_requests 
                 ADD COLUMN IF NOT EXISTS aadhar_url VARCHAR(500),
-                ADD COLUMN IF NOT EXISTS agreement_accepted BOOLEAN DEFAULT FALSE
+                ADD COLUMN IF NOT EXISTS agreement_accepted BOOLEAN DEFAULT FALSE,
+                ADD COLUMN IF NOT EXISTS rejection_reason TEXT
             `,
             values: [],
         });

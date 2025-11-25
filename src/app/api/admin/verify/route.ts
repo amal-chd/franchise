@@ -5,7 +5,7 @@ import { applicationApprovedEmail, applicationRejectedEmail, applicationUnderRev
 
 export async function POST(request: Request) {
     try {
-        const { id, status } = await request.json();
+        const { id, status, rejectionReason } = await request.json();
 
         // First, get the applicant's details
         const applicantResult = await executeQuery({
@@ -19,10 +19,18 @@ export async function POST(request: Request) {
 
         const applicant = (applicantResult as any[])[0];
 
-        // Update the status
+        // Update the status and rejection reason if provided
+        let query = 'UPDATE franchise_requests SET status = ? WHERE id = ?';
+        let values = [status, id];
+
+        if (status === 'rejected' && rejectionReason) {
+            query = 'UPDATE franchise_requests SET status = ?, rejection_reason = ? WHERE id = ?';
+            values = [status, rejectionReason, id];
+        }
+
         const result = await executeQuery({
-            query: 'UPDATE franchise_requests SET status = ? WHERE id = ?',
-            values: [status, id],
+            query: query,
+            values: values,
         });
 
         if ((result as any).error) {
@@ -35,6 +43,7 @@ export async function POST(request: Request) {
             email: applicant.email,
             phone: applicant.phone,
             city: applicant.city,
+            rejectionReason: rejectionReason,
         };
 
         let emailSubject = '';

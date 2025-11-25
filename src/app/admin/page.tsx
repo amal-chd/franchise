@@ -35,22 +35,9 @@ export default function AdminLogin() {
     };
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'var(--bg-surface)'
-        }}>
-            <div style={{
-                background: 'white',
-                padding: '48px',
-                borderRadius: 'var(--radius-lg)',
-                boxShadow: 'var(--shadow-md)',
-                width: '100%',
-                maxWidth: '400px'
-            }}>
-                <h2 style={{ textAlign: 'center', marginBottom: '24px' }}>Admin Login</h2>
+        <div className="admin-login-container">
+            <div className="admin-login-card">
+                <h2 className="admin-login-title">Admin Login</h2>
                 <form onSubmit={handleLogin}>
                     <div className="form-group">
                         <label className="form-label">Username</label>
@@ -72,8 +59,8 @@ export default function AdminLogin() {
                             required
                         />
                     </div>
-                    {error && <p style={{ color: 'var(--accent-color)', marginBottom: '16px' }}>{error}</p>}
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Login</button>
+                    {error && <p className="error-message">{error}</p>}
+                    <button type="submit" className="btn btn-primary">Login</button>
                 </form>
             </div>
         </div>
