@@ -60,7 +60,7 @@ export default function Header() {
                     <Link href="/about" className="mobile-nav-link">About</Link>
                     <Link href="/#benefits" className="mobile-nav-link">Benefits</Link>
                     <Link href="/support" className="mobile-nav-link">Support</Link>
-                    <Link href="/admin" className="mobile-nav-link text-primary">Admin Panel</Link>
+                    <Link href="/careers" className="mobile-nav-link">Careers</Link>
                 </div>
             </div>
         </header>
