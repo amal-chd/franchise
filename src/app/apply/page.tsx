@@ -3,24 +3,69 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Script from 'next/script';
 
 function ApplyContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const requestId = searchParams.get('id');
 
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        phone: '',
+        city: ''
+    });
     const [status, setStatus] = useState('');
-    const [step, setStep] = useState(2); // Start from step 2
+    const [step, setStep] = useState(1);
+    const [requestId, setRequestId] = useState('');
     const [kycFile, setKycFile] = useState<File | null>(null);
     const [selectedPlan, setSelectedPlan] = useState('');
     const [agreementAccepted, setAgreementAccepted] = useState(false);
+    const [content, setContent] = useState<Record<string, string>>({});
 
     useEffect(() => {
-        if (!requestId) {
-            router.push('/');
+        const id = searchParams.get('id');
+        if (id) {
+            setRequestId(id);
+            setStep(2);
         }
-    }, [requestId, router]);
+        fetchContent();
+    }, [searchParams]);
+
+    const fetchContent = async () => {
+        try {
+            const res = await fetch('/api/content');
+            const data = await res.json();
+            setContent(data);
+        } catch (error) {
+            console.error('Failed to fetch content', error);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setStatus('sending');
+
+        try {
+            const res = await fetch('/api/apply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                setRequestId(data.requestId);
+                setStatus('');
+                setStep(2);
+                router.push(`/apply?id=${data.requestId}`, { scroll: false });
+            } else {
+                setStatus('error');
+            }
+        } catch (error) {
+            setStatus('error');
+        }
+    };
 
     const handleKycSubmit = async () => {
         if (!kycFile || !requestId) return;
@@ -62,20 +107,17 @@ function ApplyContent() {
 
             if (res.ok) {
                 if (data.isFree) {
-                    // Free plan, skip payment
                     setStatus('');
                     setStep(4);
                 } else {
-                    // Paid plan, open Razorpay
                     const options = {
                         key: data.keyId,
                         amount: data.amount,
                         currency: data.currency,
                         name: 'The Kada Franchise',
-                        description: `${plan === 'basic' ? '60-40' : '70-30'} Revenue Share Plan`,
+                        description: `${plan === 'basic' ? 'Standard' : 'Premium'} Revenue Share Plan`,
                         order_id: data.orderId,
                         handler: async function (response: any) {
-                            // Verify payment
                             const verifyRes = await fetch('/api/pricing/verify', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -93,6 +135,11 @@ function ApplyContent() {
                             } else {
                                 setStatus('error');
                             }
+                        },
+                        prefill: {
+                            name: formData.name,
+                            email: formData.email,
+                            contact: formData.phone,
                         },
                         theme: {
                             color: '#2563EB',
@@ -133,279 +180,295 @@ function ApplyContent() {
         }
     };
 
-    if (!requestId) return null;
-
     return (
-        <main className="apply-page-container">
-            <section className="apply-section">
-                <div className="apply-content">
-                    <div className="apply-form-wrapper">
+        <div className="container" style={{ padding: '4rem 1rem', maxWidth: '800px' }}>
+            <div className="text-center" style={{ marginBottom: '3rem' }}>
+                <h1 className="text-primary" style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Partner Application</h1>
+                <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)' }}>Complete the steps below to start your journey with The Kada.</p>
+            </div>
 
-                        {/* Step Indicators */}
-                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: 0.5 }}>
-                                <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: '#ccc', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>1</div>
-                                <span style={{ fontSize: '0.9rem' }}>Details</span>
-                            </div>
-                            <div style={{ width: '30px', height: '2px', background: '#ccc', alignSelf: 'center' }}></div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: step >= 2 ? 1 : 0.5 }}>
-                                <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: step >= 2 ? 'var(--primary-color)' : '#ccc', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>2</div>
-                                <span style={{ fontSize: '0.9rem' }}>KYC</span>
-                            </div>
-                            <div style={{ width: '30px', height: '2px', background: '#ccc', alignSelf: 'center' }}></div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: step >= 3 ? 1 : 0.5 }}>
-                                <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: step >= 3 ? 'var(--primary-color)' : '#ccc', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>3</div>
-                                <span style={{ fontSize: '0.9rem' }}>Pricing</span>
-                            </div>
-                            <div style={{ width: '30px', height: '2px', background: '#ccc', alignSelf: 'center' }}></div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: step >= 4 ? 1 : 0.5 }}>
-                                <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: step >= 4 ? 'var(--primary-color)' : '#ccc', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>4</div>
-                                <span style={{ fontSize: '0.9rem' }}>Agreement</span>
-                            </div>
-                        </div>
+            <div className="glass-card" style={{ padding: '2rem' }}>
+                {/* Step Wizard */}
+                <div className="step-wizard" style={{ marginBottom: '3rem' }}>
+                    <div className="step-line">
+                        <div className="step-progress" style={{ width: `${((step - 1) / 3) * 100}%` }}></div>
+                    </div>
 
-                        {step === 2 && (
-                            <div className="kyc-section">
-                                <h3 style={{ marginBottom: '0.5rem', textAlign: 'center' }}>Upload KYC Document</h3>
-                                <p style={{ marginBottom: '2rem', color: '#64748B', textAlign: 'center', fontSize: '0.95rem' }}>
-                                    Upload a clear copy of your Aadhar Card, PAN Card, or Passport
-                                </p>
+                    <div className={`step-item ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}>
+                        <div className="step-circle">{step > 1 ? '✓' : '1'}</div>
+                        <div className="step-label">Details</div>
+                    </div>
 
-                                <div
-                                    className="file-upload-container"
-                                    onDragOver={(e) => {
-                                        e.preventDefault();
-                                        e.currentTarget.classList.add('drag-over');
-                                    }}
-                                    onDragLeave={(e) => {
-                                        e.preventDefault();
-                                        e.currentTarget.classList.remove('drag-over');
-                                    }}
-                                    onDrop={(e) => {
-                                        e.preventDefault();
-                                        e.currentTarget.classList.remove('drag-over');
-                                        const files = e.dataTransfer.files;
-                                        if (files && files[0]) {
-                                            setKycFile(files[0]);
-                                        }
-                                    }}
-                                    onClick={() => document.getElementById('kyc-file-input')?.click()}
-                                >
-                                    <input
-                                        id="kyc-file-input"
-                                        type="file"
-                                        accept=".pdf,.jpg,.jpeg,.png"
-                                        onChange={(e) => setKycFile(e.target.files ? e.target.files[0] : null)}
-                                        style={{ display: 'none' }}
-                                    />
+                    <div className={`step-item ${step >= 2 ? 'active' : ''} ${step > 2 ? 'completed' : ''}`}>
+                        <div className="step-circle">{step > 2 ? '✓' : '2'}</div>
+                        <div className="step-label">KYC</div>
+                    </div>
 
-                                    {!kycFile ? (
-                                        <div className="upload-placeholder">
-                                            <div className="upload-icon">
-                                                <i className="fas fa-cloud-upload-alt"></i>
-                                            </div>
-                                            <h4>Drag & Drop your document here</h4>
-                                            <p>or click to browse</p>
-                                            <div className="file-types">
-                                                <span className="file-type-badge">PDF</span>
-                                                <span className="file-type-badge">JPG</span>
-                                                <span className="file-type-badge">PNG</span>
-                                            </div>
-                                            <p className="file-size-hint">Maximum file size: 5MB</p>
-                                        </div>
-                                    ) : (
-                                        <div className="file-preview">
-                                            <div className="file-preview-icon">
-                                                <i className={`fas ${kycFile.type.includes('pdf') ? 'fa-file-pdf' : 'fa-file-image'}`}></i>
-                                            </div>
-                                            <div className="file-info">
-                                                <h4>{kycFile.name}</h4>
-                                                <p>{(kycFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                                            </div>
-                                            <button
-                                                className="file-remove-btn"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setKycFile(null);
-                                                }}
-                                            >
-                                                <i className="fas fa-times"></i>
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
+                    <div className={`step-item ${step >= 3 ? 'active' : ''} ${step > 3 ? 'completed' : ''}`}>
+                        <div className="step-circle">{step > 3 ? '✓' : '3'}</div>
+                        <div className="step-label">Pricing</div>
+                    </div>
 
-                                <div className="kyc-info-cards">
-                                    <div className="info-card">
-                                        <i className="fas fa-shield-alt"></i>
-                                        <span>Secure & Encrypted</span>
-                                    </div>
-                                    <div className="info-card">
-                                        <i className="fas fa-check-circle"></i>
-                                        <span>Verified Instantly</span>
-                                    </div>
-                                </div>
-
-                                <button
-                                    onClick={handleKycSubmit}
-                                    className="btn btn-primary"
-                                    style={{ width: '100%', marginTop: '1.5rem' }}
-                                    disabled={status === 'sending' || !kycFile}
-                                >
-                                    {status === 'sending' ? (
-                                        <>
-                                            <i className="fas fa-spinner fa-spin" style={{ marginRight: '8px' }}></i>
-                                            Uploading...
-                                        </>
-                                    ) : (
-                                        <>
-                                            Next: Select Pricing Plan
-                                            <i className="fas fa-arrow-right" style={{ marginLeft: '8px' }}></i>
-                                        </>
-                                    )}
-                                </button>
-                                {status === 'error' && <p className="error-message" style={{ marginTop: '1rem' }}>Upload failed. Please try again.</p>}
-                            </div>
-                        )}
-
-                        {step === 3 && (
-                            <div className="pricing-section">
-                                <h3 style={{ marginBottom: '0.5rem', textAlign: 'center' }}>Choose Your Plan</h3>
-                                <p style={{ marginBottom: '1.5rem', color: '#64748B', textAlign: 'center', fontSize: '0.9rem' }}>
-                                    Select the revenue sharing model that works best for you
-                                </p>
-
-                                <div className="pricing-grid">
-                                    {/* Free Plan */}
-                                    <div
-                                        className={`pricing-card ${selectedPlan === 'free' ? 'selected' : ''}`}
-                                        onClick={() => setSelectedPlan('free')}
-                                    >
-                                        <div className="pricing-header">
-                                            <h4>50-50 Split</h4>
-                                            <div className="pricing-amount">FREE</div>
-                                        </div>
-                                        <ul className="pricing-features">
-                                            <li><i className="fas fa-check"></i> 50% revenue share</li>
-                                            <li><i className="fas fa-check"></i> Basic support</li>
-                                            <li><i className="fas fa-check"></i> Standard features</li>
-                                        </ul>
-                                    </div>
-
-                                    {/* Basic Plan */}
-                                    <div
-                                        className={`pricing-card popular ${selectedPlan === 'basic' ? 'selected' : ''}`}
-                                        onClick={() => setSelectedPlan('basic')}
-                                    >
-                                        <div className="popular-badge">POPULAR</div>
-                                        <div className="pricing-header">
-                                            <h4>60-40 Split</h4>
-                                            <div className="pricing-amount">₹5,000</div>
-                                            <div className="pricing-period">One-time</div>
-                                        </div>
-                                        <ul className="pricing-features">
-                                            <li><i className="fas fa-check"></i> 60% revenue share</li>
-                                            <li><i className="fas fa-check"></i> Priority support</li>
-                                            <li><i className="fas fa-check"></i> Advanced features</li>
-                                        </ul>
-                                    </div>
-
-                                    {/* Premium Plan */}
-                                    <div
-                                        className={`pricing-card premium ${selectedPlan === 'premium' ? 'selected' : ''}`}
-                                        onClick={() => setSelectedPlan('premium')}
-                                    >
-                                        <div className="premium-badge">BEST VALUE</div>
-                                        <div className="pricing-header">
-                                            <h4>70-30 Split</h4>
-                                            <div className="pricing-amount">₹10,000</div>
-                                            <div className="pricing-period">One-time</div>
-                                        </div>
-                                        <ul className="pricing-features">
-                                            <li><i className="fas fa-check"></i> 70% revenue share</li>
-                                            <li><i className="fas fa-check"></i> Dedicated support</li>
-                                            <li><i className="fas fa-check"></i> Premium features</li>
-                                        </ul>
-                                    </div>
-                                </div>
-
-                                <button
-                                    onClick={() => handlePricingSubmit(selectedPlan)}
-                                    className="btn btn-primary"
-                                    style={{ width: '100%', marginTop: '1.5rem' }}
-                                    disabled={status === 'sending' || !selectedPlan}
-                                >
-                                    {status === 'sending' ? (
-                                        <>
-                                            <i className="fas fa-spinner fa-spin" style={{ marginRight: '8px' }}></i>
-                                            Processing...
-                                        </>
-                                    ) : (
-                                        <>
-                                            {selectedPlan === 'free' ? 'Continue to Agreement' : 'Proceed to Payment'}
-                                            <i className="fas fa-arrow-right" style={{ marginLeft: '8px' }}></i>
-                                        </>
-                                    )}
-                                </button>
-                                {status === 'error' && <p className="error-message" style={{ marginTop: '1rem' }}>Something went wrong. Please try again.</p>}
-                            </div>
-                        )}
-
-                        {step === 4 && (
-                            <div className="agreement-section">
-                                <h3 style={{ marginBottom: '1rem' }}>Franchise Agreement</h3>
-                                <div style={{
-                                    background: '#f9f9f9',
-                                    padding: '1.5rem',
-                                    borderRadius: '8px',
-                                    border: '1px solid #eee',
-                                    height: '200px',
-                                    overflowY: 'scroll',
-                                    marginBottom: '1.5rem',
-                                    fontSize: '0.9rem',
-                                    lineHeight: '1.6'
-                                }}>
-                                    <p><strong>THE KADA FRANCHISE AGREEMENT</strong></p>
-                                    <p>This Agreement is made between The Kada Digital Ventures Pvt Ltd and the Franchise Partner.</p>
-                                    <p>1. <strong>Grant of Franchise:</strong> The Company grants the Franchisee the right to operate a The Kada delivery hub in the designated territory.</p>
-                                    <p>2. <strong>Term:</strong> This agreement shall be valid for a period of 5 years, renewable upon mutual consent.</p>
-                                    <p>3. <strong>Responsibilities:</strong> The Franchisee agrees to uphold the brand standards, ensure timely deliveries, and maintain customer satisfaction.</p>
-                                    <p>4. <strong>Support:</strong> The Company will provide technology, marketing, and operational support.</p>
-                                    <p>5. <strong>Fees:</strong> The Franchisee agrees to the revenue sharing model as defined in the separate commercial terms.</p>
-                                    <p>By clicking "Accept & Submit", you agree to the terms and conditions outlined above.</p>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                    <input
-                                        type="checkbox"
-                                        id="accept-agreement"
-                                        checked={agreementAccepted}
-                                        onChange={(e) => setAgreementAccepted(e.target.checked)}
-                                        style={{ marginRight: '0.5rem', width: 'auto' }}
-                                    />
-                                    <label htmlFor="accept-agreement">I have read and agree to the Franchise Agreement.</label>
-                                </div>
-                                <button onClick={handleAgreementSubmit} className="btn btn-primary" style={{ width: '100%' }} disabled={status === 'sending' || !agreementAccepted}>
-                                    {status === 'sending' ? 'Finalizing...' : 'Accept & Submit Application'}
-                                </button>
-                                {status === 'error' && <p style={{ color: 'var(--accent-color)', marginTop: '1rem', textAlign: 'center' }}>Submission failed. Please try again.</p>}
-                            </div>
-                        )}
-
-                        {step === 5 && (
-                            <div className="success-message text-center">
-                                <div style={{ fontSize: '3rem', color: 'var(--success-color)', marginBottom: '1rem' }}><i className="fas fa-check-circle"></i></div>
-                                <h3>Application Submitted Successfully!</h3>
-                                <p>Thank you for partnering with The Kada. Our team will verify your documents and contact you shortly.</p>
-                                <Link href="/" className="btn btn-primary" style={{ marginTop: '2rem', display: 'inline-flex' }}>Return to Home</Link>
-                            </div>
-                        )}
+                    <div className={`step-item ${step >= 4 ? 'active' : ''} ${step > 4 ? 'completed' : ''}`}>
+                        <div className="step-circle">{step > 4 ? '✓' : '4'}</div>
+                        <div className="step-label">Sign</div>
                     </div>
                 </div>
-            </section>
 
-            {/* Razorpay Script */}
-            <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
-        </main>
+                {/* Step 1: Details */}
+                {step === 1 && (
+                    <form onSubmit={handleSubmit}>
+                        <div className="form-group">
+                            <label className="form-label">Full Name</label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                required
+                                placeholder="e.g. John Doe"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Email Address</label>
+                            <input
+                                type="email"
+                                className="form-input"
+                                required
+                                placeholder="e.g. john@example.com"
+                                value={formData.email}
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Phone Number</label>
+                            <input
+                                type="tel"
+                                className="form-input"
+                                required
+                                placeholder="e.g. +91 9496491654"
+                                value={formData.phone}
+                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Preferred City/Town</label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                required
+                                placeholder="e.g. Kochi"
+                                value={formData.city}
+                                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                            />
+                        </div>
+                        <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem', width: '100%' }} disabled={status === 'sending'}>
+                            {status === 'sending' ? 'Processing...' : 'Next: Upload KYC'} <i className="fas fa-arrow-right"></i>
+                        </button>
+                        {status === 'error' && <p style={{ color: 'var(--accent-color)', marginTop: '1rem', textAlign: 'center' }}>Something went wrong. Please try again.</p>}
+                    </form>
+                )}
+
+                {/* Step 2: KYC */}
+                {step === 2 && (
+                    <div className="text-center">
+                        <h3 style={{ marginBottom: '1.5rem' }}>Upload KYC Document</h3>
+                        <p style={{ marginBottom: '2rem', color: 'var(--text-secondary)' }}>Please upload your Aadhar Card or PAN Card (PDF/Image)</p>
+
+                        <div style={{
+                            border: '2px dashed var(--border-color)',
+                            borderRadius: 'var(--radius-lg)',
+                            padding: '3rem',
+                            marginBottom: '2rem',
+                            background: 'var(--bg-secondary)'
+                        }}>
+                            <input
+                                type="file"
+                                accept="image/*,.pdf"
+                                onChange={(e) => setKycFile(e.target.files?.[0] || null)}
+                                style={{ display: 'none' }}
+                                id="kyc-upload"
+                            />
+                            <label htmlFor="kyc-upload" style={{ cursor: 'pointer', display: 'block' }}>
+                                <i className="fas fa-cloud-upload-alt" style={{ fontSize: '3rem', color: 'var(--primary-color)', marginBottom: '1rem' }}></i>
+                                <p style={{ fontWeight: '600' }}>{kycFile ? kycFile.name : 'Click to Upload Document'}</p>
+                                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Max size: 5MB</p>
+                            </label>
+                        </div>
+
+                        <button
+                            onClick={handleKycSubmit}
+                            className="btn btn-primary"
+                            disabled={!kycFile || status === 'sending'}
+                            style={{ width: '100%' }}
+                        >
+                            {status === 'sending' ? 'Uploading...' : 'Next: Select Plan'} <i className="fas fa-arrow-right"></i>
+                        </button>
+                        {status === 'error' && <p style={{ color: 'var(--accent-color)', marginTop: '1rem' }}>Upload failed. Please try again.</p>}
+                    </div>
+                )}
+
+                {/* Step 3: Pricing */}
+                {step === 3 && (
+                    <div>
+                        <h3 className="text-center" style={{ marginBottom: '2rem' }}>Choose Your Plan</h3>
+                        <div className="pricing-grid">
+                            {/* Free Plan */}
+                            <div className={`pricing-card ${selectedPlan === 'free' ? 'selected' : ''}`} onClick={() => setSelectedPlan('free')}>
+                                <div className="pricing-header">
+                                    <h4>Starter Partner</h4>
+                                    <div className="price">Free<span>/to join</span></div>
+                                </div>
+                                <ul className="pricing-features">
+                                    <li><i className="fas fa-check"></i> {content.pricing_free_share || '50'}% Revenue Share</li>
+                                    <li><i className="fas fa-check"></i> Basic Support</li>
+                                    <li><i className="fas fa-check"></i> ₹{content.pricing_free_price || '1500'} Documentation Fee (Payable Later)</li>
+                                    <li><i className="fas fa-check"></i> App Access</li>
+                                </ul>
+                                <button
+                                    className={`btn ${selectedPlan === 'free' ? 'btn-primary' : 'btn-secondary'}`}
+                                    onClick={(e) => { e.stopPropagation(); handlePricingSubmit('free'); }}
+                                    style={{ width: '100%' }}
+                                    disabled={status === 'sending'}
+                                >
+                                    Select Plan
+                                </button>
+                            </div>
+
+                            {/* Basic Plan */}
+                            <div className={`pricing-card ${selectedPlan === 'basic' ? 'selected' : ''}`} onClick={() => setSelectedPlan('basic')}>
+                                <div className="pricing-header">
+                                    <h4>Standard Partner</h4>
+                                    <div className="price">₹{content.pricing_basic_price || '499'}<span>/month</span></div>
+                                </div>
+                                <ul className="pricing-features">
+                                    <li><i className="fas fa-check"></i> {content.pricing_basic_share || '60'}% Revenue Share</li>
+                                    <li><i className="fas fa-check"></i> Standard Support</li>
+                                    <li><i className="fas fa-check"></i> Basic Marketing Kit</li>
+                                    <li><i className="fas fa-check"></i> App Access</li>
+                                </ul>
+                                <button
+                                    className={`btn ${selectedPlan === 'basic' ? 'btn-primary' : 'btn-secondary'}`}
+                                    onClick={(e) => { e.stopPropagation(); handlePricingSubmit('basic'); }}
+                                    style={{ width: '100%' }}
+                                    disabled={status === 'sending'}
+                                >
+                                    Select Plan
+                                </button>
+                            </div>
+
+                            {/* Premium Plan */}
+                            <div className={`pricing-card ${selectedPlan === 'premium' ? 'selected' : ''}`} onClick={() => setSelectedPlan('premium')}>
+                                <div className="popular-tag">Most Popular</div>
+                                <div className="pricing-header">
+                                    <h4>Premium Partner</h4>
+                                    <div className="price">₹{content.pricing_premium_price || '999'}<span>/month</span></div>
+                                </div>
+                                <ul className="pricing-features">
+                                    <li><i className="fas fa-check"></i> {content.pricing_premium_share || '70'}% Revenue Share</li>
+                                    <li><i className="fas fa-check"></i> Priority Support</li>
+                                    <li><i className="fas fa-check"></i> Premium Marketing Kit</li>
+                                    <li><i className="fas fa-check"></i> Advanced Analytics</li>
+                                </ul>
+                                <button
+                                    className={`btn ${selectedPlan === 'premium' ? 'btn-primary' : 'btn-secondary'}`}
+                                    onClick={(e) => { e.stopPropagation(); handlePricingSubmit('premium'); }}
+                                    style={{ width: '100%' }}
+                                    disabled={status === 'sending'}
+                                >
+                                    Select Plan
+                                </button>
+                            </div>
+                        </div>
+                        {status === 'error' && <p style={{ color: 'var(--accent-color)', marginTop: '1rem', textAlign: 'center' }}>Payment initialization failed.</p>}
+                    </div>
+                )}
+
+                {/* Step 4: Agreement */}
+                {step === 4 && (
+                    <div>
+                        <h3 className="text-center" style={{ marginBottom: '1.5rem' }}>Sign Agreement</h3>
+                        <div className="agreement-box" style={{
+                            height: '300px',
+                            overflowY: 'scroll',
+                            border: '1px solid var(--border-color)',
+                            padding: '1.5rem',
+                            borderRadius: 'var(--radius-md)',
+                            background: '#f9fafb',
+                            marginBottom: '1.5rem',
+                            fontSize: '0.9rem',
+                            lineHeight: '1.6',
+                            whiteSpace: 'pre-wrap',
+                            WebkitOverflowScrolling: 'touch' // Enable momentum scrolling on iOS
+                        }}>
+                            {content.agreement_text ? (
+                                content.agreement_text
+                            ) : (
+                                <>
+                                    <h4 style={{ marginBottom: '1rem' }}>FRANCHISE PARTNER AGREEMENT</h4>
+                                    <p>This Agreement is made between The Kada Franchise ("Company") and the Applicant ("Partner").</p>
+                                    <p><strong>1. Term:</strong> This agreement is valid for a period of 12 months from the date of signing.</p>
+                                    <p><strong>2. Revenue Share:</strong> The Partner is entitled to the revenue share as per the selected plan of the net profit from their designated zone.</p>
+                                    <p><strong>3. Responsibilities:</strong> The Partner agrees to manage local deliveries, onboard vendors, and maintain service quality standards set by the Company.</p>
+                                    <p><strong>4. Termination:</strong> Either party may terminate this agreement with 30 days written notice.</p>
+                                    <p><strong>5. Confidentiality:</strong> The Partner agrees to keep all business data and customer information confidential.</p>
+                                </>
+                            )}
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
+                            <input
+                                type="checkbox"
+                                id="agreement"
+                                checked={agreementAccepted}
+                                onChange={(e) => setAgreementAccepted(e.target.checked)}
+                                style={{ width: '20px', height: '20px' }}
+                            />
+                            <label htmlFor="agreement" style={{ cursor: 'pointer' }}>I have read and agree to the Franchise Partner Agreement</label>
+                        </div>
+
+                        <button
+                            onClick={handleAgreementSubmit}
+                            className="btn btn-primary"
+                            disabled={!agreementAccepted || status === 'sending'}
+                            style={{ width: '100%' }}
+                        >
+                            {status === 'sending' ? 'Signing...' : 'Digitally Sign & Complete'}
+                        </button>
+                        {status === 'error' && <p style={{ color: 'var(--accent-color)', marginTop: '1rem', textAlign: 'center' }}>Failed to sign agreement.</p>}
+                    </div>
+                )}
+
+                {/* Step 5: Success */}
+                {step === 5 && (
+                    <div className="text-center" style={{ padding: '2rem 0' }}>
+                        <div style={{
+                            width: '80px',
+                            height: '80px',
+                            background: '#10B981',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 1.5rem',
+                            color: 'white',
+                            fontSize: '2.5rem'
+                        }}>
+                            <i className="fas fa-check"></i>
+                        </div>
+                        <h2 style={{ marginBottom: '1rem' }}>Welcome to The Kada Family!</h2>
+                        <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+                            Your application has been successfully submitted and your agreement is signed.
+                            Our team will verify your documents and activate your partner account within 24-48 hours.
+                        </p>
+                        <Link href="/" className="btn btn-primary">
+                            Return to Home
+                        </Link>
+                    </div>
+                )}
+            </div>
+            <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+        </div >
     );
 }
 

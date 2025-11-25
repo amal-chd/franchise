@@ -145,6 +145,13 @@ a {
   /* More breathing room */
 }
 
+@media (max-width: 768px) {
+  .section {
+    padding: 24px 0;
+    /* Reduced padding on mobile */
+  }
+}
+
 .text-center {
   text-align: center;
 }
@@ -921,11 +928,38 @@ select:focus {
 }
 
 /* Pricing Cards - Compact Single View for Mobile */
+/* Pricing Cards */
 .pricing-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+  .pricing-grid {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    margin-right: -1rem;
+    /* Allow scroll to edge */
+    padding-right: 1rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .pricing-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pricing-grid>div {
+    min-width: 260px;
+    /* Slightly wider than how-it-works cards for content */
+    flex: 0 0 auto;
+    scroll-snap-align: center;
+  }
 }
 
 .pricing-card {
@@ -1710,6 +1744,7 @@ select:focus {
     border: 1px solid #f1f5f9;
   }
 }
+
 /* FAQ Accordion Animations */
 details[open] summary i.fa-chevron-down {
   transform: rotate(180deg);
@@ -1737,6 +1772,7 @@ details summary::marker {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1749,9 +1785,12 @@ details summary::marker {
 
 /* How It Works Step Animation */
 @keyframes stepPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 10px 30px rgba(37, 99, 235, 0.3);
   }
+
   50% {
     box-shadow: 0 10px 40px rgba(37, 99, 235, 0.5);
   }
@@ -1763,6 +1802,7 @@ details summary::marker {
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1796,18 +1836,23 @@ details summary::marker {
       scroll-behavior: smooth;
       transform: translateX(0);
     }
+
     20% {
       transform: translateX(0);
     }
+
     40% {
       transform: translateX(-280px);
     }
+
     60% {
       transform: translateX(-560px);
     }
+
     80% {
       transform: translateX(-840px);
     }
+
     100% {
       transform: translateX(0);
     }

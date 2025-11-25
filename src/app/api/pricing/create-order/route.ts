@@ -11,11 +11,11 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Request ID and plan are required' }, { status: 400 });
         }
 
-        // Plan pricing mapping
+        // Plan pricing mapping (in paise)
         const planPricing: { [key: string]: number } = {
-            'free': 0,
-            'basic': 500000, // ₹5000 in paise
-            'premium': 1000000, // ₹10000 in paise
+            'free': 0, // Free to join, documentation fee collected later
+            'basic': 49900, // ₹499
+            'premium': 99900, // ₹999
         };
 
         const amount = planPricing[plan];
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Invalid plan selected' }, { status: 400 });
         }
 
-        // If free plan, skip payment
+        // Check if amount is 0 (true free plan)
         if (amount === 0) {
             await executeQuery({
                 query: 'UPDATE franchise_requests SET pricing_plan = ?, payment_status = ? WHERE id = ?',
@@ -44,10 +44,14 @@ export async function POST(request: Request) {
         });
 
         // Create order
+        // Receipt id must be <= 40 chars
+        const shortId = requestId.slice(-8);
+        const receiptId = `rcpt_${shortId}_${Date.now().toString().slice(-6)}`;
+
         const order = await razorpay.orders.create({
             amount: amount,
             currency: 'INR',
-            receipt: `receipt_${requestId}_${Date.now()}`,
+            receipt: receiptId,
         });
 
         // Update database with order details
