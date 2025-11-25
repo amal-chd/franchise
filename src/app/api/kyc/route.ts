@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import executeQuery from '@/lib/db';
-import { writeFile } from 'fs/promises';
-import path from 'path';
-import fs from 'fs';
+import { put } from '@vercel/blob';
 
 export async function POST(request: Request) {
     try {
@@ -18,35 +16,27 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'File and Request ID are required' }, { status: 400 });
         }
 
-        const buffer = Buffer.from(await file.arrayBuffer());
         const filename = `${requestId}_${Date.now()}_${file.name.replace(/\s/g, '_')}`;
-        const uploadDir = path.join(process.cwd(), 'public/uploads');
 
-        console.log('KYC Upload: Upload directory:', uploadDir);
+        console.log('KYC Upload: Uploading to Vercel Blob...');
 
-        if (!fs.existsSync(uploadDir)) {
-            console.log('KYC Upload: Creating upload directory...');
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
+        const blob = await put(filename, file, {
+            access: 'public',
+            token: process.env.BLOB_READ_WRITE_TOKEN || process.env.thekada_READ_WRITE_TOKEN || process.env.READ_WRITE_TOKEN,
+        });
 
-        const filePath = path.join(uploadDir, filename);
-        console.log('KYC Upload: Saving file to:', filePath);
-        await writeFile(filePath, buffer);
-
-        const fileUrl = `/uploads/${filename}`;
-        console.log('KYC Upload: File saved, updating database...');
+        console.log('KYC Upload: File uploaded to Blob:', blob.url);
 
         const result = await executeQuery({
             query: 'UPDATE franchise_requests SET aadhar_url = ? WHERE id = ?',
-            values: [fileUrl, requestId],
+            values: [blob.url, requestId],
         });
 
         console.log('KYC Upload: Database update result:', result);
 
-        return NextResponse.json({ message: 'KYC document uploaded successfully', fileUrl }, { status: 200 });
+        return NextResponse.json({ message: 'KYC document uploaded successfully', fileUrl: blob.url }, { status: 200 });
     } catch (error: any) {
         console.error('KYC Upload Error:', error);
-        console.error('Error stack:', error.stack);
         return NextResponse.json({ message: 'Internal Server Error', error: error.message }, { status: 500 });
     }
 }

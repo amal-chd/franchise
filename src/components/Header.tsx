@@ -39,7 +39,8 @@ export default function Header() {
                     <Link href="/about" className="nav-link">About</Link>
                     <Link href="/#benefits" className="nav-link">Benefits</Link>
                     <Link href="/support" className="nav-link">Support</Link>
-                    <Link href="/admin" className="nav-link text-primary">Admin</Link>
+                    <Link href="/careers" className="nav-link">Careers</Link>
+                    {/*<Link href="/admin" className="nav-link text-primary">Admin</Link> */}
                 </nav>
 
                 {/* Mobile Menu Toggle */}

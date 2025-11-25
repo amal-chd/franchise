@@ -1674,3 +1674,147 @@ select:focus {
     display: table;
   }
 }
+
+/* Analytics Dashboard - Mobile Horizontal Scroll */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.analytics-card {
+  padding: 24px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s;
+}
+
+@media (max-width: 768px) {
+  .analytics-grid {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 16px;
+    /* Space for scrollbar */
+    scroll-snap-type: x mandatory;
+    gap: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .analytics-card {
+    min-width: 260px;
+    /* Fixed width for horizontal scroll */
+    scroll-snap-align: start;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f1f5f9;
+  }
+}
+/* FAQ Accordion Animations */
+details[open] summary i.fa-chevron-down {
+  transform: rotate(180deg);
+}
+
+details summary {
+  transition: all 0.3s ease;
+}
+
+details[open] summary {
+  border-bottom: 1px solid var(--border-color);
+}
+
+details summary::-webkit-details-marker {
+  display: none;
+}
+
+details summary::marker {
+  display: none;
+}
+
+/* Testimonial Carousel Fade Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.testimonial-content {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* How It Works Step Animation */
+@keyframes stepPulse {
+  0%, 100% {
+    box-shadow: 0 10px 30px rgba(37, 99, 235, 0.3);
+  }
+  50% {
+    box-shadow: 0 10px 40px rgba(37, 99, 235, 0.5);
+  }
+}
+
+/* Scroll Reveal Animation */
+@keyframes scrollReveal {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.scroll-reveal {
+  animation: scrollReveal 0.6s ease-out;
+}
+
+/* Admin Panel Mobile Optimizations */
+
+/* Hide scrollbar for tab navigation */
+.admin-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Auto-scrolling analytics cards on mobile */
+@media (max-width: 768px) {
+  .analytics-auto-scroll {
+    animation: autoScroll 15s linear infinite;
+    animation-play-state: running;
+  }
+
+  .analytics-auto-scroll:hover {
+    animation-play-state: paused;
+  }
+
+  @keyframes autoScroll {
+    0% {
+      scroll-behavior: smooth;
+      transform: translateX(0);
+    }
+    20% {
+      transform: translateX(0);
+    }
+    40% {
+      transform: translateX(-280px);
+    }
+    60% {
+      transform: translateX(-560px);
+    }
+    80% {
+      transform: translateX(-840px);
+    }
+    100% {
+      transform: translateX(0);
+    }
+  }
+}
+
+/* Smooth scroll for admin tabs */
+.admin-tabs-scroll {
+  scroll-behavior: smooth;
+}
