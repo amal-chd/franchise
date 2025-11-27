@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import mysql from 'mysql2/promise';
+import executeQuery from '@/lib/db';
 
 export async function POST(request: Request) {
     try {
@@ -9,23 +9,14 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
         }
 
-        const connection = await mysql.createConnection({
-            host: process.env.DB_HOST,
-            user: process.env.DB_USER,
-            password: process.env.DB_PASSWORD,
-            database: process.env.DB_NAME,
-        });
-
         try {
-            await connection.execute(
-                'INSERT INTO newsletter_subscribers (email) VALUES (?)',
-                [email]
-            );
-            await connection.end();
+            await executeQuery({
+                query: 'INSERT INTO newsletter_subscribers (email) VALUES (?)',
+                values: [email]
+            });
             return NextResponse.json({ message: 'Subscribed successfully' });
         } catch (error: any) {
-            await connection.end();
-            if (error.code === 'ER_DUP_ENTRY') {
+            if (error.code === 'ER_DUP_ENTRY' || error.message?.includes('Duplicate entry')) {
                 return NextResponse.json({ message: 'Email already subscribed' }, { status: 200 });
             }
             throw error;

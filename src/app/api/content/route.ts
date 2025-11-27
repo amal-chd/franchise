@@ -3,29 +3,41 @@ import executeQuery from '@/lib/db';
 
 export async function GET() {
     try {
-        const content = await executeQuery({
+        // Fetch content
+        const contentRows = await executeQuery({
             query: 'SELECT * FROM site_content',
-            values: [],
+            values: []
         });
 
-        // Transform array to object for easier frontend consumption
-        const contentMap: Record<string, any> = {};
-        if (Array.isArray(content)) {
-            content.forEach((item: any) => {
-                if (item.content_type === 'json') {
-                    try {
-                        contentMap[item.content_key] = JSON.parse(item.content_value);
-                    } catch (e) {
-                        contentMap[item.content_key] = item.content_value;
-                    }
-                } else {
-                    contentMap[item.content_key] = item.content_value;
-                }
-            });
-        }
+        // Group content by section
+        const content = (contentRows as any[]).reduce((acc, row) => {
+            if (!acc[row.section]) {
+                acc[row.section] = {};
+            }
+            acc[row.section][row.content_key] = row.content_value;
+            return acc;
+        }, {});
 
-        return NextResponse.json(contentMap);
-    } catch (error: any) {
-        return NextResponse.json({ message: error.message }, { status: 500 });
+        // Fetch settings
+        const settingsRows = await executeQuery({
+            query: 'SELECT * FROM site_settings',
+            values: []
+        });
+
+        const settings = (settingsRows as any[]).reduce((acc, row) => {
+            acc[row.setting_key] = row.setting_value;
+            return acc;
+        }, {});
+
+        // Combine
+        const responseData = {
+            ...content,
+            settings
+        };
+
+        return NextResponse.json(responseData);
+    } catch (error) {
+        console.error('Error fetching site content:', error);
+        return NextResponse.json({ error: 'Failed to fetch content' }, { status: 500 });
     }
 }

@@ -11,10 +11,10 @@ export async function POST(request: Request) {
         }
 
         // Validate file type
-        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
         if (!validTypes.includes(file.type)) {
             return NextResponse.json({
-                message: 'Invalid file type. Only JPEG, PNG, and WebP images are allowed.'
+                message: 'Invalid file type. Only JPEG, PNG, WebP images and PDF files are allowed.'
             }, { status: 400 });
         }
 

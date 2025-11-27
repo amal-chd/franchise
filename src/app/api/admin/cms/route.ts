@@ -3,57 +3,51 @@ import executeQuery from '@/lib/db';
 
 export async function GET() {
     try {
-        const content = await executeQuery({
+        const rows = await executeQuery({
             query: 'SELECT * FROM site_content',
-            values: [],
+            values: []
         });
 
-        // Transform array to object for easier frontend consumption
-        const contentMap: Record<string, any> = {};
-        if (Array.isArray(content)) {
-            content.forEach((item: any) => {
-                // Parse JSON content types
-                if (item.content_type === 'json') {
-                    try {
-                        contentMap[item.content_key] = JSON.parse(item.content_value);
-                    } catch (e) {
-                        contentMap[item.content_key] = item.content_value;
-                    }
-                } else {
-                    contentMap[item.content_key] = item.content_value;
-                }
-            });
-        }
+        // Group content by section
+        const content = (rows as any[]).reduce((acc, row) => {
+            if (!acc[row.section]) {
+                acc[row.section] = {};
+            }
+            acc[row.section][row.content_key] = row.content_value;
+            return acc;
+        }, {});
 
-        return NextResponse.json(contentMap);
-    } catch (error: any) {
-        return NextResponse.json({ message: error.message }, { status: 500 });
+        return NextResponse.json(content);
+    } catch (error) {
+        console.error('Error fetching CMS content:', error);
+        return NextResponse.json({ error: 'Failed to fetch content' }, { status: 500 });
     }
 }
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { updates } = body; // Expecting an object { key: value, key2: value2 }
+        const { section, content } = body;
 
-        if (!updates || typeof updates !== 'object') {
-            return NextResponse.json({ message: 'Invalid updates format' }, { status: 400 });
+        if (!section || !content) {
+            return NextResponse.json({ error: 'Section and content are required' }, { status: 400 });
         }
 
-        for (const [key, value] of Object.entries(updates)) {
-            // Stringify if value is an object or array
-            const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
-            const contentType = typeof value === 'object' ? 'json' : 'text';
-
+        // Update or insert content
+        for (const [key, value] of Object.entries(content)) {
             await executeQuery({
-                query: `INSERT INTO site_content (content_key, content_value, content_type) VALUES (?, ?, ?) 
-                        ON DUPLICATE KEY UPDATE content_value = ?, content_type = ?`,
-                values: [key, stringValue, contentType, stringValue, contentType],
+                query: `
+                    INSERT INTO site_content (section, content_key, content_value)
+                    VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE content_value = ?
+                `,
+                values: [section, key, value, value]
             });
         }
 
-        return NextResponse.json({ message: 'Content updated successfully' });
-    } catch (error: any) {
-        return NextResponse.json({ message: error.message }, { status: 500 });
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Error updating CMS content:', error);
+        return NextResponse.json({ error: 'Failed to update content' }, { status: 500 });
     }
 }

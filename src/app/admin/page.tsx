@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function AdminLogin() {
     const [username, setUsername] = useState('');
@@ -62,6 +63,9 @@ export default function AdminLogin() {
                     {error && <p className="error-message">{error}</p>}
                     <button type="submit" className="btn btn-primary">Login</button>
                 </form>
+                <Link href="/" className="btn btn-secondary" style={{ marginTop: '16px' }}>
+                    Back to Home
+                </Link>
             </div>
         </div>
     );
