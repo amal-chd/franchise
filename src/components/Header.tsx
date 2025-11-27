@@ -40,6 +40,7 @@ export default function Header() {
                     <Link href="/#benefits" className="nav-link">Benefits</Link>
                     <Link href="/support" className="nav-link">Support</Link>
                     <Link href="/careers" className="nav-link">Careers</Link>
+                    <Link href="/training" className="nav-link">Training</Link>
                     {/*<Link href="/admin" className="nav-link text-primary">Admin</Link> */}
                 </nav>
 
@@ -61,6 +62,7 @@ export default function Header() {
                     <Link href="/#benefits" className="mobile-nav-link">Benefits</Link>
                     <Link href="/support" className="mobile-nav-link">Support</Link>
                     <Link href="/careers" className="mobile-nav-link">Careers</Link>
+                    <Link href="/training" className="mobile-nav-link">Training</Link>
                 </div>
             </div>
         </header>
