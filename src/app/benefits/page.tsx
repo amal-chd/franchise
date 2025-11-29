@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
+type Role = 'franchise' | 'delivery' | 'vendor';
+
 export default function Benefits() {
-    const [activeRole, setActiveRole] = useState('franchise');
+    const [activeRole, setActiveRole] = useState<Role>('franchise');
 
     const benefits = {
         franchise: [
@@ -91,7 +93,7 @@ export default function Benefits() {
             <section style={{ background: 'white', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
                 <div className="container">
                     <div style={{ display: 'flex', justifyContent: 'center', gap: '0', flexWrap: 'wrap' }}>
-                        {Object.keys(roleInfo).map((role) => (
+                        {(Object.keys(roleInfo) as Role[]).map((role) => (
                             <button
                                 key={role}
                                 onClick={() => setActiveRole(role)}
