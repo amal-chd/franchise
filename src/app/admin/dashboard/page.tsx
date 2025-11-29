@@ -181,7 +181,7 @@ export default function AdminDashboard() {
 
             if (cmsRes.ok) {
                 const data = await cmsRes.json();
-                setCmsContent(prev => ({ ...prev, ...data }));
+                setCmsContent((prev: any) => ({ ...prev, ...data }));
             }
 
             if (settingsRes.ok) {
