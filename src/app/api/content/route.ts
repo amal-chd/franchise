@@ -9,12 +9,23 @@ export async function GET() {
             values: []
         });
 
-        // Group content by section
+        // Group content by section and parse JSON
         const content = (contentRows as any[]).reduce((acc, row) => {
             if (!acc[row.section]) {
                 acc[row.section] = {};
             }
-            acc[row.section][row.content_key] = row.content_value;
+
+            let value = row.content_value;
+            // Try to parse JSON for arrays/objects
+            try {
+                if (value && (value.startsWith('[') || value.startsWith('{'))) {
+                    value = JSON.parse(value);
+                }
+            } catch (e) {
+                // Keep as string if parse fails
+            }
+
+            acc[row.section][row.content_key] = value;
             return acc;
         }, {});
 

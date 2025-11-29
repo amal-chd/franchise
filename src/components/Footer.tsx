@@ -34,41 +34,15 @@ export default function Footer() {
     };
 
     return (
-        <footer style={{
-            background: 'linear-gradient(to bottom, #0f172a, #020617)',
-            color: '#e2e8f0',
-            padding: '4rem 0 2rem',
-            position: 'relative',
-            overflow: 'hidden'
-        }}>
+        <footer className="footer">
             {/* Ambient Background Glow */}
-            <div style={{
-                position: 'absolute',
-                top: '-50%',
-                left: '20%',
-                width: '500px',
-                height: '500px',
-                background: 'radial-gradient(circle, rgba(37,99,235,0.1) 0%, transparent 70%)',
-                filter: 'blur(60px)',
-                pointerEvents: 'none'
-            }}></div>
+            <div className="footer-ambient-glow"></div>
 
             <div className="container" style={{ position: 'relative', zIndex: 1 }}>
-                <div className="footer-grid" style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                    gap: '3rem',
-                    marginBottom: '4rem'
-                }}>
+                <div className="footer-grid">
                     {/* Brand Column */}
                     <div className="footer-col">
-                        <Link href="/" className="logo" style={{
-                            marginBottom: '1.5rem',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            textDecoration: 'none'
-                        }}>
+                        <Link href="/" className="logo" style={{ marginBottom: '1.5rem', display: 'inline-flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
                             <img src="/logo.png" alt="The Kada Logo" style={{ height: '40px', width: 'auto' }} />
                             <span style={{
                                 fontSize: '1.5rem',
@@ -83,18 +57,7 @@ export default function Footer() {
                         </p>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             {['facebook', 'twitter', 'instagram', 'linkedin'].map((social) => (
-                                <a key={social} href="#" style={{
-                                    width: '40px',
-                                    height: '40px',
-                                    borderRadius: '50%',
-                                    background: 'rgba(255,255,255,0.05)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'white',
-                                    transition: 'all 0.3s ease',
-                                    border: '1px solid rgba(255,255,255,0.1)'
-                                }} className="social-icon">
+                                <a key={social} href="#" className="social-icon">
                                     <i className={`fab fa-${social}`}></i>
                                 </a>
                             ))}
@@ -103,11 +66,11 @@ export default function Footer() {
 
                     {/* Quick Links */}
                     <div className="footer-col">
-                        <h4 style={{ color: 'white', fontSize: '1.1rem', marginBottom: '1.5rem', fontWeight: '600' }}>Company</h4>
-                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                        <h4>Company</h4>
+                        <ul className="footer-links">
                             {['About Us', 'Careers', 'Press', 'Blog'].map((item) => (
-                                <li key={item} style={{ marginBottom: '0.75rem' }}>
-                                    <Link href="#" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }} className="footer-link">
+                                <li key={item}>
+                                    <Link href="#" className="footer-link">
                                         {item}
                                     </Link>
                                 </li>
@@ -117,11 +80,11 @@ export default function Footer() {
 
                     {/* Support */}
                     <div className="footer-col">
-                        <h4 style={{ color: 'white', fontSize: '1.1rem', marginBottom: '1.5rem', fontWeight: '600' }}>Support</h4>
-                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                        <h4>Support</h4>
+                        <ul className="footer-links">
                             {['Help Center', 'Terms of Service', 'Privacy Policy', 'Cookie Policy'].map((item) => (
-                                <li key={item} style={{ marginBottom: '0.75rem' }}>
-                                    <Link href="#" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }} className="footer-link">
+                                <li key={item}>
+                                    <Link href="#" className="footer-link">
                                         {item}
                                     </Link>
                                 </li>
@@ -131,7 +94,7 @@ export default function Footer() {
 
                     {/* Newsletter */}
                     <div className="footer-col">
-                        <h4 style={{ color: 'white', fontSize: '1.1rem', marginBottom: '1.5rem', fontWeight: '600' }}>Stay Updated</h4>
+                        <h4>Stay Updated</h4>
                         <p style={{ color: '#94a3b8', marginBottom: '1rem', fontSize: '0.9rem' }}>
                             Subscribe to our newsletter for the latest updates.
                         </p>
@@ -142,29 +105,9 @@ export default function Footer() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 disabled={status === 'loading' || status === 'success'}
-                                style={{
-                                    width: '100%',
-                                    padding: '0.75rem 1rem',
-                                    borderRadius: '8px',
-                                    background: 'rgba(255,255,255,0.05)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    color: 'white',
-                                    outline: 'none'
-                                }}
+                                className="footer-input"
                             />
-                            <button type="submit" disabled={status === 'loading' || status === 'success'} style={{
-                                position: 'absolute',
-                                right: '5px',
-                                top: '5px',
-                                bottom: '5px',
-                                padding: '0 1rem',
-                                background: status === 'success' ? '#10B981' : 'var(--primary-color)',
-                                border: 'none',
-                                borderRadius: '6px',
-                                color: 'white',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s ease'
-                            }}>
+                            <button type="submit" disabled={status === 'loading' || status === 'success'} className="footer-btn">
                                 {status === 'loading' ? <i className="fas fa-spinner fa-spin"></i> :
                                     status === 'success' ? <i className="fas fa-check"></i> :
                                         <i className="fas fa-paper-plane"></i>}
@@ -183,51 +126,15 @@ export default function Footer() {
                 </div>
 
                 {/* Footer Bottom */}
-                <div style={{
-                    borderTop: '1px solid rgba(255,255,255,0.1)',
-                    paddingTop: '2rem',
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '1rem',
-                    textAlign: 'center'
-                }}>
-                    <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>
+                <div className="footer-bottom">
+                    <p style={{ margin: 0 }}>
                         &copy; {new Date().getFullYear()} The Kada Digital Ventures Pvt Ltd. All rights reserved.
                     </p>
-                    <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '5px', justifyContent: 'center' }}>
                         Made with <i className="fas fa-heart" style={{ color: '#ef4444' }}></i> in Kerala
                     </p>
                 </div>
             </div>
-
-            <style jsx>{`
-                .social-icon:hover {
-                    background: var(--primary-color) !important;
-                    transform: translateY(-3px);
-                    border-color: var(--primary-color) !important;
-                }
-                .footer-link:hover {
-                    color: white !important;
-                    padding-left: 5px;
-                }
-                @media (max-width: 768px) {
-                    .footer-grid {
-                        grid-template-columns: 1fr !important;
-                        gap: 2rem !important;
-                        text-align: center;
-                    }
-                    .footer-col {
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                    }
-                    .footer-bottom {
-                        flex-direction: column;
-                    }
-                }
-            `}</style>
         </footer>
     );
 }

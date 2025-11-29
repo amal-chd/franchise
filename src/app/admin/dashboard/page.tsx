@@ -56,6 +56,7 @@ export default function AdminDashboard() {
     const [savingCms, setSavingCms] = useState(false);
 
     const navItems = [
+        { id: 'analytics', label: 'Analytics', icon: 'fa-chart-line' },
         { id: 'franchises', label: 'Franchise Requests', icon: 'fa-store' },
         { id: 'support', label: 'Support Tickets', icon: 'fa-headset' },
         { id: 'careers', label: 'Careers', icon: 'fa-briefcase' },
@@ -69,7 +70,7 @@ export default function AdminDashboard() {
     const router = useRouter();
 
     const [analytics, setAnalytics] = useState({ totalRequests: 0, pendingVerification: 0, approved: 0, rejected: 0, activeFranchises: 0, pendingTickets: 0, repliedTickets: 0 });
-    const [activeTab, setActiveTab] = useState('franchises');
+    const [activeTab, setActiveTab] = useState('analytics');
     const [statusFilter, setStatusFilter] = useState('all');
 
     const fetchRequests = async () => {
@@ -485,6 +486,7 @@ export default function AdminDashboard() {
             )}
 
             {/* Sidebar */}
+            {/* Sidebar */}
             <aside className={`admin-sidebar ${isSidebarOpen ? 'open' : ''}`}>
                 <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0' }}>
                     <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--primary-color)', margin: 0 }}>Admin Panel</h2>
@@ -496,23 +498,9 @@ export default function AdminDashboard() {
                             <button
                                 key={item.id}
                                 onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '12px',
-                                    padding: '12px 16px',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    background: activeTab === item.id ? 'var(--primary-color)' : 'transparent',
-                                    color: activeTab === item.id ? 'white' : '#64748B',
-                                    cursor: 'pointer',
-                                    textAlign: 'left',
-                                    fontSize: '0.95rem',
-                                    fontWeight: activeTab === item.id ? 500 : 400,
-                                    transition: 'all 0.2s'
-                                }}
+                                className={`admin-nav-btn ${activeTab === item.id ? 'active' : ''}`}
                             >
-                                <i className={`fas ${item.icon}`} style={{ width: '20px', textAlign: 'center' }}></i>
+                                <i className={`fas ${item.icon}`}></i>
                                 {item.label}
                             </button>
                         ))}
@@ -522,19 +510,7 @@ export default function AdminDashboard() {
                 <div style={{ padding: '16px', borderTop: '1px solid #e2e8f0' }}>
                     <button
                         onClick={() => { localStorage.removeItem('isAdmin'); router.push('/admin'); }}
-                        style={{
-                            width: '100%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            padding: '12px 16px',
-                            borderRadius: '8px',
-                            border: '1px solid #e2e8f0',
-                            background: 'white',
-                            color: '#EF4444',
-                            cursor: 'pointer',
-                            fontSize: '0.95rem'
-                        }}
+                        className="admin-logout-btn"
                     >
                         <i className="fas fa-sign-out-alt"></i>
                         Logout
@@ -546,7 +522,7 @@ export default function AdminDashboard() {
             <main className="admin-main">
 
                 {/* Mobile Header */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }} className="mobile-header">
+                <div className="mobile-header">
                     <button
                         onClick={() => setIsSidebarOpen(true)}
                         style={{ background: 'white', border: '1px solid #e2e8f0', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
@@ -557,37 +533,75 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Desktop Header */}
-                <div style={{ display: 'none', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }} className="desktop-header">
+                <div className="desktop-header" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
                     <h1 style={{ fontSize: '1.5rem', margin: 0 }}>{navItems.find(i => i.id === activeTab)?.label}</h1>
                 </div>
 
-                {/* Analytics Cards */}
-                <div className="analytics-grid analytics-auto-scroll" style={{ marginBottom: '32px' }}>
-                    <div className="analytics-card">
-                        <h3 style={{ fontSize: '0.875rem', color: '#64748B', marginBottom: '8px' }}>Total Requests</h3>
-                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>{analytics.totalRequests}</div>
+                {/* Analytics Tab */}
+                {activeTab === 'analytics' && (
+                    <div className="analytics-dashboard">
+                        <div className="analytics-grid">
+                            <div className="analytics-card primary">
+                                <div className="icon-wrapper"><i className="fas fa-clipboard-list"></i></div>
+                                <div className="card-content">
+                                    <h3>Total Requests</h3>
+                                    <div className="value">{analytics.totalRequests}</div>
+                                </div>
+                            </div>
+                            <div className="analytics-card warning">
+                                <div className="icon-wrapper"><i className="fas fa-clock"></i></div>
+                                <div className="card-content">
+                                    <h3>Pending Verification</h3>
+                                    <div className="value">{analytics.pendingVerification}</div>
+                                </div>
+                            </div>
+                            <div className="analytics-card success">
+                                <div className="icon-wrapper"><i className="fas fa-check-circle"></i></div>
+                                <div className="card-content">
+                                    <h3>Approved</h3>
+                                    <div className="value">{analytics.approved}</div>
+                                </div>
+                            </div>
+                            <div className="analytics-card danger">
+                                <div className="icon-wrapper"><i className="fas fa-times-circle"></i></div>
+                                <div className="card-content">
+                                    <h3>Rejected</h3>
+                                    <div className="value">{analytics.rejected}</div>
+                                </div>
+                            </div>
+                            <div className="analytics-card info">
+                                <div className="icon-wrapper"><i className="fas fa-ticket-alt"></i></div>
+                                <div className="card-content">
+                                    <h3>Pending Tickets</h3>
+                                    <div className="value">{analytics.pendingTickets}</div>
+                                </div>
+                            </div>
+                            <div className="analytics-card success-alt">
+                                <div className="icon-wrapper"><i className="fas fa-reply"></i></div>
+                                <div className="card-content">
+                                    <h3>Replied Tickets</h3>
+                                    <div className="value">{analytics.repliedTickets}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Recent Activity Section (Mocked for now, can be real later) */}
+                        <div style={{ marginTop: '32px', background: 'white', padding: '24px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                            <h3 style={{ fontSize: '1.1rem', marginBottom: '16px' }}>Quick Actions</h3>
+                            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                                <button onClick={() => setActiveTab('franchises')} className="btn btn-secondary" style={{ height: '40px', fontSize: '0.9rem' }}>
+                                    View Requests
+                                </button>
+                                <button onClick={() => setActiveTab('support')} className="btn btn-secondary" style={{ height: '40px', fontSize: '0.9rem' }}>
+                                    Check Tickets
+                                </button>
+                                <button onClick={() => setActiveTab('cms')} className="btn btn-secondary" style={{ height: '40px', fontSize: '0.9rem' }}>
+                                    Edit Website
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div className="analytics-card">
-                        <h3 style={{ fontSize: '0.875rem', color: '#64748B', marginBottom: '8px' }}>Pending Verification</h3>
-                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#F59E0B' }}>{analytics.pendingVerification}</div>
-                    </div>
-                    <div className="analytics-card">
-                        <h3 style={{ fontSize: '0.875rem', color: '#64748B', marginBottom: '8px' }}>Approved</h3>
-                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10B981' }}>{analytics.approved}</div>
-                    </div>
-                    <div className="analytics-card">
-                        <h3 style={{ fontSize: '0.875rem', color: '#64748B', marginBottom: '8px' }}>Rejected</h3>
-                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#EF4444' }}>{analytics.rejected}</div>
-                    </div>
-                    <div className="analytics-card">
-                        <h3 style={{ fontSize: '0.875rem', color: '#64748B', marginBottom: '8px' }}>Pending Tickets</h3>
-                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#F59E0B' }}>{analytics.pendingTickets}</div>
-                    </div>
-                    <div className="analytics-card">
-                        <h3 style={{ fontSize: '0.875rem', color: '#64748B', marginBottom: '8px' }}>Replied Tickets</h3>
-                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10B981' }}>{analytics.repliedTickets}</div>
-                    </div>
-                </div>
+                )}
 
                 {/* Tab Content */}
                 {activeTab === 'newsletter' && (
@@ -1226,6 +1240,40 @@ export default function AdminDashboard() {
                             >
                                 Add Testimonial
                             </button>
+                        </div>
+
+                        <div style={{ marginTop: '24px', padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>
+                                    Make sure to save your changes to make them live on the website.
+                                </p>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            const res = await fetch('/api/admin/cms', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                    section: 'testimonials',
+                                                    content: { testimonials: JSON.stringify(testimonials) }
+                                                })
+                                            });
+                                            if (res.ok) {
+                                                alert('Testimonials saved successfully!');
+                                            } else {
+                                                alert('Failed to save testimonials');
+                                            }
+                                        } catch (error) {
+                                            console.error('Error saving testimonials', error);
+                                            alert('Error saving testimonials');
+                                        }
+                                    }}
+                                    className="btn btn-primary"
+                                    style={{ padding: '8px 24px' }}
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

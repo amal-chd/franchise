@@ -24,12 +24,11 @@ export default function Home() {
 
   // Auto-rotate testimonials
   useEffect(() => {
-    if (content.testimonials && content.testimonials.length > 0) {
-      const interval = setInterval(() => {
-        setTestimonialIndex((prev) => (prev + 1) % content.testimonials.length);
-      }, 5000); // Change every 5 seconds
-      return () => clearInterval(interval);
-    }
+    const testimonialCount = content.testimonials?.testimonials?.length || 3;
+    const interval = setInterval(() => {
+      setTestimonialIndex((prev) => (prev + 1) % testimonialCount);
+    }, 5000); // Change every 5 seconds
+    return () => clearInterval(interval);
   }, [content.testimonials]);
 
 
@@ -41,8 +40,8 @@ export default function Home() {
       <section id="home" className="hero">
         <div className="container hero-content">
           <div className="hero-text">
-            <h1>{content.hero_title || 'Life. Simplified. One Platform Is All You Need.'}</h1>
-            <p>{content.hero_subtitle || 'Shop the Best. Sell with Ease. Only on The Kada. We connect customers to nearby grocery stores, restaurants, pharmacies, and more.'}</p>
+            <h1>{content.hero?.title || 'Life. Simplified. One Platform Is All You Need.'}</h1>
+            <p>{content.hero?.subtitle || 'Shop the Best. Sell with Ease. Only on The Kada. We connect customers to nearby grocery stores, restaurants, pharmacies, and more.'}</p>
             <div className="hero-btns">
               <Link href="#contact" className="btn btn-primary">
                 Start Your Franchise
@@ -53,7 +52,7 @@ export default function Home() {
             </div>
           </div>
           <div className="hero-image">
-            <img src="/hero-image.png" alt="The Kada Delivery Partner" style={{ borderRadius: 'var(--radius-lg)', width: '100%' }} />
+            <img src={content.hero?.image || "/hero-image.png"} alt="The Kada Delivery Partner" style={{ borderRadius: 'var(--radius-lg)', width: '100%' }} />
           </div>
         </div>
       </section>
@@ -62,19 +61,19 @@ export default function Home() {
       <section className="section stats">
         <div className="container stats-grid">
           <div className="stat-item">
-            <h3>50+</h3>
+            <h3>{content.stats?.active_franchises || '50+'}</h3>
             <p>Active Franchises</p>
           </div>
           <div className="stat-item">
-            <h3>10k+</h3>
+            <h3>{content.stats?.daily_orders || '10k+'}</h3>
             <p>Daily Orders</p>
           </div>
           <div className="stat-item">
-            <h3>500+</h3>
+            <h3>{content.stats?.partner_vendors || '500+'}</h3>
             <p>Partner Vendors</p>
           </div>
           <div className="stat-item">
-            <h3>₹1Cr+</h3>
+            <h3>{content.stats?.partner_revenue || '₹1Cr+'}</h3>
             <p>Partner Revenue</p>
           </div>
         </div>
@@ -89,12 +88,16 @@ export default function Home() {
               fontSize: 'clamp(1.75rem, 4vw, 2.5rem)',
               fontWeight: '800',
               marginBottom: '0.75rem',
-              background: 'linear-gradient(135deg, var(--text-primary), #64748B)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text'
+              color: 'var(--text-main)' // Fallback color
             }}>
-              Why The Kada?
+              <span style={{
+                background: 'linear-gradient(135deg, var(--text-main), #64748B)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>
+                {content.about?.title || 'Why The Kada?'}
+              </span>
             </h2>
             <p style={{
               fontSize: '1rem',
@@ -103,7 +106,7 @@ export default function Home() {
               margin: '0 auto',
               lineHeight: '1.6'
             }}>
-              {content.about_text || 'We are building the digital backbone for small-town India.'}
+              {content.about?.description || 'We are building the digital backbone for small-town India.'}
             </p>
           </div>
 
@@ -148,10 +151,10 @@ export default function Home() {
                   fontSize: '1.5rem',
                   color: 'var(--primary-color)'
                 }}>
-                  <i className="fas fa-chart-line"></i>
+                  <i className={`fas ${content.hero?.card1_icon || 'fa-chart-line'}`}></i>
                 </div>
-                <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>High ROI</h3>
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Low investment with high returns. Break even in just 3-6 months.</p>
+                <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{content.hero?.card1_title || 'High ROI'}</h3>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{content.hero?.card1_description || 'Low investment with high returns. Break even in just 3-6 months.'}</p>
               </div>
 
               {/* Feature 2 */}
@@ -183,10 +186,10 @@ export default function Home() {
                   fontSize: '1.5rem',
                   color: 'var(--success-color)'
                 }}>
-                  <i className="fas fa-mobile-alt"></i>
+                  <i className={`fas ${content.hero?.card2_icon || 'fa-mobile-alt'}`}></i>
                 </div>
-                <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Tech-First</h3>
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Advanced app for managing orders, delivery, and payments effortlessly.</p>
+                <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{content.hero?.card2_title || 'Tech-First'}</h3>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{content.hero?.card2_description || 'Advanced app for managing orders, delivery, and payments effortlessly.'}</p>
               </div>
 
               {/* Feature 3 */}
@@ -218,10 +221,10 @@ export default function Home() {
                   fontSize: '1.5rem',
                   color: '#F59E0B'
                 }}>
-                  <i className="fas fa-users"></i>
+                  <i className={`fas ${content.hero?.card3_icon || 'fa-users'}`}></i>
                 </div>
-                <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Full Support</h3>
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Marketing, training, and operational support to ensure your success.</p>
+                <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{content.hero?.card3_title || 'Full Support'}</h3>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{content.hero?.card3_description || 'Marketing, training, and operational support to ensure your success.'}</p>
               </div>
 
               {/* Feature 4 (Duplicate for infinite scroll illusion) */}
@@ -383,8 +386,9 @@ export default function Home() {
       </section>
 
       {/* Testimonials Section */}
-      {content.testimonials && content.testimonials.length > 0 && (
+      {(content.testimonials?.testimonials?.length > 0 || true) && (
         <section className="section" style={{
+          backgroundColor: 'var(--primary-color)', // Fallback
           background: 'linear-gradient(135deg, var(--primary-color), #8B5CF6)',
           color: 'white',
           position: 'relative',
@@ -417,7 +421,29 @@ export default function Home() {
                 msOverflowStyle: 'none',
                 WebkitOverflowScrolling: 'touch'
               }}>
-                {Array.isArray(content.testimonials) && content.testimonials.map((testimonial: any, index: number) => (
+                {(content.testimonials?.testimonials?.length > 0 ? content.testimonials.testimonials : [
+                  {
+                    name: "Rahul Sharma",
+                    role: "Franchise Owner",
+                    company: "Kochi",
+                    message: "The Kada has transformed my business. The support and technology they provide are unmatched.",
+                    rating: 5
+                  },
+                  {
+                    name: "Anjali Menon",
+                    role: "Partner",
+                    company: "Trivandrum",
+                    message: "I broke even in just 4 months. Highly recommend this franchise opportunity to anyone looking for high ROI.",
+                    rating: 5
+                  },
+                  {
+                    name: "Arjun Nair",
+                    role: "Vendor",
+                    company: "Calicut",
+                    message: "Seamless delivery and payments. My sales have doubled since joining The Kada network.",
+                    rating: 5
+                  }
+                ]).map((testimonial: any, index: number) => (
                   <div key={index} className="testimonial-card glass-card" style={{
                     minWidth: '100%',
                     scrollSnapAlign: 'center',
@@ -461,7 +487,11 @@ export default function Home() {
                         border: '2px solid rgba(255,255,255,0.3)',
                         color: 'white'
                       }}>
-                        {testimonial.name?.charAt(0)}
+                        {testimonial.avatar ? (
+                          <img src={testimonial.avatar} alt={testimonial.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                          testimonial.name?.charAt(0)
+                        )}
                       </div>
                       <div>
                         <div style={{ fontWeight: '700', fontSize: '1.125rem', color: 'white' }}>
@@ -488,7 +518,7 @@ export default function Home() {
                 gap: '0.5rem',
                 marginTop: '1rem'
               }}>
-                {Array.isArray(content.testimonials) && content.testimonials.map((_: any, index: number) => (
+                {(content.testimonials?.testimonials?.length > 0 ? content.testimonials.testimonials : [1, 2, 3]).map((_: any, index: number) => (
                   <div
                     key={index}
                     style={{
@@ -496,7 +526,8 @@ export default function Home() {
                       height: '8px',
                       borderRadius: '50%',
                       background: 'white',
-                      opacity: 0.5
+                      opacity: index === testimonialIndex ? 1 : 0.5,
+                      transition: 'opacity 0.3s'
                     }}
                   />
                 ))}
@@ -517,12 +548,16 @@ export default function Home() {
                   fontSize: 'clamp(2rem, 4vw, 2.5rem)',
                   fontWeight: '800',
                   marginBottom: '0.75rem',
-                  background: 'linear-gradient(135deg, var(--text-primary), #64748B)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text'
+                  color: 'var(--text-main)'
                 }}>
-                  How It Works
+                  <span style={{
+                    background: 'linear-gradient(135deg, var(--text-main), #64748B)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text'
+                  }}>
+                    How It Works
+                  </span>
                 </h2>
                 <p style={{ fontSize: '1.125rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '0 auto' }}>
                   Get started in 4 simple steps
@@ -576,7 +611,7 @@ export default function Home() {
                       fontSize: '1.25rem',
                       fontWeight: '700',
                       marginBottom: '0.75rem',
-                      color: 'var(--text-primary)'
+                      color: 'var(--text-main)'
                     }}>
                       {step.title}
                     </h4>
@@ -719,7 +754,7 @@ export default function Home() {
                     font-size: 1.25rem !important;
                     margin-bottom: 0.5rem !important;
                     margin-top: -5px;
-                    color: var(--text-primary);
+                    color: var(--text-main);
                     word-wrap: break-word; /* Prevent text overflow */
                   }
 
@@ -795,12 +830,16 @@ export default function Home() {
                   fontSize: 'clamp(2rem, 4vw, 2.5rem)',
                   fontWeight: '800',
                   marginBottom: '0.75rem',
-                  background: 'linear-gradient(135deg, var(--text-primary), #64748B)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text'
+                  color: 'var(--text-main)'
                 }}>
-                  Frequently Asked Questions
+                  <span style={{
+                    background: 'linear-gradient(135deg, var(--text-main), #64748B)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text'
+                  }}>
+                    Frequently Asked Questions
+                  </span>
                 </h2>
                 <p style={{ fontSize: '1.125rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '0 auto' }}>
                   Everything you need to know about partnering with us
@@ -823,7 +862,7 @@ export default function Home() {
                       padding: 'clamp(1.25rem, 3vw, 1.5rem)',
                       fontWeight: '600',
                       fontSize: 'clamp(1rem, 2.5vw, 1.125rem)',
-                      color: 'var(--text-primary)',
+                      color: 'var(--text-main)',
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',

@@ -73,6 +73,8 @@ html {
 }
 
 body {
+  margin: 0;
+  padding: 0;
   font-family: var(--font-body);
   color: var(--text-main);
   background-color: var(--bg-body);
@@ -943,11 +945,15 @@ select:focus {
     scroll-snap-type: x mandatory;
     gap: 1rem;
     padding-bottom: 1rem;
-    margin-right: -1rem;
-    /* Allow scroll to edge */
-    padding-right: 1rem;
+    margin-right: -24px;
+    /* Negative margin to pull to edge */
+    padding-right: 24px;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    width: calc(100% + 48px);
+    /* Extend width to cover padding */
+    margin-left: -24px;
+    padding-left: 24px;
   }
 
   .pricing-grid::-webkit-scrollbar {
@@ -1494,58 +1500,132 @@ select:focus {
   transition: width 0.3s ease;
 }
 
-/* Footer - Modern & Clean */
+/* Footer - Modern & Clean (Dark Theme) */
 .footer {
-  background: #F8FAFC;
-  color: var(--text-secondary);
+  background-color: #0f172a;
+  /* Fallback */
+  background: linear-gradient(to bottom, #0f172a, #020617);
+  color: #e2e8f0;
   padding: 64px 0 32px;
-  border-top: 1px solid #E2E8F0;
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+  /* Ensure default is left */
+}
+
+.footer-ambient-glow {
+  position: absolute;
+  top: -50%;
+  left: 20%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.1) 0%, transparent 70%);
+  filter: blur(60px);
+  pointer-events: none;
 }
 
 .footer-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 40px;
-  margin-bottom: 40px;
+  margin-bottom: 64px;
+  position: relative;
+  z-index: 1;
 }
 
 .footer-col h4 {
-  color: var(--text-main);
-  font-size: 1rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 20px;
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 24px;
+  text-align: left;
 }
 
 .footer-links {
   list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 .footer-links li {
   margin-bottom: 12px;
 }
 
-.footer-links a {
-  color: var(--text-secondary);
-  font-weight: 400;
-  font-size: 1rem;
-  transition: color 0.2s;
+.footer-link {
+  color: #94a3b8;
+  text-decoration: none;
+  transition: all 0.2s;
+  display: inline-block;
 }
 
-.footer-links a:hover {
-  color: var(--primary-color);
-  text-decoration: none;
+.footer-link:hover {
+  color: white;
+  padding-left: 5px;
+}
+
+.social-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.social-icon:hover {
+  background: var(--primary-color);
+  transform: translateY(-3px);
+  border-color: var(--primary-color);
 }
 
 .footer-bottom {
-  border-top: 1px solid #E2E8F0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 32px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   text-align: center;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
+  color: #64748b;
+  position: relative;
+  z-index: 1;
+}
+
+/* Footer Input */
+.footer-input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  outline: none;
+}
+
+.footer-input:focus {
+  border-color: var(--primary-color);
+}
+
+.footer-btn {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  bottom: 5px;
+  padding: 0 16px;
+  background: var(--primary-color);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.footer-btn:hover {
+  background: var(--primary-hover);
 }
 
 /* ========================================
@@ -1629,6 +1709,7 @@ select:focus {
 
   .footer-grid {
     grid-template-columns: repeat(4, 1fr);
+    text-align: left;
   }
 
   .footer-bottom {
@@ -1862,4 +1943,232 @@ details summary::marker {
 /* Smooth scroll for admin tabs */
 .admin-tabs-scroll {
   scroll-behavior: smooth;
+}
+
+/* ========================================
+   ADMIN DASHBOARD LAYOUT
+   ======================================== */
+
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg-surface);
+}
+
+.admin-sidebar {
+  width: 280px;
+  background: white;
+  border-right: 1px solid #E2E8F0;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 50;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.admin-main {
+  flex: 1;
+  margin-left: 280px;
+  padding: 32px;
+  min-height: 100vh;
+  width: calc(100% - 280px);
+}
+
+/* Mobile Admin Layout */
+@media (max-width: 1024px) {
+  .admin-sidebar {
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .admin-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .admin-main {
+    margin-left: 0;
+    width: 100%;
+    padding: 20px;
+  }
+
+  /* Mobile Header for Admin */
+  .mobile-header {
+    display: flex !important;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    background: white;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .desktop-header {
+    display: none !important;
+  }
+}
+
+/* Desktop Header visibility */
+@media (min-width: 1025px) {
+  .mobile-header {
+    display: none !important;
+  }
+
+  .desktop-header {
+    display: flex !important;
+  }
+}
+
+/* Admin Nav Button Styles */
+.admin-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.admin-nav-btn:hover {
+  background: var(--bg-surface);
+  color: var(--primary-color);
+}
+
+.admin-nav-btn.active {
+  background: var(--primary-color);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.admin-nav-btn i {
+  width: 20px;
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+.admin-logout-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  background: white;
+  color: #EF4444;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.admin-logout-btn:hover {
+  background: #FEF2F2;
+  border-color: #EF4444;
+}
+
+/* ========================================
+   ANALYTICS DASHBOARD STYLES
+   ======================================== */
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+}
+
+.analytics-card {
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid #E2E8F0;
+}
+
+.analytics-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+.analytics-card .icon-wrapper {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.analytics-card .card-content h3 {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0 0 4px 0;
+  font-weight: 600;
+}
+
+.analytics-card .card-content .value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+/* Card Variants */
+.analytics-card.primary .icon-wrapper {
+  background: #EFF6FF;
+  color: #2563EB;
+}
+
+.analytics-card.warning .icon-wrapper {
+  background: #FFFBEB;
+  color: #F59E0B;
+}
+
+.analytics-card.success .icon-wrapper {
+  background: #ECFDF5;
+  color: #10B981;
+}
+
+.analytics-card.danger .icon-wrapper {
+  background: #FEF2F2;
+  color: #EF4444;
+}
+
+.analytics-card.info .icon-wrapper {
+  background: #F0F9FF;
+  color: #0EA5E9;
+}
+
+.analytics-card.success-alt .icon-wrapper {
+  background: #F0FDF4;
+  color: #16A34A;
+}
+
+/* Mobile Optimization for Analytics */
+@media (max-width: 768px) {
+  .analytics-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .analytics-card {
+    padding: 20px;
+  }
 }
