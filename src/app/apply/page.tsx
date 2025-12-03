@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Script from 'next/script';
 
 function ApplyContent() {
     const searchParams = useSearchParams();
@@ -470,7 +471,10 @@ function ApplyContent() {
                     </div>
                 )}
             </div>
-            <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+            <Script
+                src="https://checkout.razorpay.com/v1/checkout.js"
+                strategy="lazyOnload"
+            />
         </div >
     );
 }
