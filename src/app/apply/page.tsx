@@ -133,6 +133,7 @@ function ApplyContent() {
                                 setStatus('');
                                 setStep(4);
                             } else {
+                                console.error('Payment verification failed:', await verifyRes.json());
                                 setStatus('error');
                             }
                         },
@@ -151,9 +152,11 @@ function ApplyContent() {
                     setStatus('');
                 }
             } else {
+                console.error('Order creation failed:', data);
                 setStatus('error');
             }
         } catch (error) {
+            console.error('Payment initialization error:', error);
             setStatus('error');
         }
     };
