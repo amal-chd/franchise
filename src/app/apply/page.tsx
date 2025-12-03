@@ -119,22 +119,34 @@ function ApplyContent() {
                         description: `${plan === 'basic' ? 'Standard' : 'Premium'} Revenue Share Plan`,
                         order_id: data.orderId,
                         handler: async function (response: any) {
-                            const verifyRes = await fetch('/api/pricing/verify', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    razorpay_order_id: response.razorpay_order_id,
-                                    razorpay_payment_id: response.razorpay_payment_id,
-                                    razorpay_signature: response.razorpay_signature,
-                                    requestId,
-                                }),
-                            });
+                            console.log('Razorpay Payment Success Callback:', response);
+                            console.log('Verifying payment with requestId:', requestId);
 
-                            if (verifyRes.ok) {
-                                setStatus('');
-                                setStep(4);
-                            } else {
-                                console.error('Payment verification failed:', await verifyRes.json());
+                            try {
+                                const verifyRes = await fetch('/api/pricing/verify', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        razorpay_order_id: response.razorpay_order_id,
+                                        razorpay_payment_id: response.razorpay_payment_id,
+                                        razorpay_signature: response.razorpay_signature,
+                                        requestId,
+                                    }),
+                                });
+
+                                const verifyData = await verifyRes.json();
+                                console.log('Verification API Response:', verifyData);
+
+                                if (verifyRes.ok) {
+                                    console.log('Payment verified successfully. Moving to next step.');
+                                    setStatus('');
+                                    setStep(4);
+                                } else {
+                                    console.error('Payment verification failed:', verifyData);
+                                    setStatus('error');
+                                }
+                            } catch (err) {
+                                console.error('Error during payment verification:', err);
                                 setStatus('error');
                             }
                         },
@@ -147,6 +159,14 @@ function ApplyContent() {
                             color: '#2563EB',
                         },
                     };
+
+
+
+                    if (!(window as any).Razorpay) {
+                        console.error('Razorpay SDK not loaded');
+                        setStatus('error');
+                        return;
+                    }
 
                     const rzp = new (window as any).Razorpay(options);
                     rzp.open();
@@ -474,6 +494,9 @@ function ApplyContent() {
             <Script
                 src="https://checkout.razorpay.com/v1/checkout.js"
                 strategy="lazyOnload"
+                onLoad={() => {
+                    (window as any).isRazorpayLoaded = true;
+                }}
             />
         </div >
     );
