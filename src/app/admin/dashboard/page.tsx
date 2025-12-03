@@ -62,6 +62,7 @@ export default function AdminDashboard() {
         { id: 'careers', label: 'Careers', icon: 'fa-briefcase' },
         { id: 'testimonials', label: 'Testimonials', icon: 'fa-star' },
         { id: 'newsletter', label: 'Newsletter', icon: 'fa-envelope' },
+        { id: 'pricing', label: 'Pricing & Agreement', icon: 'fa-tags' },
         { id: 'training', label: 'Training', icon: 'fa-graduation-cap' },
         { id: 'cms', label: 'Website Editor', icon: 'fa-pen-to-square' },
         { id: 'settings', label: 'Settings', icon: 'fa-cog' }
@@ -632,6 +633,121 @@ export default function AdminDashboard() {
                                     )}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'pricing' && (
+                    <div className="space-y-6">
+                        {/* Pricing Plans */}
+                        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+                            <h3 className="text-lg font-semibold mb-4">Pricing Plans</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {/* Free Plan */}
+                                <div className="p-4 border rounded-lg bg-gray-50">
+                                    <h4 className="font-medium mb-3 text-primary">Starter (Free)</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-sm text-gray-600 mb-1">Revenue Share (%)</label>
+                                            <input
+                                                type="number"
+                                                className="w-full p-2 border rounded"
+                                                value={siteSettings.pricing_free_share || ''}
+                                                onChange={(e) => setSiteSettings({ ...siteSettings, pricing_free_share: e.target.value })}
+                                                placeholder="e.g. 50"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm text-gray-600 mb-1">Doc Fee (₹)</label>
+                                            <input
+                                                type="number"
+                                                className="w-full p-2 border rounded"
+                                                value={siteSettings.pricing_free_price || ''}
+                                                onChange={(e) => setSiteSettings({ ...siteSettings, pricing_free_price: e.target.value })}
+                                                placeholder="e.g. 1500"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Basic Plan */}
+                                <div className="p-4 border rounded-lg bg-white">
+                                    <h4 className="font-medium mb-3 text-blue-600">Standard</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-sm text-gray-600 mb-1">Monthly Price (₹)</label>
+                                            <input
+                                                type="number"
+                                                className="w-full p-2 border rounded"
+                                                value={siteSettings.pricing_basic_price || ''}
+                                                onChange={(e) => setSiteSettings({ ...siteSettings, pricing_basic_price: e.target.value })}
+                                                placeholder="e.g. 499"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm text-gray-600 mb-1">Revenue Share (%)</label>
+                                            <input
+                                                type="number"
+                                                className="w-full p-2 border rounded"
+                                                value={siteSettings.pricing_basic_share || ''}
+                                                onChange={(e) => setSiteSettings({ ...siteSettings, pricing_basic_share: e.target.value })}
+                                                placeholder="e.g. 60"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Premium Plan */}
+                                <div className="p-4 border rounded-lg bg-blue-50">
+                                    <h4 className="font-medium mb-3 text-purple-600">Premium</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-sm text-gray-600 mb-1">Monthly Price (₹)</label>
+                                            <input
+                                                type="number"
+                                                className="w-full p-2 border rounded"
+                                                value={siteSettings.pricing_premium_price || ''}
+                                                onChange={(e) => setSiteSettings({ ...siteSettings, pricing_premium_price: e.target.value })}
+                                                placeholder="e.g. 999"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm text-gray-600 mb-1">Revenue Share (%)</label>
+                                            <input
+                                                type="number"
+                                                className="w-full p-2 border rounded"
+                                                value={siteSettings.pricing_premium_share || ''}
+                                                onChange={(e) => setSiteSettings({ ...siteSettings, pricing_premium_share: e.target.value })}
+                                                placeholder="e.g. 70"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Agreement Editor */}
+                        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+                            <h3 className="text-lg font-semibold mb-4">Franchise Agreement</h3>
+                            <div className="mb-4">
+                                <ReactQuill
+                                    theme="snow"
+                                    value={siteSettings.agreement_text || ''}
+                                    onChange={(content) => setSiteSettings({ ...siteSettings, agreement_text: content })}
+                                    style={{ height: '300px', marginBottom: '50px' }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Save Button */}
+                        <div className="flex justify-end">
+                            <button
+                                onClick={handleSaveSettings}
+                                disabled={savingCms}
+                                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                            >
+                                {savingCms ? 'Saving...' : 'Save Changes'}
+                            </button>
                         </div>
                     </div>
                 )}
