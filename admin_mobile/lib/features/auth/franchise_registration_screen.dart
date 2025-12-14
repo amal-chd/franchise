@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart'; // For MediaType
-import '../requests/requests_provider.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../core/api_service.dart';
 
 class FranchiseRegistrationScreen extends ConsumerStatefulWidget {
@@ -20,6 +20,7 @@ class _FranchiseRegistrationScreenState extends ConsumerState<FranchiseRegistrat
   int _currentStep = 0;
   bool _isLoading = false;
   int? _franchiseId; // Stores the newly created franchise ID
+  late Razorpay _razorpay;
 
   // Step 1: Details
   final _formKeyDetails = GlobalKey<FormState>();
@@ -44,6 +45,40 @@ class _FranchiseRegistrationScreenState extends ConsumerState<FranchiseRegistrat
   // Step 4: Agreement
   bool _agreementAccepted = false;
   String _agreementHtml = '<p>Loading Agreement...</p>';
+
+  @override
+  void initState() {
+    super.initState();
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _razorpay.clear();
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) {
+    // Payment success logic
+    // You might want to verify the signature on the backend here
+    // For now, we proceed to finalize the plan
+    _finalizePlan(_selectedPlan);
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Payment Failed: ${response.message}")),
+    );
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("External Wallet Selected: ${response.walletName}")),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -431,10 +466,26 @@ class _FranchiseRegistrationScreenState extends ConsumerState<FranchiseRegistrat
   }
   
   void _openRazorpay(Map<String, dynamic> orderData) {
-     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Opening Payment Gateway... (Simulated)')));
-     Future.delayed(const Duration(seconds: 2), () async {
-        await _finalizePlan(_selectedPlan);
-     });
+     var options = {
+       'key': orderData['keyId'],
+       'amount': orderData['amount'],
+       'name': 'The Kada Franchise',
+       'description': 'Franchise Fee Payment',
+       'order_id': orderData['orderId'], 
+       'prefill': {
+         'contact': _phoneCtrl.text,
+         'email': _emailCtrl.text
+       },
+       'external': {
+         'wallets': ['paytm']
+       }
+     };
+
+     try {
+       _razorpay.open(options);
+     } catch (e) {
+       debugPrint('Error: $e');
+     }
   }
 
   Future<void> _finalizePlan(String plan) async {
