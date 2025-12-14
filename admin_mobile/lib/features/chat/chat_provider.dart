@@ -105,9 +105,61 @@ class ChatMessagesNotifier extends AsyncNotifier<List<ChatMessage>> {
       });
 
       if (response.statusCode == 200) {
-        // Optimistically add message or refresh
-        // For now, just refresh
         refresh();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+}
+
+// Admin: Fetch All Sessions
+final adminChatSessionsProvider = FutureProvider<List<ChatSession>>((ref) async {
+  final api = ApiService();
+  try {
+    final response = await api.client.get('/api/admin/chat/sessions');
+    final data = response.data as List;
+    return data.map((e) => ChatSession.fromJson(e)).toList();
+  } catch (e) {
+    return [];
+  }
+});
+
+// Admin: Messages for a specific session (Simple Fetch)
+final adminChatMessagesFamilyProvider = FutureProvider.family<List<ChatMessage>, int>((ref, sessionId) async {
+  final api = ApiService();
+  try {
+    final response = await api.client.get('/api/chat/messages?sessionId=$sessionId');
+    final data = response.data as List;
+    return data.map((e) => ChatMessage.fromJson(e)).toList();
+  } catch (e) {
+    return [];
+  }
+});
+
+// Admin Chat Controller for Actions
+final adminChatControllerProvider = Provider((ref) => AdminChatController(ref));
+
+class AdminChatController {
+  final Ref ref;
+  final ApiService _apiService = ApiService();
+
+  AdminChatController(this.ref);
+
+  Future<bool> sendMessage(int sessionId, String message) async {
+    try {
+      final response = await _apiService.client.post('/api/chat/messages', data: {
+        'sessionId': sessionId,
+        'message': message,
+        'senderType': 'admin',
+        'senderId': 0 
+      });
+
+      if (response.statusCode == 200) {
+        // Invalidate provider to trigger refresh
+        ref.invalidate(adminChatMessagesFamilyProvider(sessionId));
         return true;
       }
       return false;

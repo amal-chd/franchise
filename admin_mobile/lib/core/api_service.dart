@@ -10,9 +10,9 @@ class ApiService {
   // For Android Emulator: http://10.0.2.2:3000
   static String get baseUrl {
     // if (kDebugMode) {
-    //   if (kIsWeb) return 'http://localhost:3000';
-    //   if (Platform.isAndroid) return 'http://10.0.2.2:3000';
-    //   return 'http://localhost:3000';
+    //   if (kIsWeb) return 'http://localhost:3001';
+    //   if (Platform.isAndroid) return 'http://10.0.2.2:3001';
+    //   return 'http://localhost:3001';
     // }
     return 'https://franchise.thekada.in';
   }

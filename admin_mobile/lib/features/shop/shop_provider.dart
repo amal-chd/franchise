@@ -65,6 +65,43 @@ class ProductsNotifier extends AsyncNotifier<List<Product>> {
   }
 }
 
+// Admin Products Provider
+final adminProductsProvider = AsyncNotifierProvider<AdminProductsNotifier, List<Product>>(() {
+  return AdminProductsNotifier();
+});
+
+class AdminProductsNotifier extends AsyncNotifier<List<Product>> {
+  final ApiService _apiService = ApiService();
+
+  @override
+  Future<List<Product>> build() async {
+    return _fetchProducts();
+  }
+
+  Future<List<Product>> _fetchProducts() async {
+    try {
+      final response = await _apiService.client.get('/api/shop/products?admin=true');
+      final data = response.data as List;
+      return data.map((e) => Product.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch admin products');
+    }
+  }
+
+  Future<bool> addProduct(Map<String, dynamic> productData) async {
+    try {
+      final response = await _apiService.client.post('/api/shop/products', data: productData);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        state = await AsyncValue.guard(() => _fetchProducts()); // Refresh list
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+}
+
 // Cart Provider
 final cartProvider = NotifierProvider<CartNotifier, List<CartItem>>(() {
   return CartNotifier();

@@ -11,6 +11,8 @@ import '../careers/careers_tab.dart';
 import '../training/training_tab.dart';
 import '../newsletter/newsletter_tab.dart';
 import '../pricing/pricing_tab.dart';
+import '../shop/admin_shop_tab.dart';
+import '../chat/admin_chat_tab.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -25,10 +27,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   static const List<Widget> _widgetOptions = <Widget>[
     HomeTab(),
     RequestsTab(),
-    FranchisesTab(), // New Tab
+    FranchisesTab(),
+    AdminShopTab(), // New
     PayoutsTab(),
     CmsTab(),
     SupportTab(),
+    AdminChatTab(), // New
     CareersTab(),
     TrainingTab(),
     NewsletterTab(),
@@ -38,10 +42,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   static const List<String> _titles = [
     'Dashboard',
     'Franchise Requests',
-    'Active Franchises', // New Title
+    'Active Franchises',
+    'Shop Manager', // New
     'Payouts',
     'CMS Manager',
     'Support Tickets',
+    'Live Chat', // New
     'Careers',
     'Training Modules',
     'Newsletter',
@@ -98,13 +104,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   _buildDrawerItem(0, 'Dashboard', Icons.dashboard),
                   _buildDrawerItem(1, 'Franchise Requests', Icons.person_add),
                   _buildDrawerItem(2, 'Active Franchises', Icons.store),
-                  _buildDrawerItem(3, 'Payouts', Icons.payments),
-                  _buildDrawerItem(4, 'CMS Manager', Icons.edit_document),
-                  _buildDrawerItem(5, 'Support Tickets', Icons.support_agent),
-                  _buildDrawerItem(6, 'Careers', Icons.work),
-                  _buildDrawerItem(7, 'Training Modules', Icons.school),
-                  _buildDrawerItem(8, 'Newsletter', Icons.email),
-                  _buildDrawerItem(9, 'Pricing & Plans', Icons.price_change),
+                  _buildDrawerItem(3, 'Shop Manager', Icons.shopping_bag),
+                  _buildDrawerItem(4, 'Payouts', Icons.payments),
+                  _buildDrawerItem(5, 'CMS Manager', Icons.edit_document),
+                  _buildDrawerItem(6, 'Support Tickets', Icons.support_agent),
+                  _buildDrawerItem(7, 'Live Chat', Icons.chat),
+                  _buildDrawerItem(8, 'Careers', Icons.work),
+                  _buildDrawerItem(9, 'Training Modules', Icons.school),
+                  _buildDrawerItem(10, 'Newsletter', Icons.email),
+                  _buildDrawerItem(11, 'Pricing & Plans', Icons.price_change),
                 ],
               ),
             ),

@@ -4,13 +4,17 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // import shared_preferences
 import '../../core/api_service.dart';
 
-final planUpgradeProvider = StateNotifierProvider<PlanUpgradeNotifier, AsyncValue<bool>>((ref) {
+final planUpgradeProvider = AsyncNotifierProvider<PlanUpgradeNotifier, bool>(() {
   return PlanUpgradeNotifier();
 });
 
-class PlanUpgradeNotifier extends StateNotifier<AsyncValue<bool>> {
-  PlanUpgradeNotifier() : super(const AsyncValue.data(false));
+class PlanUpgradeNotifier extends AsyncNotifier<bool> {
   final ApiService _apiService = ApiService();
+
+  @override
+  Future<bool> build() async {
+    return false;
+  }
 
   Future<bool> requestUpgrade(String newPlan, String currentPlan) async {
     state = const AsyncValue.loading();
