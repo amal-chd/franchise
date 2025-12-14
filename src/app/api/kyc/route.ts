@@ -32,6 +32,11 @@ export async function POST(request: Request) {
             fileUrl = blob.url;
             console.log('KYC Upload: File uploaded to Blob:', fileUrl);
         } else {
+            if (process.env.NODE_ENV === 'production') {
+                return NextResponse.json({
+                    message: 'Upload configuration error: Blob storage token is missing in production. Please configure Vercel Blob.'
+                }, { status: 500 });
+            }
             console.log('KYC Upload: No Blob token found. Falling back to local storage...');
 
             // Local storage fallback

@@ -17,7 +17,7 @@ export default function TermsPage() {
                     <p>You are responsible for maintaining the confidentiality of your account and password, including but not limited to the restriction of access to your computer and/or account. You agree to accept responsibility for all activities or actions that occur under your account and/or password.</p>
 
                     <h3>Vendor Policies</h3>
-                    <p>Each vendor on our platform operates independently and may have their own policies regarding shipping, returns, and refunds. Users are advised to read the vendor's policies before making a purchase.</p>
+                    <p>Each vendor on our platform operates independently and may have their own policies regarding shipping, returns, and refunds. Users are advised to read the vendor&apos;s policies before making a purchase.</p>
 
                     <h3>Product Availability & Pricing</h3>
                     <p>Product prices and availability are subject to change without notice. The Kada is not responsible for any pricing errors or inaccuracies. In case of pricing or availability issues, orders may be canceled and payments refunded if applicable.</p>

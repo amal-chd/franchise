@@ -43,7 +43,7 @@ export async function GET() {
         // Combine
         const responseData = {
             ...content,
-            settings
+            ...settings
         };
 
         return NextResponse.json(responseData);

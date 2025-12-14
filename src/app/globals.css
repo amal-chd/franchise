@@ -943,17 +943,18 @@ select:focus {
     display: flex;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
-    gap: 1rem;
-    padding-bottom: 1rem;
-    margin-right: -24px;
-    /* Negative margin to pull to edge */
-    padding-right: 24px;
+    gap: 16px;
+    padding-bottom: 24px;
+    /* Space for scrollbar or shadow */
+    width: 100%;
+    /* Ensure full width */
+    margin: 0;
+    padding-left: 16px;
+    padding-right: 16px;
+    /* Edge padding */
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    width: calc(100% + 48px);
-    /* Extend width to cover padding */
-    margin-left: -24px;
-    padding-left: 24px;
+    /* Hide scrollbar for cleaner look */
   }
 
   .pricing-grid::-webkit-scrollbar {
@@ -961,8 +962,8 @@ select:focus {
   }
 
   .pricing-grid>div {
-    min-width: 260px;
-    /* Slightly wider than how-it-works cards for content */
+    min-width: 85%;
+    /* Show most of the card, peek next */
     flex: 0 0 auto;
     scroll-snap-align: center;
   }
@@ -1135,40 +1136,19 @@ select:focus {
 
   .apply-page-container {
     height: 100dvh;
-    /* Use dynamic viewport height on mobile */
+    overflow: hidden;
   }
 
   .apply-form-wrapper h3 {
     font-size: 1.25rem;
   }
 
-  .apply-form-wrapper .file-upload-container {
-    padding: 20px 16px;
-  }
-
-  /* Ensure pricing grid stays 3 columns but fits */
-  .pricing-grid {
-    gap: 6px;
-  }
-
-  .pricing-card {
-    padding: 10px 4px;
-  }
-
-  .pricing-header h4 {
-    font-size: 0.75rem;
-  }
-
-  .pricing-amount {
-    font-size: 1.1rem;
-  }
-
-  /* Mobile-specific optimizations */
-  .apply-section {
-    padding: 85px 12px 12px;
-  }
-
   .apply-form-wrapper {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 100px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding: 16px;
     border-radius: 16px;
   }
@@ -1270,8 +1250,10 @@ select:focus {
   }
 
   /* Agreement section mobile */
-  .apply-form-wrapper .agreement-section>div:nth-child(2) {
-    height: 150px !important;
+  .agreement-box {
+    height: auto !important;
+    max-height: 40vh !important;
+    min-height: 150px !important;
     font-size: 0.85rem !important;
     padding: 1rem !important;
   }

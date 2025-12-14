@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Script from 'next/script';
 
 function ApplyContent() {
     const searchParams = useSearchParams();
@@ -115,24 +116,37 @@ function ApplyContent() {
                         amount: data.amount,
                         currency: data.currency,
                         name: 'The Kada Franchise',
-                        description: `${plan === 'basic' ? 'Standard' : 'Premium'} Revenue Share Plan`,
+                        description: `${plan === 'basic' ? 'Standard' : plan === 'premium' ? 'Premium' : 'Elite'} Revenue Share Plan`,
                         order_id: data.orderId,
                         handler: async function (response: any) {
-                            const verifyRes = await fetch('/api/pricing/verify', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    razorpay_order_id: response.razorpay_order_id,
-                                    razorpay_payment_id: response.razorpay_payment_id,
-                                    razorpay_signature: response.razorpay_signature,
-                                    requestId,
-                                }),
-                            });
+                            console.log('Razorpay Payment Success Callback:', response);
+                            console.log('Verifying payment with requestId:', requestId);
 
-                            if (verifyRes.ok) {
-                                setStatus('');
-                                setStep(4);
-                            } else {
+                            try {
+                                const verifyRes = await fetch('/api/pricing/verify', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        razorpay_order_id: response.razorpay_order_id,
+                                        razorpay_payment_id: response.razorpay_payment_id,
+                                        razorpay_signature: response.razorpay_signature,
+                                        requestId,
+                                    }),
+                                });
+
+                                const verifyData = await verifyRes.json();
+                                console.log('Verification API Response:', verifyData);
+
+                                if (verifyRes.ok) {
+                                    console.log('Payment verified successfully. Moving to next step.');
+                                    setStatus('');
+                                    setStep(4);
+                                } else {
+                                    console.error('Payment verification failed:', verifyData);
+                                    setStatus('error');
+                                }
+                            } catch (err) {
+                                console.error('Error during payment verification:', err);
                                 setStatus('error');
                             }
                         },
@@ -146,14 +160,24 @@ function ApplyContent() {
                         },
                     };
 
+
+
+                    if (!(window as any).Razorpay) {
+                        console.error('Razorpay SDK not loaded');
+                        setStatus('error');
+                        return;
+                    }
+
                     const rzp = new (window as any).Razorpay(options);
                     rzp.open();
                     setStatus('');
                 }
             } else {
+                console.error('Order creation failed:', data);
                 setStatus('error');
             }
         } catch (error) {
+            console.error('Payment initialization error:', error);
             setStatus('error');
         }
     };
@@ -262,6 +286,53 @@ function ApplyContent() {
                                 onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                             />
                         </div>
+
+                        {/* Payment & Withdrawal Details */}
+                        <div style={{ marginTop: '2rem', marginBottom: '1rem', borderTop: '1px solid #eee', paddingTop: '1.5rem' }}>
+                            <h4 style={{ marginBottom: '1rem', color: 'var(--text-main)' }}>Payout Details (Optional but Recommended)</h4>
+                            <div className="form-group">
+                                <label className="form-label">UPI ID</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="e.g. yourname@upi"
+                                    value={(formData as any).upi_id || ''}
+                                    onChange={(e) => setFormData({ ...formData, upi_id: e.target.value } as any)}
+                                />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="form-group">
+                                    <label className="form-label">Bank Name</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="e.g. SBI"
+                                        value={(formData as any).bank_name || ''}
+                                        onChange={(e) => setFormData({ ...formData, bank_name: e.target.value } as any)}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">IFSC Code</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="e.g. SBIN0001234"
+                                        value={(formData as any).ifsc_code || ''}
+                                        onChange={(e) => setFormData({ ...formData, ifsc_code: e.target.value } as any)}
+                                    />
+                                </div>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Account Number</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Enter account number"
+                                    value={(formData as any).bank_account_number || ''}
+                                    onChange={(e) => setFormData({ ...formData, bank_account_number: e.target.value } as any)}
+                                />
+                            </div>
+                        </div>
                         <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem', width: '100%' }} disabled={status === 'sending'}>
                             {status === 'sending' ? 'Processing...' : 'Next: Upload KYC'} <i className="fas fa-arrow-right"></i>
                         </button>
@@ -314,21 +385,31 @@ function ApplyContent() {
                         <h3 className="text-center" style={{ marginBottom: '2rem' }}>Choose Your Plan</h3>
                         <div className="pricing-grid">
                             {/* Free Plan */}
-                            <div className={`pricing-card ${selectedPlan === 'free' ? 'selected' : ''}`} onClick={() => setSelectedPlan('free')}>
+                            <div
+                                className={`pricing-card ${selectedPlan === 'free' ? 'selected' : ''}`}
+                                onClick={() => setSelectedPlan('free')}
+                                style={{ borderTop: '4px solid #10B981', background: selectedPlan === 'free' ? 'linear-gradient(to bottom, #ecfdf5, #ffffff)' : 'white' }}
+                            >
                                 <div className="pricing-header">
-                                    <h4>Starter Partner</h4>
+                                    <h4 style={{ color: '#047857' }}>Starter Partner</h4>
                                     <div className="price">Free<span>/to join</span></div>
                                 </div>
                                 <ul className="pricing-features">
-                                    <li><i className="fas fa-check"></i> {content.pricing_free_share || '50'}% Revenue Share</li>
-                                    <li><i className="fas fa-check"></i> Basic Support</li>
-                                    <li><i className="fas fa-check"></i> ₹{content.pricing_free_price || '1500'} Documentation Fee (Payable Later)</li>
-                                    <li><i className="fas fa-check"></i> App Access</li>
+                                    <li><i className="fas fa-check" style={{ color: '#10B981' }}></i> {content.pricing_free_share || '50'}% Revenue Share</li>
+                                    <li><i className="fas fa-check" style={{ color: '#10B981' }}></i> Basic Support</li>
+                                    <li><i className="fas fa-check" style={{ color: '#10B981' }}></i> ₹{content.pricing_free_price || '1500'} Documentation Fee (Payable Later)</li>
+                                    <li><i className="fas fa-check" style={{ color: '#10B981' }}></i> App Access</li>
                                 </ul>
                                 <button
-                                    className={`btn ${selectedPlan === 'free' ? 'btn-primary' : 'btn-secondary'}`}
+                                    className={`btn`}
                                     onClick={(e) => { e.stopPropagation(); handlePricingSubmit('free'); }}
-                                    style={{ width: '100%' }}
+                                    style={{
+                                        width: '100%',
+                                        background: selectedPlan === 'free' ? '#10B981' : '#f3f4f6',
+                                        color: selectedPlan === 'free' ? 'white' : '#374151',
+                                        border: 'none',
+                                        fontWeight: 600
+                                    }}
                                     disabled={status === 'sending'}
                                 >
                                     Select Plan
@@ -336,21 +417,31 @@ function ApplyContent() {
                             </div>
 
                             {/* Basic Plan */}
-                            <div className={`pricing-card ${selectedPlan === 'basic' ? 'selected' : ''}`} onClick={() => setSelectedPlan('basic')}>
+                            <div
+                                className={`pricing-card ${selectedPlan === 'basic' ? 'selected' : ''}`}
+                                onClick={() => setSelectedPlan('basic')}
+                                style={{ borderTop: '4px solid #3B82F6', background: selectedPlan === 'basic' ? 'linear-gradient(to bottom, #eff6ff, #ffffff)' : 'white' }}
+                            >
                                 <div className="pricing-header">
-                                    <h4>Standard Partner</h4>
-                                    <div className="price">₹{content.pricing_basic_price || '499'}<span>/month</span></div>
+                                    <h4 style={{ color: '#1d4ed8' }}>Standard Partner</h4>
+                                    <div className="price">₹{content.pricing_basic_price || '499'}<span>/year</span></div>
                                 </div>
                                 <ul className="pricing-features">
-                                    <li><i className="fas fa-check"></i> {content.pricing_basic_share || '60'}% Revenue Share</li>
-                                    <li><i className="fas fa-check"></i> Standard Support</li>
-                                    <li><i className="fas fa-check"></i> Basic Marketing Kit</li>
-                                    <li><i className="fas fa-check"></i> App Access</li>
+                                    <li><i className="fas fa-check" style={{ color: '#3B82F6' }}></i> {content.pricing_basic_share || '60'}% Revenue Share</li>
+                                    <li><i className="fas fa-check" style={{ color: '#3B82F6' }}></i> Standard Support</li>
+                                    <li><i className="fas fa-check" style={{ color: '#3B82F6' }}></i> Basic Marketing Kit</li>
+                                    <li><i className="fas fa-check" style={{ color: '#3B82F6' }}></i> App Access</li>
                                 </ul>
                                 <button
-                                    className={`btn ${selectedPlan === 'basic' ? 'btn-primary' : 'btn-secondary'}`}
+                                    className={`btn`}
                                     onClick={(e) => { e.stopPropagation(); handlePricingSubmit('basic'); }}
-                                    style={{ width: '100%' }}
+                                    style={{
+                                        width: '100%',
+                                        background: selectedPlan === 'basic' ? '#3B82F6' : '#f3f4f6',
+                                        color: selectedPlan === 'basic' ? 'white' : '#374151',
+                                        border: 'none',
+                                        fontWeight: 600
+                                    }}
                                     disabled={status === 'sending'}
                                 >
                                     Select Plan
@@ -358,22 +449,81 @@ function ApplyContent() {
                             </div>
 
                             {/* Premium Plan */}
-                            <div className={`pricing-card ${selectedPlan === 'premium' ? 'selected' : ''}`} onClick={() => setSelectedPlan('premium')}>
-                                <div className="popular-tag">Most Popular</div>
+                            <div
+                                className={`pricing-card ${selectedPlan === 'premium' ? 'selected' : ''}`}
+                                onClick={() => setSelectedPlan('premium')}
+                                style={{
+                                    borderTop: '4px solid #EF4444',
+                                    background: selectedPlan === 'premium' ? 'rgba(255, 255, 255, 0.7)' : 'white',
+                                    backdropFilter: selectedPlan === 'premium' ? 'blur(10px)' : 'none',
+                                    boxShadow: selectedPlan === 'premium' ? '0 8px 32px 0 rgba(239, 68, 68, 0.15)' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                    border: selectedPlan === 'premium' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid #e5e7eb',
+                                    transform: selectedPlan === 'premium' ? 'scale(1.02)' : 'scale(1)',
+                                    transition: 'all 0.3s ease'
+                                }}
+                            >
+                                <div className="popular-tag" style={{ background: '#EF4444' }}>Most Popular</div>
                                 <div className="pricing-header">
-                                    <h4>Premium Partner</h4>
-                                    <div className="price">₹{content.pricing_premium_price || '999'}<span>/month</span></div>
+                                    <h4 style={{ color: '#b91c1c' }}>Premium Partner</h4>
+                                    <div className="price">₹{content.pricing_premium_price || '999'}<span>/year</span></div>
                                 </div>
                                 <ul className="pricing-features">
-                                    <li><i className="fas fa-check"></i> {content.pricing_premium_share || '70'}% Revenue Share</li>
-                                    <li><i className="fas fa-check"></i> Priority Support</li>
-                                    <li><i className="fas fa-check"></i> Premium Marketing Kit</li>
-                                    <li><i className="fas fa-check"></i> Advanced Analytics</li>
+                                    <li><i className="fas fa-check" style={{ color: '#EF4444' }}></i> {content.pricing_premium_share || '70'}% Revenue Share</li>
+                                    <li><i className="fas fa-check" style={{ color: '#EF4444' }}></i> Priority Support</li>
+                                    <li><i className="fas fa-check" style={{ color: '#EF4444' }}></i> Premium Marketing Kit</li>
+                                    <li><i className="fas fa-check" style={{ color: '#EF4444' }}></i> Advanced Analytics</li>
                                 </ul>
                                 <button
-                                    className={`btn ${selectedPlan === 'premium' ? 'btn-primary' : 'btn-secondary'}`}
+                                    className={`btn`}
                                     onClick={(e) => { e.stopPropagation(); handlePricingSubmit('premium'); }}
-                                    style={{ width: '100%' }}
+                                    style={{
+                                        width: '100%',
+                                        background: selectedPlan === 'premium' ? '#EF4444' : '#f3f4f6',
+                                        color: selectedPlan === 'premium' ? 'white' : '#374151',
+                                        border: 'none',
+                                        fontWeight: 600
+                                    }}
+                                    disabled={status === 'sending'}
+                                >
+                                    Select Plan
+                                </button>
+                            </div>
+
+                            {/* Elite Plan */}
+                            <div
+                                className={`pricing-card ${selectedPlan === 'elite' ? 'selected' : ''}`}
+                                onClick={() => setSelectedPlan('elite')}
+                                style={{
+                                    borderTop: '4px solid #F59E0B',
+                                    background: selectedPlan === 'elite' ? 'rgba(255, 255, 255, 0.7)' : 'white',
+                                    backdropFilter: selectedPlan === 'elite' ? 'blur(10px)' : 'none',
+                                    boxShadow: selectedPlan === 'elite' ? '0 8px 32px 0 rgba(245, 158, 11, 0.15)' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                    border: selectedPlan === 'elite' ? '1px solid rgba(245, 158, 11, 0.2)' : '1px solid #e5e7eb',
+                                    transform: selectedPlan === 'elite' ? 'scale(1.02)' : 'scale(1)',
+                                    transition: 'all 0.3s ease'
+                                }}
+                            >
+                                <div className="popular-tag" style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', color: '#fff' }}>Exclusive</div>
+                                <div className="pricing-header">
+                                    <h4 style={{ color: '#b45309' }}>Elite Partner</h4>
+                                    <div className="price">₹{content.pricing_elite_price || '2499'}<span>/year</span></div>
+                                </div>
+                                <ul className="pricing-features">
+                                    <li><i className="fas fa-check" style={{ color: '#F59E0B' }}></i> {content.pricing_elite_share || '80'}% Revenue Share</li>
+                                    <li><i className="fas fa-check" style={{ color: '#F59E0B' }}></i> 24x7 Dedicated Support</li>
+                                    <li><i className="fas fa-check" style={{ color: '#F59E0B' }}></i> Exclusive Marketing Kit</li>
+                                    <li><i className="fas fa-check" style={{ color: '#F59E0B' }}></i> Advanced Analytics + Insights</li>
+                                </ul>
+                                <button
+                                    className={`btn`}
+                                    onClick={(e) => { e.stopPropagation(); handlePricingSubmit('elite'); }}
+                                    style={{
+                                        width: '100%',
+                                        background: selectedPlan === 'elite' ? '#F59E0B' : '#f3f4f6',
+                                        color: selectedPlan === 'elite' ? 'white' : '#374151',
+                                        border: 'none',
+                                        fontWeight: 600
+                                    }}
                                     disabled={status === 'sending'}
                                 >
                                     Select Plan
@@ -389,20 +539,22 @@ function ApplyContent() {
                     <div>
                         <h3 className="text-center" style={{ marginBottom: '1.5rem' }}>Sign Agreement</h3>
                         <div className="agreement-box" style={{
-                            height: '300px',
+                            height: 'auto',
+                            maxHeight: '45vh',
+                            minHeight: '200px',
                             overflowY: 'scroll',
                             border: '1px solid var(--border-color)',
                             padding: '1.5rem',
                             borderRadius: 'var(--radius-md)',
                             background: '#f9fafb',
-                            marginBottom: '1.5rem',
+                            marginBottom: '1rem',
                             fontSize: '0.9rem',
                             lineHeight: '1.6',
                             whiteSpace: 'pre-wrap',
                             WebkitOverflowScrolling: 'touch' // Enable momentum scrolling on iOS
                         }}>
                             {content.agreement_text ? (
-                                content.agreement_text
+                                <div dangerouslySetInnerHTML={{ __html: content.agreement_text }} />
                             ) : (
                                 <>
                                     <h4 style={{ marginBottom: '1rem' }}>FRANCHISE PARTNER AGREEMENT</h4>
@@ -467,7 +619,13 @@ function ApplyContent() {
                     </div>
                 )}
             </div>
-            <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+            <Script
+                src="https://checkout.razorpay.com/v1/checkout.js"
+                strategy="lazyOnload"
+                onLoad={() => {
+                    (window as any).isRazorpayLoaded = true;
+                }}
+            />
         </div >
     );
 }

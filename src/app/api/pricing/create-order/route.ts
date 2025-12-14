@@ -11,11 +11,23 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Request ID and plan are required' }, { status: 400 });
         }
 
+        // Fetch pricing from database
+        const settingsRows = await executeQuery({
+            query: 'SELECT * FROM site_settings WHERE setting_key IN (?, ?, ?, ?)',
+            values: ['pricing_basic_price', 'pricing_premium_price', 'pricing_free_price', 'pricing_elite_price']
+        });
+
+        const settings = (settingsRows as any[]).reduce((acc, row) => {
+            acc[row.setting_key] = row.setting_value;
+            return acc;
+        }, {});
+
         // Plan pricing mapping (in paise)
         const planPricing: { [key: string]: number } = {
-            'free': 0, // Free to join, documentation fee collected later
-            'basic': 49900, // ₹499
-            'premium': 99900, // ₹999
+            'free': 0,
+            'basic': (parseInt(settings.pricing_basic_price) || 499) * 100,
+            'premium': (parseInt(settings.pricing_premium_price) || 999) * 100,
+            'elite': (parseInt(settings.pricing_elite_price) || 2499) * 100,
         };
 
         const amount = planPricing[plan];

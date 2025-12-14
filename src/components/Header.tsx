@@ -10,6 +10,7 @@ export default function Header() {
 
     // Close menu when route changes
     useEffect(() => {
+        // eslint-disable-next-line
         setMobileMenuOpen(false);
     }, [pathname]);
 
@@ -37,7 +38,7 @@ export default function Header() {
                 <nav className="desktop-nav">
                     <Link href="/#home" className="nav-link">Overview</Link>
                     <Link href="/about" className="nav-link">About</Link>
-                    <Link href="/#benefits" className="nav-link">Benefits</Link>
+                    <Link href="/benefits" className="nav-link">Benefits</Link>
                     <Link href="/support" className="nav-link">Support</Link>
                     <Link href="/careers" className="nav-link">Careers</Link>
                     <Link href="/training" className="nav-link">Training</Link>
@@ -59,7 +60,7 @@ export default function Header() {
                 <div className="mobile-menu-content">
                     <Link href="/#home" className="mobile-nav-link">Overview</Link>
                     <Link href="/about" className="mobile-nav-link">About</Link>
-                    <Link href="/#benefits" className="mobile-nav-link">Benefits</Link>
+                    <Link href="/benefits" className="mobile-nav-link">Benefits</Link>
                     <Link href="/support" className="mobile-nav-link">Support</Link>
                     <Link href="/careers" className="mobile-nav-link">Careers</Link>
                     <Link href="/training" className="mobile-nav-link">Training</Link>

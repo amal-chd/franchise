@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
 export default function TrainingPage() {
@@ -13,7 +14,7 @@ export default function TrainingPage() {
 
     useEffect(() => {
         fetchModules();
-    }, [role]);
+    }, [role, fetchModules]);
 
     useEffect(() => {
         if (activeModule) {
@@ -21,9 +22,9 @@ export default function TrainingPage() {
         } else {
             setMaterials([]);
         }
-    }, [activeModule]);
+    }, [activeModule, fetchMaterials]);
 
-    const fetchModules = async () => {
+    const fetchModules = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch(`/api/admin/training/modules?role=${role}`);
@@ -40,9 +41,9 @@ export default function TrainingPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [role]);
 
-    const fetchMaterials = async (moduleId: number) => {
+    const fetchMaterials = useCallback(async (moduleId: number) => {
         try {
             const res = await fetch(`/api/admin/training/materials?moduleId=${moduleId}`);
             const data = await res.json();
@@ -50,7 +51,7 @@ export default function TrainingPage() {
         } catch (error) {
             console.error('Failed to fetch materials', error);
         }
-    };
+    }, []);
 
     return (
         <div className="container section" style={{ minHeight: '80vh' }}>

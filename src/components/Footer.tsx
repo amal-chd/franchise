@@ -27,7 +27,7 @@ export default function Footer() {
                 setStatus('error');
                 setMessage(data.error || 'Something went wrong.');
             }
-        } catch (error) {
+        } catch (_) {
             setStatus('error');
             setMessage('Failed to subscribe. Please try again.');
         }
