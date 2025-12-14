@@ -1,0 +1,33 @@
+import { NextResponse } from 'next/server';
+import executeQuery from '@/lib/db';
+
+export async function GET(request: Request) {
+    const { searchParams } = new URL(request.url);
+    const franchiseId = searchParams.get('franchiseId');
+
+    if (!franchiseId) {
+        return NextResponse.json({ error: 'Franchise ID required' }, { status: 400 });
+    }
+
+    try {
+        // Check for active session
+        const sessions: any = await executeQuery({
+            query: 'SELECT * FROM chat_sessions WHERE franchise_id = ? AND status = "open" LIMIT 1',
+            values: [franchiseId]
+        });
+
+        if (sessions.length > 0) {
+            return NextResponse.json(sessions[0]);
+        }
+
+        // Create new session if none exists
+        const result: any = await executeQuery({
+            query: 'INSERT INTO chat_sessions (franchise_id) VALUES (?)',
+            values: [franchiseId]
+        });
+
+        return NextResponse.json({ id: result.insertId, franchise_id: franchiseId, status: 'open' });
+    } catch (error) {
+        return NextResponse.json({ error: 'Failed to get session' }, { status: 500 });
+    }
+}
