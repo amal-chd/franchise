@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../auth/auth_provider.dart';
+import '../shop/shop_screen.dart';
+import '../chat/chat_screen.dart';
+import '../training/franchise_training_tab.dart';
+import '../pricing/plan_upgrade_screen.dart';
 
 class FranchiseDashboardScreen extends ConsumerStatefulWidget {
   const FranchiseDashboardScreen({super.key});
@@ -12,6 +16,78 @@ class FranchiseDashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _FranchiseDashboardScreenState extends ConsumerState<FranchiseDashboardScreen> {
+  int _selectedIndex = 0;
+
+  static const List<Widget> _widgetOptions = <Widget>[
+    FranchiseHomeTab(),
+    ShopScreen(),
+    FranchiseTrainingTab(),
+    ChatScreen(),
+    PlanUpgradeScreen(),
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _widgetOptions,
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard_outlined),
+            activeIcon: Icon(Icons.dashboard),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.shopping_bag_outlined),
+            activeIcon: Icon(Icons.shopping_bag),
+            label: 'Shop',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.school_outlined),
+            activeIcon: Icon(Icons.school),
+            label: 'Training',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble_outline),
+            activeIcon: Icon(Icons.chat_bubble),
+            label: 'Support',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.credit_card_outlined),
+            activeIcon: Icon(Icons.credit_card),
+            label: 'Plan',
+          ),
+        ],
+        currentIndex: _selectedIndex,
+        selectedItemColor: const Color(0xFF2563EB),
+        unselectedItemColor: const Color(0xFF94A3B8),
+        onTap: _onItemTapped,
+        type: BottomNavigationBarType.fixed,
+        showUnselectedLabels: true,
+        selectedLabelStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: GoogleFonts.inter(fontSize: 12),
+      ),
+    );
+  }
+}
+
+class FranchiseHomeTab extends ConsumerStatefulWidget {
+  const FranchiseHomeTab({super.key});
+
+  @override
+  ConsumerState<FranchiseHomeTab> createState() => _FranchiseHomeTabState();
+}
+
+class _FranchiseHomeTabState extends ConsumerState<FranchiseHomeTab> {
   String _franchiseName = 'Partner';
 
   @override
@@ -105,17 +181,6 @@ class _FranchiseDashboardScreenState extends ConsumerState<FranchiseDashboardScr
                  ],
                ),
              ),
-             
-             const SizedBox(height: 24),
-             SizedBox(
-               width: double.infinity,
-               child: OutlinedButton(
-                 onPressed: () {
-                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Feature coming soon')));
-                 },
-                 child: const Text('View All Transactions'),
-               ),
-             )
           ],
         ),
       ),

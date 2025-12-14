@@ -59,7 +59,7 @@ export async function POST(request: Request) {
 
         // Create order
         // Receipt id must be <= 40 chars
-        const shortId = requestId.slice(-8);
+        const shortId = String(requestId).slice(-8);
         const receiptId = `rcpt_${shortId}_${Date.now().toString().slice(-6)}`;
 
         const order = await razorpay.orders.create({

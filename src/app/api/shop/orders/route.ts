@@ -5,17 +5,26 @@ import executeQuery from '@/lib/db';
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const franchiseId = searchParams.get('franchiseId');
+    const isAdmin = searchParams.get('admin') === 'true';
 
-    if (!franchiseId) {
+    if (!franchiseId && !isAdmin) {
         return NextResponse.json({ error: 'Franchise ID required' }, { status: 400 });
     }
 
     try {
-        // Fetch orders with items
-        // First get orders
+        let query = 'SELECT * FROM orders';
+        const values = [];
+
+        if (franchiseId) {
+            query += ' WHERE franchise_id = ?';
+            values.push(franchiseId);
+        }
+
+        query += ' ORDER BY created_at DESC';
+
         const orders: any = await executeQuery({
-            query: 'SELECT * FROM orders WHERE franchise_id = ? ORDER BY created_at DESC',
-            values: [franchiseId]
+            query,
+            values
         });
 
         // For each order, fetch items (not efficient for bulk, but ok for individual history view)

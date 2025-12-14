@@ -6,7 +6,11 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/context/ToastContext';
 import { useConfirmation } from '@/context/ConfirmationContext';
 import dynamic from 'next/dynamic';
+
 import 'react-quill-new/dist/quill.snow.css';
+import ShopTab from '@/components/admin/ShopTab';
+import ChatTab from '@/components/admin/ChatTab';
+import PlanRequestsTab from '@/components/admin/PlanRequestsTab';
 
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
@@ -80,6 +84,9 @@ export default function AdminDashboard() {
         { id: 'training', label: 'Training', icon: 'fa-graduation-cap' },
         { id: 'cms', label: 'Website Editor', icon: 'fa-pen-to-square' },
         { id: 'payouts', label: 'Payouts', icon: 'fa-money-bill-wave' },
+        { id: 'shop', label: 'Shop', icon: 'fa-shopping-bag' },
+        { id: 'plan-requests', label: 'Plan Requests', icon: 'fa-exchange-alt' },
+        { id: 'chat', label: 'Support Chat', icon: 'fa-comments' },
         { id: 'settings', label: 'Settings', icon: 'fa-cog' }
     ];
 
@@ -917,527 +924,534 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
+
+
+
+
                 {/* Payouts Tab */}
-                {activeTab === 'payouts' && (
-                    <div className="flex flex-col gap-6">
+                {
+                    activeTab === 'payouts' && (
+                        <div className="flex flex-col gap-6">
 
-                        {/* View Toggle */}
-                        <div style={{ display: 'flex', gap: '8px', padding: '4px', background: 'white', borderRadius: '12px', width: 'fit-content', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                            <button
-                                onClick={() => setPayoutView('weekly')}
-                                style={{
-                                    padding: '8px 20px',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    background: payoutView === 'weekly' ? '#2563eb' : 'transparent',
-                                    color: payoutView === 'weekly' ? 'white' : '#64748b',
-                                    fontWeight: '600',
-                                    fontSize: '0.9rem',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s'
-                                }}
-                            >
-                                <i className="fas fa-calculator" style={{ marginRight: '8px' }}></i>
-                                Weekly Processing
-                            </button>
-                            <button
-                                onClick={() => setPayoutView('history')}
-                                style={{
-                                    padding: '8px 20px',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    background: payoutView === 'history' ? '#2563eb' : 'transparent',
-                                    color: payoutView === 'history' ? 'white' : '#64748b',
-                                    fontWeight: '600',
-                                    fontSize: '0.9rem',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s'
-                                }}
-                            >
-                                <i className="fas fa-history" style={{ marginRight: '8px' }}></i>
-                                History & Calendar
-                            </button>
-                        </div>
+                            {/* View Toggle */}
+                            <div style={{ display: 'flex', gap: '8px', padding: '4px', background: 'white', borderRadius: '12px', width: 'fit-content', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                                <button
+                                    onClick={() => setPayoutView('weekly')}
+                                    style={{
+                                        padding: '8px 20px',
+                                        borderRadius: '8px',
+                                        border: 'none',
+                                        background: payoutView === 'weekly' ? '#2563eb' : 'transparent',
+                                        color: payoutView === 'weekly' ? 'white' : '#64748b',
+                                        fontWeight: '600',
+                                        fontSize: '0.9rem',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <i className="fas fa-calculator" style={{ marginRight: '8px' }}></i>
+                                    Weekly Processing
+                                </button>
+                                <button
+                                    onClick={() => setPayoutView('history')}
+                                    style={{
+                                        padding: '8px 20px',
+                                        borderRadius: '8px',
+                                        border: 'none',
+                                        background: payoutView === 'history' ? '#2563eb' : 'transparent',
+                                        color: payoutView === 'history' ? 'white' : '#64748b',
+                                        fontWeight: '600',
+                                        fontSize: '0.9rem',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <i className="fas fa-history" style={{ marginRight: '8px' }}></i>
+                                    History & Calendar
+                                </button>
+                            </div>
 
-                        {payoutView === 'weekly' ? (
-                            <>
-                                {/* Stats Dashboard */}
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
-                                    <div style={{ background: 'white', padding: '24px', borderRadius: '16px', border: '1px solid #eef2f6', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
-                                        <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '8px', fontWeight: '500' }}>Active Franchises</div>
-                                        <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#1e293b' }}>{payouts.length}</div>
-                                    </div>
-                                    <div style={{ background: 'white', padding: '24px', borderRadius: '16px', border: '1px solid #eef2f6', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
-                                        <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '8px', fontWeight: '500' }}>Total Weekly Revenue</div>
-                                        <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#3b82f6' }}>
-                                            ₹{Object.values(revenueInputs).reduce((acc, curr) => acc + (parseFloat(curr) || 0), 0).toLocaleString('en-IN')}
+                            {payoutView === 'weekly' ? (
+                                <>
+                                    {/* Stats Dashboard */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
+                                        <div style={{ background: 'white', padding: '24px', borderRadius: '16px', border: '1px solid #eef2f6', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
+                                            <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '8px', fontWeight: '500' }}>Active Franchises</div>
+                                            <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#1e293b' }}>{payouts.length}</div>
                                         </div>
-                                    </div>
-                                    <div style={{ background: 'white', padding: '24px', borderRadius: '16px', border: '1px solid #eef2f6', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
-                                        <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '8px', fontWeight: '500' }}>Total Pending Payout</div>
-                                        <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#10b981' }}>
-                                            ₹{payouts.reduce((acc, payout) => {
-                                                let share = 60;
-                                                if (payout.plan_selected === 'premium') share = 70;
-                                                if (payout.plan_selected === 'elite') share = 80;
-                                                if (payout.plan_selected === 'basic' && siteSettings.pricing_basic_share) share = parseInt(siteSettings.pricing_basic_share);
-                                                if (payout.plan_selected === 'premium' && siteSettings.pricing_premium_share) share = parseInt(siteSettings.pricing_premium_share);
-                                                if (payout.plan_selected === 'elite' && siteSettings.pricing_elite_share) share = parseInt(siteSettings.pricing_elite_share);
-
-                                                const platformFeePerOrder = parseInt(siteSettings.payout_platform_charge || '0');
-                                                const revenue = parseFloat(revenueInputs[payout.id] || '0');
-                                                const orders = parseInt(orderInputs[payout.id] || '0');
-
-                                                const totalShare = (revenue * share) / 100;
-                                                const deduction = orders * platformFeePerOrder;
-                                                return acc + Math.max(0, totalShare - deduction);
-                                            }, 0).toLocaleString('en-IN')}
+                                        <div style={{ background: 'white', padding: '24px', borderRadius: '16px', border: '1px solid #eef2f6', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
+                                            <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '8px', fontWeight: '500' }}>Total Weekly Revenue</div>
+                                            <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#3b82f6' }}>
+                                                ₹{Object.values(revenueInputs).reduce((acc, curr) => acc + (parseFloat(curr) || 0), 0).toLocaleString('en-IN')}
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
+                                        <div style={{ background: 'white', padding: '24px', borderRadius: '16px', border: '1px solid #eef2f6', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
+                                            <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '8px', fontWeight: '500' }}>Total Pending Payout</div>
+                                            <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#10b981' }}>
+                                                ₹{payouts.reduce((acc, payout) => {
+                                                    let share = 60;
+                                                    if (payout.plan_selected === 'premium') share = 70;
+                                                    if (payout.plan_selected === 'elite') share = 80;
+                                                    if (payout.plan_selected === 'basic' && siteSettings.pricing_basic_share) share = parseInt(siteSettings.pricing_basic_share);
+                                                    if (payout.plan_selected === 'premium' && siteSettings.pricing_premium_share) share = parseInt(siteSettings.pricing_premium_share);
+                                                    if (payout.plan_selected === 'elite' && siteSettings.pricing_elite_share) share = parseInt(siteSettings.pricing_elite_share);
 
-                                {/* Main Content Card */}
-                                <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-                                    {/* Header & Search */}
-                                    <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                                        <h3 style={{ fontSize: '1.125rem', fontWeight: '700', margin: 0 }}>Weekly Payout Management</h3>
-                                        <div style={{ position: 'relative', width: '300px', maxWidth: '100%' }}>
-                                            <i className="fas fa-search" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}></i>
-                                            <input
-                                                type="text"
-                                                placeholder="Search franchise or city..."
-                                                value={payoutSearch}
-                                                onChange={(e) => setPayoutSearch(e.target.value)}
-                                                style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
-                                            />
+                                                    const platformFeePerOrder = parseInt(siteSettings.payout_platform_charge || '0');
+                                                    const revenue = parseFloat(revenueInputs[payout.id] || '0');
+                                                    const orders = parseInt(orderInputs[payout.id] || '0');
+
+                                                    const totalShare = (revenue * share) / 100;
+                                                    const deduction = orders * platformFeePerOrder;
+                                                    return acc + Math.max(0, totalShare - deduction);
+                                                }, 0).toLocaleString('en-IN')}
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* Table */}
-                                    <div style={{ overflowX: 'auto' }}>
-                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                                            <thead>
-                                                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                                                    <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Franchise Partner</th>
-                                                    <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Plan Info</th>
-                                                    <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Total Revenue (₹)</th>
-                                                    <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Total Orders</th>
-                                                    <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Calculation</th>
-                                                    <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {payouts
-                                                    .filter(p => !payoutSearch || (p.full_name && p.full_name.toLowerCase().includes(payoutSearch.toLowerCase())) || (p.city && p.city.toLowerCase().includes(payoutSearch.toLowerCase())))
-                                                    .map(payout => {
+                                    {/* Main Content Card */}
+                                    <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                                        {/* Header & Search */}
+                                        <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                                            <h3 style={{ fontSize: '1.125rem', fontWeight: '700', margin: 0 }}>Weekly Payout Management</h3>
+                                            <div style={{ position: 'relative', width: '300px', maxWidth: '100%' }}>
+                                                <i className="fas fa-search" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}></i>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search franchise or city..."
+                                                    value={payoutSearch}
+                                                    onChange={(e) => setPayoutSearch(e.target.value)}
+                                                    style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                                                />
+                                            </div>
+                                        </div>
 
-                                                        // Calculation Logic
-                                                        let share = 60;
-                                                        if (payout.plan_selected === 'premium') share = 70;
-                                                        if (payout.plan_selected === 'elite') share = 80;
-                                                        if (payout.plan_selected === 'basic' && siteSettings.pricing_basic_share) share = parseInt(siteSettings.pricing_basic_share);
-                                                        if (payout.plan_selected === 'premium' && siteSettings.pricing_premium_share) share = parseInt(siteSettings.pricing_premium_share);
-                                                        if (payout.plan_selected === 'elite' && siteSettings.pricing_elite_share) share = parseInt(siteSettings.pricing_elite_share);
+                                        {/* Table */}
+                                        <div style={{ overflowX: 'auto' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                                                <thead>
+                                                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                                        <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Franchise Partner</th>
+                                                        <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Plan Info</th>
+                                                        <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Total Revenue (₹)</th>
+                                                        <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Total Orders</th>
+                                                        <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Calculation</th>
+                                                        <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {payouts
+                                                        .filter(p => !payoutSearch || (p.full_name && p.full_name.toLowerCase().includes(payoutSearch.toLowerCase())) || (p.city && p.city.toLowerCase().includes(payoutSearch.toLowerCase())))
+                                                        .map(payout => {
 
-                                                        const platformFeePerOrder = parseInt(siteSettings.payout_platform_charge || '0');
-                                                        const revenue = parseFloat(revenueInputs[payout.id] || '0');
-                                                        const orders = parseInt(orderInputs[payout.id] || '0');
+                                                            // Calculation Logic
+                                                            let share = 60;
+                                                            if (payout.plan_selected === 'premium') share = 70;
+                                                            if (payout.plan_selected === 'elite') share = 80;
+                                                            if (payout.plan_selected === 'basic' && siteSettings.pricing_basic_share) share = parseInt(siteSettings.pricing_basic_share);
+                                                            if (payout.plan_selected === 'premium' && siteSettings.pricing_premium_share) share = parseInt(siteSettings.pricing_premium_share);
+                                                            if (payout.plan_selected === 'elite' && siteSettings.pricing_elite_share) share = parseInt(siteSettings.pricing_elite_share);
 
-                                                        const totalShare = (revenue * share) / 100;
-                                                        const feeDeduction = orders * platformFeePerOrder;
-                                                        const netPayout = Math.max(0, totalShare - feeDeduction);
+                                                            const platformFeePerOrder = parseInt(siteSettings.payout_platform_charge || '0');
+                                                            const revenue = parseFloat(revenueInputs[payout.id] || '0');
+                                                            const orders = parseInt(orderInputs[payout.id] || '0');
 
-                                                        return (
-                                                            <tr key={payout.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                                                <td style={{ padding: '16px 24px' }}>
-                                                                    <div style={{ fontWeight: '600', color: '#1e293b' }}>{payout.full_name}</div>
-                                                                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{payout.city}, {payout.state || 'N/A'}</div>
-                                                                </td>
-                                                                <td style={{ padding: '16px 24px' }}>
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                                        <span style={{
-                                                                            padding: '4px 10px',
-                                                                            borderRadius: '20px',
-                                                                            fontSize: '0.75rem',
-                                                                            fontWeight: '600',
-                                                                            textTransform: 'uppercase',
-                                                                            letterSpacing: '0.025em',
-                                                                            background: payout.plan_selected === 'elite' ? 'linear-gradient(135deg, #fefce8 0%, #fff7ed 100%)' : payout.plan_selected === 'premium' ? '#f3e8ff' : '#eff6ff',
-                                                                            color: payout.plan_selected === 'elite' ? '#b45309' : payout.plan_selected === 'premium' ? '#7e22ce' : '#1d4ed8',
-                                                                            border: payout.plan_selected === 'elite' ? '1px solid #fed7aa' : '1px solid transparent'
-                                                                        }}>
-                                                                            {payout.plan_selected}
-                                                                        </span>
-                                                                        <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '500' }}>{share}% Share</span>
-                                                                    </div>
-                                                                </td>
-                                                                <td style={{ padding: '16px 24px' }}>
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                                        <span style={{ color: '#94a3b8' }}>₹</span>
+                                                            const totalShare = (revenue * share) / 100;
+                                                            const feeDeduction = orders * platformFeePerOrder;
+                                                            const netPayout = Math.max(0, totalShare - feeDeduction);
+
+                                                            return (
+                                                                <tr key={payout.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                                    <td style={{ padding: '16px 24px' }}>
+                                                                        <div style={{ fontWeight: '600', color: '#1e293b' }}>{payout.full_name}</div>
+                                                                        <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{payout.city}, {payout.state || 'N/A'}</div>
+                                                                    </td>
+                                                                    <td style={{ padding: '16px 24px' }}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                            <span style={{
+                                                                                padding: '4px 10px',
+                                                                                borderRadius: '20px',
+                                                                                fontSize: '0.75rem',
+                                                                                fontWeight: '600',
+                                                                                textTransform: 'uppercase',
+                                                                                letterSpacing: '0.025em',
+                                                                                background: payout.plan_selected === 'elite' ? 'linear-gradient(135deg, #fefce8 0%, #fff7ed 100%)' : payout.plan_selected === 'premium' ? '#f3e8ff' : '#eff6ff',
+                                                                                color: payout.plan_selected === 'elite' ? '#b45309' : payout.plan_selected === 'premium' ? '#7e22ce' : '#1d4ed8',
+                                                                                border: payout.plan_selected === 'elite' ? '1px solid #fed7aa' : '1px solid transparent'
+                                                                            }}>
+                                                                                {payout.plan_selected}
+                                                                            </span>
+                                                                            <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '500' }}>{share}% Share</span>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td style={{ padding: '16px 24px' }}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                            <span style={{ color: '#94a3b8' }}>₹</span>
+                                                                            <input
+                                                                                type="number"
+                                                                                placeholder="0"
+                                                                                value={revenueInputs[payout.id] || ''}
+                                                                                onChange={(e) => setRevenueInputs({ ...revenueInputs, [payout.id]: e.target.value })}
+                                                                                style={{
+                                                                                    width: '120px',
+                                                                                    padding: '8px 12px',
+                                                                                    borderRadius: '6px',
+                                                                                    border: '1px solid #cbd5e1',
+                                                                                    fontWeight: '600',
+                                                                                    color: '#1e293b'
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                    </td>
+                                                                    <td style={{ padding: '16px 24px' }}>
                                                                         <input
                                                                             type="number"
                                                                             placeholder="0"
-                                                                            value={revenueInputs[payout.id] || ''}
-                                                                            onChange={(e) => setRevenueInputs({ ...revenueInputs, [payout.id]: e.target.value })}
+                                                                            value={orderInputs[payout.id] || ''}
+                                                                            onChange={(e) => setOrderInputs({ ...orderInputs, [payout.id]: e.target.value })}
                                                                             style={{
-                                                                                width: '120px',
+                                                                                width: '100px',
                                                                                 padding: '8px 12px',
                                                                                 borderRadius: '6px',
                                                                                 border: '1px solid #cbd5e1',
                                                                                 fontWeight: '600',
-                                                                                color: '#1e293b'
+                                                                                color: '#1e293b',
+                                                                                textAlign: 'center'
                                                                             }}
                                                                         />
-                                                                    </div>
-                                                                </td>
-                                                                <td style={{ padding: '16px 24px' }}>
-                                                                    <input
-                                                                        type="number"
-                                                                        placeholder="0"
-                                                                        value={orderInputs[payout.id] || ''}
-                                                                        onChange={(e) => setOrderInputs({ ...orderInputs, [payout.id]: e.target.value })}
-                                                                        style={{
-                                                                            width: '100px',
-                                                                            padding: '8px 12px',
-                                                                            borderRadius: '6px',
-                                                                            border: '1px solid #cbd5e1',
-                                                                            fontWeight: '600',
-                                                                            color: '#1e293b',
-                                                                            textAlign: 'center'
-                                                                        }}
-                                                                    />
-                                                                </td>
-                                                                <td style={{ padding: '16px 24px' }}>
-                                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                                        <span style={{ fontSize: '1.25rem', fontWeight: '700', color: '#10b981' }}>
-                                                                            ₹{netPayout.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                                                                        </span>
-                                                                        <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                                                                            (Share: ₹{totalShare.toLocaleString('en-IN', { maximumFractionDigits: 0 })} - Fees: ₹{feeDeduction})
-                                                                        </span>
-                                                                    </div>
-                                                                </td>
-                                                                <td style={{ padding: '16px 24px' }}>
-                                                                    <button
-                                                                        onClick={() => handleProcessPayout(payout)}
-                                                                        disabled={payoutProcessing === payout.id}
-                                                                        style={{
-                                                                            padding: '8px 16px',
-                                                                            background: '#3b82f6',
-                                                                            color: 'white',
-                                                                            border: 'none',
-                                                                            borderRadius: '8px',
-                                                                            fontSize: '0.875rem',
-                                                                            fontWeight: '500',
-                                                                            cursor: 'pointer',
-                                                                            opacity: payoutProcessing === payout.id ? 0.7 : 1,
-                                                                            transition: 'all 0.2s',
-                                                                            boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)'
-                                                                        }}
-                                                                    >
-                                                                        {payoutProcessing === payout.id ? <i className="fas fa-spinner fa-spin"></i> : 'Process'}
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                {payouts.filter(p => !payoutSearch || (p.full_name && p.full_name.toLowerCase().includes(payoutSearch.toLowerCase()))).length === 0 && (
-                                                    <tr>
-                                                        <td colSpan={6} style={{ padding: '48px', textAlign: 'center', color: '#64748b' }}>
-                                                            <div style={{ marginBottom: '16px', fontSize: '2rem', color: '#cbd5e1' }}><i className="fas fa-search"></i></div>
-                                                            No franchises found matching your search.
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="flex flex-col gap-6">
-                                {/* Filters */}
-                                <div style={{ background: 'white', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', gap: '16px', alignItems: 'center' }}>
-                                    <div style={{ fontWeight: '600', color: '#475569' }}>Filter History:</div>
-                                    <select
-                                        value={historyMonth}
-                                        onChange={(e) => setHistoryMonth(parseInt(e.target.value))}
-                                        style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                                    >
-                                        {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                                            <option key={m} value={m}>{new Date(0, m - 1).toLocaleString('default', { month: 'long' })}</option>
-                                        ))}
-                                    </select>
-                                    <select
-                                        value={historyYear}
-                                        onChange={(e) => setHistoryYear(parseInt(e.target.value))}
-                                        style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                                    >
-                                        <option value={2024}>2024</option>
-                                        <option value={2025}>2025</option>
-                                    </select>
-                                    <button onClick={fetchPayoutHistory} className="btn btn-primary" style={{ padding: '8px 16px' }}>
-                                        <i className="fas fa-filter" style={{ marginRight: '8px' }}></i> Apply
-                                    </button>
-                                </div>
-
-                                {/* Calendar & Summary */}
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px' }}>
-                                    {/* Calendar View */}
-                                    <div style={{ background: 'white', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                                        <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
-                                            Payment Calendar
-                                        </h3>
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', textAlign: 'center' }}>
-                                            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
-                                                <div key={d} style={{ fontWeight: 'bold', color: '#94a3b8', fontSize: '0.8rem' }}>{d}</div>
-                                            ))}
-                                            {Array.from({ length: new Date(historyYear, historyMonth - 1, 1).getDay() }).map((_, i) => (
-                                                <div key={`empty-${i}`} />
-                                            ))}
-                                            {Array.from({ length: new Date(historyYear, historyMonth, 0).getDate() }).map((_, i) => {
-                                                const day = i + 1;
-                                                const hasPayout = payoutHistory.some(p => {
-                                                    const d = new Date(p.payout_date);
-                                                    return d.getDate() === day && d.getMonth() === historyMonth - 1 && d.getFullYear() === historyYear;
-                                                });
-                                                return (
-                                                    <div key={day} style={{
-                                                        padding: '10px 0',
-                                                        borderRadius: '8px',
-                                                        background: hasPayout ? '#ecfdf5' : 'transparent',
-                                                        color: hasPayout ? '#059669' : '#475569',
-                                                        fontWeight: hasPayout ? '700' : '400',
-                                                        border: hasPayout ? '1px solid #a7f3d0' : '1px solid transparent'
-                                                    }}>
-                                                        {day}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* Summary Stats */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                        <div style={{ background: 'white', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0', flex: 1 }}>
-                                            <div style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '8px' }}>Total Payouts (This Month)</div>
-                                            <div style={{ fontSize: '2rem', fontWeight: '800', color: '#0f172a' }}>
-                                                ₹{payoutHistory.reduce((acc, curr) => acc + parseFloat(curr.amount), 0).toLocaleString('en-IN')}
-                                            </div>
-                                            <div style={{ marginTop: '16px', display: 'flex', gap: '16px', fontSize: '0.9rem', color: '#64748b' }}>
-                                                <div>Transactions: <b style={{ color: '#1e293b' }}>{payoutHistory.length}</b></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* History Table */}
-                                <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-                                    <h3 style={{ padding: '20px 24px', margin: 0, fontSize: '1.1rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-                                        Processed Transactions
-                                    </h3>
-                                    <div style={{ overflowX: 'auto' }}>
-                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                                            <thead>
-                                                <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                                                    <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Date</th>
-                                                    <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Franchise</th>
-                                                    <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Amount</th>
-                                                    <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Revenue / Orders</th>
-                                                    <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Status</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {payoutHistory.length === 0 ? (
-                                                    <tr>
-                                                        <td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: '#94a3b8' }}>No history found for this period.</td>
-                                                    </tr>
-                                                ) : (
-                                                    payoutHistory.map((p) => (
-                                                        <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                                            <td style={{ padding: '16px 24px' }}>
-                                                                {new Date(p.payout_date).toLocaleDateString()}
-                                                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{new Date(p.payout_date).toLocaleTimeString()}</div>
-                                                            </td>
-                                                            <td style={{ padding: '16px 24px' }}>
-                                                                <div style={{ fontWeight: '600', color: '#1e293b' }}>{p.franchise_name}</div>
-                                                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{p.city}</div>
-                                                            </td>
-                                                            <td style={{ padding: '16px 24px', fontWeight: '700', color: '#10b981' }}>
-                                                                ₹{parseFloat(p.amount).toLocaleString('en-IN')}
-                                                            </td>
-                                                            <td style={{ padding: '16px 24px' }}>
-                                                                <div>Ref: ₹{parseFloat(p.revenue_reported).toLocaleString('en-IN')}</div>
-                                                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{p.orders_count} Orders</div>
-                                                            </td>
-                                                            <td style={{ padding: '16px 24px' }}>
-                                                                <span style={{ padding: '4px 8px', borderRadius: '4px', background: '#ecfdf5', color: '#059669', fontSize: '0.75rem', fontWeight: '600' }}>
-                                                                    Processed
-                                                                </span>
+                                                                    </td>
+                                                                    <td style={{ padding: '16px 24px' }}>
+                                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                                            <span style={{ fontSize: '1.25rem', fontWeight: '700', color: '#10b981' }}>
+                                                                                ₹{netPayout.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                                                                            </span>
+                                                                            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                                                                                (Share: ₹{totalShare.toLocaleString('en-IN', { maximumFractionDigits: 0 })} - Fees: ₹{feeDeduction})
+                                                                            </span>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td style={{ padding: '16px 24px' }}>
+                                                                        <button
+                                                                            onClick={() => handleProcessPayout(payout)}
+                                                                            disabled={payoutProcessing === payout.id}
+                                                                            style={{
+                                                                                padding: '8px 16px',
+                                                                                background: '#3b82f6',
+                                                                                color: 'white',
+                                                                                border: 'none',
+                                                                                borderRadius: '8px',
+                                                                                fontSize: '0.875rem',
+                                                                                fontWeight: '500',
+                                                                                cursor: 'pointer',
+                                                                                opacity: payoutProcessing === payout.id ? 0.7 : 1,
+                                                                                transition: 'all 0.2s',
+                                                                                boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)'
+                                                                            }}
+                                                                        >
+                                                                            {payoutProcessing === payout.id ? <i className="fas fa-spinner fa-spin"></i> : 'Process'}
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    {payouts.filter(p => !payoutSearch || (p.full_name && p.full_name.toLowerCase().includes(payoutSearch.toLowerCase()))).length === 0 && (
+                                                        <tr>
+                                                            <td colSpan={6} style={{ padding: '48px', textAlign: 'center', color: '#64748b' }}>
+                                                                <div style={{ marginBottom: '16px', fontSize: '2rem', color: '#cbd5e1' }}><i className="fas fa-search"></i></div>
+                                                                No franchises found matching your search.
                                                             </td>
                                                         </tr>
-                                                    ))
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {activeTab === 'pricing' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                        {/* Pricing Plans */}
-                        <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', padding: '24px', border: '1px solid #dadce0' }}>
-                            <h3 style={{ fontSize: '1.1rem', marginBottom: '20px', fontWeight: '600' }}>Pricing Plans</h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px' }}>
-                                {/* Free Plan */}
-                                <div style={{ padding: '20px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#f8fafc' }}>
-                                    <h4 style={{ color: 'var(--primary-color)', marginBottom: '16px', fontWeight: '600' }}>Starter (Free)</h4>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Revenue Share (%)</label>
-                                            <input
-                                                type="number"
-                                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
-
-                                                value={siteSettings.pricing_free_share || ''}
-                                                onChange={(e) => setSiteSettings({ ...siteSettings, pricing_free_share: e.target.value })}
-                                                placeholder="e.g. 50"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Doc Fee (₹)</label>
-                                            <input
-                                                type="number"
-                                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
-
-                                                value={siteSettings.pricing_free_price || ''}
-                                                onChange={(e) => setSiteSettings({ ...siteSettings, pricing_free_price: e.target.value })}
-                                                placeholder="e.g. 1500"
-                                            />
-                                        </div >
-                                    </div >
-                                </div >
-
-                                {/* Basic Plan */}
-                                <div style={{ padding: '20px', border: '1px solid #e2e8f0', borderRadius: '12px', background: 'white' }}>
-                                    <h4 style={{ color: '#2563eb', marginBottom: '16px', fontWeight: '600' }}>Standard</h4>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Yearly Price (₹)</label>
-                                            <input
-                                                type="number"
-                                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
-
-                                                value={siteSettings.pricing_basic_price || ''}
-                                                onChange={(e) => setSiteSettings({ ...siteSettings, pricing_basic_price: e.target.value })}
-                                                placeholder="e.g. 499"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Revenue Share (%)</label>
-                                            <input
-                                                type="number"
-                                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
-
-                                                value={siteSettings.pricing_basic_share || ''}
-                                                onChange={(e) => setSiteSettings({ ...siteSettings, pricing_basic_share: e.target.value })}
-                                                placeholder="e.g. 60"
-                                            />
-                                        </div >
-                                    </div >
-                                </div >
-
-                                {/* Premium Plan */}
-                                <div style={{ padding: '20px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#eff6ff' }}>
-                                    <h4 style={{ color: '#7c3aed', marginBottom: '16px', fontWeight: '600' }}>Premium</h4>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Yearly Price (₹)</label>
-                                            <input
-                                                type="number"
-                                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
-
-                                                value={siteSettings.pricing_premium_price || ''}
-                                                onChange={(e) => setSiteSettings({ ...siteSettings, pricing_premium_price: e.target.value })}
-                                                placeholder="e.g. 999"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Revenue Share (%)</label>
-                                            <input
-                                                type="number"
-                                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
-
-                                                value={siteSettings.pricing_premium_share || ''}
-                                                onChange={(e) => setSiteSettings({ ...siteSettings, pricing_premium_share: e.target.value })}
-                                                placeholder="e.g. 70"
-                                            />
-                                        </div >
-                                    </div >
-                                </div >
-
-                                {/* Elite Plan */}
-                                <div style={{ padding: '20px', border: '1px solid #e2e8f0', borderRadius: '12px', background: 'linear-gradient(135deg, #fefce8 0%, #fff7ed 100%)' }}>
-                                    <h4 style={{ color: '#b45309', marginBottom: '16px', fontWeight: '600' }}>Elite (Exclusive)</h4>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Yearly Price (₹)</label>
-                                            <input
-                                                type="number"
-                                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
-                                                value={siteSettings.pricing_elite_price || ''}
-                                                onChange={(e) => setSiteSettings({ ...siteSettings, pricing_elite_price: e.target.value })}
-                                                placeholder="e.g. 2499"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Revenue Share (%)</label>
-                                            <input
-                                                type="number"
-                                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
-                                                value={siteSettings.pricing_elite_share || ''}
-                                                onChange={(e) => setSiteSettings({ ...siteSettings, pricing_elite_share: e.target.value })}
-                                                placeholder="e.g. 80"
-                                            />
+                                                    )}
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </div>
-                                </div>
+                                </>
+                            ) : (
+                                <div className="flex flex-col gap-6">
+                                    {/* Filters */}
+                                    <div style={{ background: 'white', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', gap: '16px', alignItems: 'center' }}>
+                                        <div style={{ fontWeight: '600', color: '#475569' }}>Filter History:</div>
+                                        <select
+                                            value={historyMonth}
+                                            onChange={(e) => setHistoryMonth(parseInt(e.target.value))}
+                                            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                                        >
+                                            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                                                <option key={m} value={m}>{new Date(0, m - 1).toLocaleString('default', { month: 'long' })}</option>
+                                            ))}
+                                        </select>
+                                        <select
+                                            value={historyYear}
+                                            onChange={(e) => setHistoryYear(parseInt(e.target.value))}
+                                            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                                        >
+                                            <option value={2024}>2024</option>
+                                            <option value={2025}>2025</option>
+                                        </select>
+                                        <button onClick={fetchPayoutHistory} className="btn btn-primary" style={{ padding: '8px 16px' }}>
+                                            <i className="fas fa-filter" style={{ marginRight: '8px' }}></i> Apply
+                                        </button>
+                                    </div>
 
+                                    {/* Calendar & Summary */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px' }}>
+                                        {/* Calendar View */}
+                                        <div style={{ background: 'white', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                                            <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
+                                                Payment Calendar
+                                            </h3>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', textAlign: 'center' }}>
+                                                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
+                                                    <div key={d} style={{ fontWeight: 'bold', color: '#94a3b8', fontSize: '0.8rem' }}>{d}</div>
+                                                ))}
+                                                {Array.from({ length: new Date(historyYear, historyMonth - 1, 1).getDay() }).map((_, i) => (
+                                                    <div key={`empty-${i}`} />
+                                                ))}
+                                                {Array.from({ length: new Date(historyYear, historyMonth, 0).getDate() }).map((_, i) => {
+                                                    const day = i + 1;
+                                                    const hasPayout = payoutHistory.some(p => {
+                                                        const d = new Date(p.payout_date);
+                                                        return d.getDate() === day && d.getMonth() === historyMonth - 1 && d.getFullYear() === historyYear;
+                                                    });
+                                                    return (
+                                                        <div key={day} style={{
+                                                            padding: '10px 0',
+                                                            borderRadius: '8px',
+                                                            background: hasPayout ? '#ecfdf5' : 'transparent',
+                                                            color: hasPayout ? '#059669' : '#475569',
+                                                            fontWeight: hasPayout ? '700' : '400',
+                                                            border: hasPayout ? '1px solid #a7f3d0' : '1px solid transparent'
+                                                        }}>
+                                                            {day}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {/* Summary Stats */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                            <div style={{ background: 'white', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0', flex: 1 }}>
+                                                <div style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '8px' }}>Total Payouts (This Month)</div>
+                                                <div style={{ fontSize: '2rem', fontWeight: '800', color: '#0f172a' }}>
+                                                    ₹{payoutHistory.reduce((acc, curr) => acc + parseFloat(curr.amount), 0).toLocaleString('en-IN')}
+                                                </div>
+                                                <div style={{ marginTop: '16px', display: 'flex', gap: '16px', fontSize: '0.9rem', color: '#64748b' }}>
+                                                    <div>Transactions: <b style={{ color: '#1e293b' }}>{payoutHistory.length}</b></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* History Table */}
+                                    <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                                        <h3 style={{ padding: '20px 24px', margin: 0, fontSize: '1.1rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                                            Processed Transactions
+                                        </h3>
+                                        <div style={{ overflowX: 'auto' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                                                <thead>
+                                                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                                        <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Date</th>
+                                                        <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Franchise</th>
+                                                        <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Amount</th>
+                                                        <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Revenue / Orders</th>
+                                                        <th style={{ padding: '16px 24px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {payoutHistory.length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: '#94a3b8' }}>No history found for this period.</td>
+                                                        </tr>
+                                                    ) : (
+                                                        payoutHistory.map((p) => (
+                                                            <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                                <td style={{ padding: '16px 24px' }}>
+                                                                    {new Date(p.payout_date).toLocaleDateString()}
+                                                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{new Date(p.payout_date).toLocaleTimeString()}</div>
+                                                                </td>
+                                                                <td style={{ padding: '16px 24px' }}>
+                                                                    <div style={{ fontWeight: '600', color: '#1e293b' }}>{p.franchise_name}</div>
+                                                                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{p.city}</div>
+                                                                </td>
+                                                                <td style={{ padding: '16px 24px', fontWeight: '700', color: '#10b981' }}>
+                                                                    ₹{parseFloat(p.amount).toLocaleString('en-IN')}
+                                                                </td>
+                                                                <td style={{ padding: '16px 24px' }}>
+                                                                    <div>Ref: ₹{parseFloat(p.revenue_reported).toLocaleString('en-IN')}</div>
+                                                                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{p.orders_count} Orders</div>
+                                                                </td>
+                                                                <td style={{ padding: '16px 24px' }}>
+                                                                    <span style={{ padding: '4px 8px', borderRadius: '4px', background: '#ecfdf5', color: '#059669', fontSize: '0.75rem', fontWeight: '600' }}>
+                                                                        Processed
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        ))
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )
+                }
+
+                {
+                    activeTab === 'pricing' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                            {/* Pricing Plans */}
+                            <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', padding: '24px', border: '1px solid #dadce0' }}>
+                                <h3 style={{ fontSize: '1.1rem', marginBottom: '20px', fontWeight: '600' }}>Pricing Plans</h3>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px' }}>
+                                    {/* Free Plan */}
+                                    <div style={{ padding: '20px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#f8fafc' }}>
+                                        <h4 style={{ color: 'var(--primary-color)', marginBottom: '16px', fontWeight: '600' }}>Starter (Free)</h4>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Revenue Share (%)</label>
+                                                <input
+                                                    type="number"
+                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
+
+                                                    value={siteSettings.pricing_free_share || ''}
+                                                    onChange={(e) => setSiteSettings({ ...siteSettings, pricing_free_share: e.target.value })}
+                                                    placeholder="e.g. 50"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Doc Fee (₹)</label>
+                                                <input
+                                                    type="number"
+                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
+
+                                                    value={siteSettings.pricing_free_price || ''}
+                                                    onChange={(e) => setSiteSettings({ ...siteSettings, pricing_free_price: e.target.value })}
+                                                    placeholder="e.g. 1500"
+                                                />
+                                            </div >
+                                        </div >
+                                    </div >
+
+                                    {/* Basic Plan */}
+                                    <div style={{ padding: '20px', border: '1px solid #e2e8f0', borderRadius: '12px', background: 'white' }}>
+                                        <h4 style={{ color: '#2563eb', marginBottom: '16px', fontWeight: '600' }}>Standard</h4>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Yearly Price (₹)</label>
+                                                <input
+                                                    type="number"
+                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
+
+                                                    value={siteSettings.pricing_basic_price || ''}
+                                                    onChange={(e) => setSiteSettings({ ...siteSettings, pricing_basic_price: e.target.value })}
+                                                    placeholder="e.g. 499"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Revenue Share (%)</label>
+                                                <input
+                                                    type="number"
+                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
+
+                                                    value={siteSettings.pricing_basic_share || ''}
+                                                    onChange={(e) => setSiteSettings({ ...siteSettings, pricing_basic_share: e.target.value })}
+                                                    placeholder="e.g. 60"
+                                                />
+                                            </div >
+                                        </div >
+                                    </div >
+
+                                    {/* Premium Plan */}
+                                    <div style={{ padding: '20px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#eff6ff' }}>
+                                        <h4 style={{ color: '#7c3aed', marginBottom: '16px', fontWeight: '600' }}>Premium</h4>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Yearly Price (₹)</label>
+                                                <input
+                                                    type="number"
+                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
+
+                                                    value={siteSettings.pricing_premium_price || ''}
+                                                    onChange={(e) => setSiteSettings({ ...siteSettings, pricing_premium_price: e.target.value })}
+                                                    placeholder="e.g. 999"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Revenue Share (%)</label>
+                                                <input
+                                                    type="number"
+                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
+
+                                                    value={siteSettings.pricing_premium_share || ''}
+                                                    onChange={(e) => setSiteSettings({ ...siteSettings, pricing_premium_share: e.target.value })}
+                                                    placeholder="e.g. 70"
+                                                />
+                                            </div >
+                                        </div >
+                                    </div >
+
+                                    {/* Elite Plan */}
+                                    <div style={{ padding: '20px', border: '1px solid #e2e8f0', borderRadius: '12px', background: 'linear-gradient(135deg, #fefce8 0%, #fff7ed 100%)' }}>
+                                        <h4 style={{ color: '#b45309', marginBottom: '16px', fontWeight: '600' }}>Elite (Exclusive)</h4>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Yearly Price (₹)</label>
+                                                <input
+                                                    type="number"
+                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
+                                                    value={siteSettings.pricing_elite_price || ''}
+                                                    onChange={(e) => setSiteSettings({ ...siteSettings, pricing_elite_price: e.target.value })}
+                                                    placeholder="e.g. 2499"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Revenue Share (%)</label>
+                                                <input
+                                                    type="number"
+                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
+                                                    value={siteSettings.pricing_elite_share || ''}
+                                                    onChange={(e) => setSiteSettings({ ...siteSettings, pricing_elite_share: e.target.value })}
+                                                    placeholder="e.g. 80"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div >
                             </div >
-                        </div >
 
-                        {/* Agreement Editor */}
-                        <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', padding: '24px', border: '1px solid #dadce0' }}>
-                            <h3 style={{ fontSize: '1.1rem', marginBottom: '20px', fontWeight: '600' }}>Franchise Agreement</h3>
-                            <div style={{ marginBottom: '16px' }}>
+                            {/* Agreement Editor */}
+                            <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', padding: '24px', border: '1px solid #dadce0' }}>
+                                <h3 style={{ fontSize: '1.1rem', marginBottom: '20px', fontWeight: '600' }}>Franchise Agreement</h3>
+                                <div style={{ marginBottom: '16px' }}>
 
-                                <ReactQuill
-                                    theme="snow"
-                                    value={siteSettings.agreement_text || ''}
-                                    onChange={(content) => setSiteSettings({ ...siteSettings, agreement_text: content })}
-                                    style={{ height: '300px', marginBottom: '50px' }}
-                                />
+                                    <ReactQuill
+                                        theme="snow"
+                                        value={siteSettings.agreement_text || ''}
+                                        onChange={(content: string) => setSiteSettings({ ...siteSettings, agreement_text: content })}
+                                        style={{ height: '300px', marginBottom: '50px' }}
+                                    />
+                                </div>
                             </div>
-                        </div>
 
-                        {/* Save Button */}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                            <button
-                                onClick={handleSaveSettings}
-                                disabled={savingCms}
-                                className="btn btn-primary"
-                                style={{ padding: '10px 24px', fontSize: '1rem' }}
+                            {/* Save Button */}
+                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                <button
+                                    onClick={handleSaveSettings}
+                                    disabled={savingCms}
+                                    className="btn btn-primary"
+                                    style={{ padding: '10px 24px', fontSize: '1rem' }}
 
-                            >
-                                {savingCms ? 'Saving...' : 'Save Changes'}
-                            </button>
-                        </div>
-                    </div >
-                )
+                                >
+                                    {savingCms ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </div>
+                        </div >
+                    )
                 }
 
                 {
@@ -2458,343 +2472,352 @@ export default function AdminDashboard() {
                 }
 
 
-                {
-                    activeTab === 'training' && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
-                            {/* Modules List */}
-                            <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', padding: '24px', border: '1px solid #dadce0', height: 'fit-content' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                    <h3 style={{ margin: 0 }}>Training Modules</h3>
+                {/* Shop Tab */}
+                {activeTab === 'shop' && <ShopTab />}
+
+                {/* Chat Tab */}
+                {activeTab === 'chat' && <ChatTab />}
+
+                {/* Plan Requests Tab */}
+                {activeTab === 'plan-requests' && <PlanRequestsTab />}
+
+                {/* Training Tab */}
+                {activeTab === 'training' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
+                        {/* Modules List */}
+                        <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', padding: '24px', border: '1px solid #dadce0', height: 'fit-content' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                <h3 style={{ margin: 0 }}>Training Modules</h3>
+                                <select
+                                    value={trainingRoleFilter}
+                                    onChange={(e) => setTrainingRoleFilter(e.target.value)}
+                                    style={{
+                                        padding: '6px 12px',
+                                        borderRadius: '6px',
+                                        border: '1px solid #ddd',
+                                        fontSize: '0.85rem',
+                                        cursor: 'pointer',
+                                        outline: 'none'
+                                    }}
+                                >
+                                    <option value="all">All Roles</option>
+                                    <option value="franchise">Franchise</option>
+                                    <option value="delivery_partner">Delivery Partner</option>
+                                    <option value="vendor">Vendor</option>
+                                </select>
+                            </div>
+
+                            <form onSubmit={handleCreateModule} style={{ marginBottom: '24px', padding: '16px', background: '#f8fafc', borderRadius: '8px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                    <h4 style={{ fontSize: '1rem', margin: 0 }}>{editingModule ? 'Edit Module' : 'Create New Module'}</h4>
+                                    {editingModule && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setEditingModule(null);
+                                                setNewTrainingModule({ title: '', description: '', role: 'franchise', thumbnail_url: '', category: 'General' });
+                                            }}
+                                            style={{ fontSize: '0.8rem', color: '#666', background: 'none', border: '1px solid #ddd', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }}
+                                        >
+                                            Cancel Edit
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="form-group" style={{ marginBottom: '12px' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="Module Title"
+                                        className="form-input"
+                                        value={newTrainingModule.title}
+                                        onChange={e => setNewTrainingModule({ ...newTrainingModule, title: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div className="form-group" style={{ marginBottom: '12px' }}>
                                     <select
-                                        value={trainingRoleFilter}
-                                        onChange={(e) => setTrainingRoleFilter(e.target.value)}
-                                        style={{
-                                            padding: '6px 12px',
-                                            borderRadius: '6px',
-                                            border: '1px solid #ddd',
-                                            fontSize: '0.85rem',
-                                            cursor: 'pointer',
-                                            outline: 'none'
-                                        }}
+                                        className="form-input"
+                                        value={newTrainingModule.role}
+                                        onChange={e => setNewTrainingModule({ ...newTrainingModule, role: e.target.value })}
                                     >
-                                        <option value="all">All Roles</option>
                                         <option value="franchise">Franchise</option>
                                         <option value="delivery_partner">Delivery Partner</option>
                                         <option value="vendor">Vendor</option>
                                     </select>
                                 </div>
-
-                                <form onSubmit={handleCreateModule} style={{ marginBottom: '24px', padding: '16px', background: '#f8fafc', borderRadius: '8px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                                        <h4 style={{ fontSize: '1rem', margin: 0 }}>{editingModule ? 'Edit Module' : 'Create New Module'}</h4>
-                                        {editingModule && (
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setEditingModule(null);
-                                                    setNewTrainingModule({ title: '', description: '', role: 'franchise', thumbnail_url: '', category: 'General' });
-                                                }}
-                                                style={{ fontSize: '0.8rem', color: '#666', background: 'none', border: '1px solid #ddd', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }}
-                                            >
-                                                Cancel Edit
-                                            </button>
-                                        )}
-                                    </div>
-                                    <div className="form-group" style={{ marginBottom: '12px' }}>
-                                        <input
-                                            type="text"
-                                            placeholder="Module Title"
-                                            className="form-input"
-                                            value={newTrainingModule.title}
-                                            onChange={e => setNewTrainingModule({ ...newTrainingModule, title: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="form-group" style={{ marginBottom: '12px' }}>
-                                        <select
-                                            className="form-input"
-                                            value={newTrainingModule.role}
-                                            onChange={e => setNewTrainingModule({ ...newTrainingModule, role: e.target.value })}
-                                        >
-                                            <option value="franchise">Franchise</option>
-                                            <option value="delivery_partner">Delivery Partner</option>
-                                            <option value="vendor">Vendor</option>
-                                        </select>
-                                    </div>
-                                    <div className="form-group" style={{ marginBottom: '12px' }}>
-                                        <textarea
-                                            placeholder="Description"
-                                            className="form-input"
-                                            style={{ height: '60px' }}
-                                            value={newTrainingModule.description}
-                                            onChange={e => setNewTrainingModule({ ...newTrainingModule, description: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="form-group" style={{ marginBottom: '12px' }}>
-                                        <input
-                                            type="text"
-                                            placeholder="Category (e.g. Onboarding, Safety)"
-                                            className="form-input"
-                                            value={newTrainingModule.category}
-                                            onChange={e => setNewTrainingModule({ ...newTrainingModule, category: e.target.value })}
-                                        />
-                                    </div>
-                                    <button type="submit" className="btn btn-primary" style={{ width: '100%', fontSize: '0.9rem', padding: '8px' }}>
-                                        {editingModule ? 'Update Module' : 'Create Module'}
-                                    </button>
-                                </form>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                                    {['franchise', 'delivery_partner', 'vendor']
-                                        .filter(role => trainingRoleFilter === 'all' || trainingRoleFilter === role)
-                                        .map(role => {
-                                            const roleModules = trainingModules.filter(m => m.role === role);
-                                            if (roleModules.length === 0) return null;
-
-                                            return (
-                                                <div key={role}>
-                                                    <h4 style={{
-                                                        fontSize: '1rem',
-                                                        fontWeight: 'bold',
-                                                        color: '#1e293b',
-                                                        paddingBottom: '8px',
-                                                        borderBottom: '2px solid #e2e8f0',
-                                                        marginBottom: '16px',
-                                                        textTransform: 'capitalize'
-                                                    }}>
-                                                        {role.replace('_', ' ')} Modules
-                                                    </h4>
-
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                                                        {Object.entries(roleModules.reduce((acc: any, module) => {
-                                                            const cat = module.category || 'General';
-                                                            if (!acc[cat]) acc[cat] = [];
-                                                            acc[cat].push(module);
-                                                            return acc;
-                                                        }, {})).map(([category, modules]: [string, any]) => (
-                                                            <div key={category}>
-                                                                <h5 style={{
-                                                                    fontSize: '0.85rem',
-                                                                    textTransform: 'uppercase',
-                                                                    color: '#64748B',
-                                                                    fontWeight: 'bold',
-                                                                    marginBottom: '8px',
-                                                                    letterSpacing: '0.05em'
-                                                                }}>
-                                                                    {category}
-                                                                </h5>
-                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                                    {modules.map((module: any) => (
-                                                                        <div
-                                                                            key={module.id}
-                                                                            onClick={() => {
-                                                                                setActiveTrainingModule(module);
-                                                                                fetchTrainingMaterials(module.id);
-                                                                            }}
-                                                                            style={{
-                                                                                padding: '12px',
-                                                                                borderRadius: '8px',
-                                                                                border: activeTrainingModule?.id === module.id ? '2px solid var(--primary-color)' : '1px solid #e2e8f0',
-                                                                                background: activeTrainingModule?.id === module.id ? '#eff6ff' : 'white',
-                                                                                cursor: 'pointer',
-                                                                                transition: 'all 0.2s'
-                                                                            }}
-                                                                        >
-                                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                                                                                <h4 style={{ margin: '0 0 4px 0', fontSize: '1rem' }}>{module.title}</h4>
-                                                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                                                    <button
-                                                                                        onClick={(e) => { e.stopPropagation(); handleEditModule(module); }}
-                                                                                        style={{ color: 'var(--primary-color)', background: 'none', border: 'none', cursor: 'pointer' }}
-                                                                                    >
-                                                                                        <i className="fas fa-edit"></i>
-                                                                                    </button>
-                                                                                    <button
-                                                                                        onClick={(e) => { e.stopPropagation(); handleDeleteModule(module.id); }}
-                                                                                        style={{ color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer' }}
-                                                                                    >
-                                                                                        <i className="fas fa-trash"></i>
-                                                                                    </button>
-                                                                                </div>
-                                                                            </div>
-                                                                            <span style={{
-                                                                                fontSize: '0.75rem',
-                                                                                padding: '2px 8px',
-                                                                                borderRadius: '12px',
-                                                                                background: '#e2e8f0',
-                                                                                color: '#475569',
-                                                                                textTransform: 'capitalize'
-                                                                            }}>
-                                                                                {module.role.replace('_', ' ')}
-                                                                            </span>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                <div className="form-group" style={{ marginBottom: '12px' }}>
+                                    <textarea
+                                        placeholder="Description"
+                                        className="form-input"
+                                        style={{ height: '60px' }}
+                                        value={newTrainingModule.description}
+                                        onChange={e => setNewTrainingModule({ ...newTrainingModule, description: e.target.value })}
+                                    />
                                 </div>
-                            </div>
+                                <div className="form-group" style={{ marginBottom: '12px' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="Category (e.g. Onboarding, Safety)"
+                                        className="form-input"
+                                        value={newTrainingModule.category}
+                                        onChange={e => setNewTrainingModule({ ...newTrainingModule, category: e.target.value })}
+                                    />
+                                </div>
+                                <button type="submit" className="btn btn-primary" style={{ width: '100%', fontSize: '0.9rem', padding: '8px' }}>
+                                    {editingModule ? 'Update Module' : 'Create Module'}
+                                </button>
+                            </form>
 
-                            {/* Materials List */}
-                            <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', padding: '24px', border: '1px solid #dadce0' }}>
-                                {activeTrainingModule ? (
-                                    <>
-                                        <div style={{ marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid #eee' }}>
-                                            <h3 style={{ marginBottom: '8px' }}>{activeTrainingModule.title} - Materials</h3>
-                                            <p style={{ color: '#64748B', margin: 0 }}>{activeTrainingModule.description}</p>
-                                        </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                                {['franchise', 'delivery_partner', 'vendor']
+                                    .filter(role => trainingRoleFilter === 'all' || trainingRoleFilter === role)
+                                    .map(role => {
+                                        const roleModules = trainingModules.filter(m => m.role === role);
+                                        if (roleModules.length === 0) return null;
 
-                                        <form onSubmit={handleCreateMaterial} style={{ marginBottom: '24px', padding: '20px', background: '#f8fafc', borderRadius: '8px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                                <h4 style={{ fontSize: '1rem', margin: 0 }}>{editingMaterial ? 'Edit Material' : 'Add Material'}</h4>
-                                                {editingMaterial && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setEditingMaterial(null);
-                                                            setNewTrainingMaterial({ title: '', type: 'video', content_url: '', content_text: '', order_index: 0 });
-                                                        }}
-                                                        style={{ fontSize: '0.8rem', color: '#666', background: 'none', border: '1px solid #ddd', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }}
-                                                    >
-                                                        Cancel Edit
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Material Title"
-                                                    className="form-input"
-                                                    value={newTrainingMaterial.title}
-                                                    onChange={e => setNewTrainingMaterial({ ...newTrainingMaterial, title: e.target.value })}
-                                                    required
-                                                />
-                                                <select
-                                                    className="form-input"
-                                                    value={newTrainingMaterial.type}
-                                                    onChange={e => setNewTrainingMaterial({ ...newTrainingMaterial, type: e.target.value })}
-                                                >
-                                                    <option value="video">Video URL</option>
-                                                    <option value="pdf">PDF URL</option>
-                                                    <option value="image">Image URL</option>
-                                                    <option value="text">Text Content</option>
-                                                </select>
-                                            </div>
+                                        return (
+                                            <div key={role}>
+                                                <h4 style={{
+                                                    fontSize: '1rem',
+                                                    fontWeight: 'bold',
+                                                    color: '#1e293b',
+                                                    paddingBottom: '8px',
+                                                    borderBottom: '2px solid #e2e8f0',
+                                                    marginBottom: '16px',
+                                                    textTransform: 'capitalize'
+                                                }}>
+                                                    {role.replace('_', ' ')} Modules
+                                                </h4>
 
-                                            {newTrainingMaterial.type === 'text' ? (
-                                                <div style={{ marginBottom: '12px', background: 'white' }}>
-                                                    <ReactQuill
-                                                        theme="snow"
-                                                        value={newTrainingMaterial.content_text}
-                                                        onChange={(value) => setNewTrainingMaterial({ ...newTrainingMaterial, content_text: value })}
-                                                        style={{ height: '200px', marginBottom: '50px' }}
-                                                        modules={{
-                                                            toolbar: [
-                                                                [{ 'header': [1, 2, 3, false] }],
-                                                                ['bold', 'italic', 'underline', 'strike'],
-                                                                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                                                                ['link', 'clean']
-                                                            ],
-                                                        }}
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <div className="form-group" style={{ marginBottom: '12px' }}>
-                                                    <input
-                                                        type="text"
-                                                        placeholder={newTrainingMaterial.type === 'video' ? 'YouTube/Video URL' : 'File URL'}
-                                                        className="form-input"
-                                                        value={newTrainingMaterial.content_url}
-                                                        onChange={e => setNewTrainingMaterial({ ...newTrainingMaterial, content_url: e.target.value })}
-                                                    />
-                                                    {/* File Upload Helper */}
-                                                    {(newTrainingMaterial.type === 'pdf' || newTrainingMaterial.type === 'image') && (
-                                                        <div style={{ marginTop: '8px' }}>
-                                                            <input
-                                                                type="file"
-                                                                accept={newTrainingMaterial.type === 'pdf' ? '.pdf' : 'image/*'}
-                                                                onChange={async e => {
-                                                                    if (!e.target.files?.[0]) return;
-                                                                    const formData = new FormData();
-                                                                    formData.append('file', e.target.files[0]);
-                                                                    const res = await fetch('/api/admin/upload-background', {
-                                                                        method: 'POST',
-                                                                        body: formData,
-                                                                    });
-                                                                    const data = await res.json();
-                                                                    if (data.url) {
-                                                                        setNewTrainingMaterial({ ...newTrainingMaterial, content_url: data.url });
-                                                                    }
-                                                                }}
-                                                            />
-                                                            <span style={{ fontSize: '0.8rem', color: '#666', marginLeft: '8px' }}>Upload to generate URL</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            <button type="submit" className="btn btn-primary">
-                                                {editingMaterial ? 'Update Material' : 'Add Material'}
-                                            </button>
-                                        </form>
-
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                            {trainingMaterials.map((material) => (
-                                                <div key={material.id} style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '8px', background: 'white' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                            <span style={{
-                                                                background: '#e0f2fe', color: '#0369a1',
-                                                                padding: '2px 8px', borderRadius: '4px',
-                                                                fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 'bold'
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                                                    {Object.entries(roleModules.reduce((acc: any, module) => {
+                                                        const cat = module.category || 'General';
+                                                        if (!acc[cat]) acc[cat] = [];
+                                                        acc[cat].push(module);
+                                                        return acc;
+                                                    }, {})).map(([category, modules]: [string, any]) => (
+                                                        <div key={category}>
+                                                            <h5 style={{
+                                                                fontSize: '0.85rem',
+                                                                textTransform: 'uppercase',
+                                                                color: '#64748B',
+                                                                fontWeight: 'bold',
+                                                                marginBottom: '8px',
+                                                                letterSpacing: '0.05em'
                                                             }}>
-                                                                {material.type}
-                                                            </span>
-                                                            <h4 style={{ margin: 0 }}>{material.title}</h4>
+                                                                {category}
+                                                            </h5>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                {modules.map((module: any) => (
+                                                                    <div
+                                                                        key={module.id}
+                                                                        onClick={() => {
+                                                                            setActiveTrainingModule(module);
+                                                                            fetchTrainingMaterials(module.id);
+                                                                        }}
+                                                                        style={{
+                                                                            padding: '12px',
+                                                                            borderRadius: '8px',
+                                                                            border: activeTrainingModule?.id === module.id ? '2px solid var(--primary-color)' : '1px solid #e2e8f0',
+                                                                            background: activeTrainingModule?.id === module.id ? '#eff6ff' : 'white',
+                                                                            cursor: 'pointer',
+                                                                            transition: 'all 0.2s'
+                                                                        }}
+                                                                    >
+                                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                                                                            <h4 style={{ margin: '0 0 4px 0', fontSize: '1rem' }}>{module.title}</h4>
+                                                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                                                <button
+                                                                                    onClick={(e) => { e.stopPropagation(); handleEditModule(module); }}
+                                                                                    style={{ color: 'var(--primary-color)', background: 'none', border: 'none', cursor: 'pointer' }}
+                                                                                >
+                                                                                    <i className="fas fa-edit"></i>
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={(e) => { e.stopPropagation(); handleDeleteModule(module.id); }}
+                                                                                    style={{ color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer' }}
+                                                                                >
+                                                                                    <i className="fas fa-trash"></i>
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                        <span style={{
+                                                                            fontSize: '0.75rem',
+                                                                            padding: '2px 8px',
+                                                                            borderRadius: '12px',
+                                                                            background: '#e2e8f0',
+                                                                            color: '#475569',
+                                                                            textTransform: 'capitalize'
+                                                                        }}>
+                                                                            {module.role.replace('_', ' ')}
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
                                                         </div>
-                                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                                            <button
-                                                                onClick={() => handleEditMaterial(material)}
-                                                                style={{ color: 'var(--primary-color)', background: 'none', border: 'none', cursor: 'pointer' }}
-                                                            >
-                                                                <i className="fas fa-edit"></i>
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDeleteMaterial(material.id)}
-                                                                style={{ color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer' }}
-                                                            >
-                                                                <i className="fas fa-trash"></i>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-
-                                                    {material.type === 'text' && (
-                                                        <p style={{ margin: 0, color: '#475569', fontSize: '0.9rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                                                            {material.content_text.replace(/<[^>]*>?/gm, '')}
-                                                        </p>
-                                                    )}
-                                                    {material.type !== 'text' && (
-                                                        <a href={material.content_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)', fontSize: '0.85rem', textDecoration: 'underline' }}>
-                                                            View Content <i className="fas fa-external-link-alt" style={{ fontSize: '0.8rem' }}></i>
-                                                        </a>
-                                                    )}
+                                                    ))}
                                                 </div>
-                                            ))}
-                                        </div>
-                                        {trainingMaterials.length === 0 && <p style={{ color: '#94a3b8', textAlign: 'center', fontStyle: 'italic' }}>No materials added yet.</p>}
-                                    </>
-                                ) : (
-                                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
-                                        <p>Select a module to view and manage materials</p>
-                                    </div>
-                                )}
+                                            </div>
+                                        );
+                                    })}
                             </div>
                         </div>
-                    )
+
+                        {/* Materials List */}
+                        <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', padding: '24px', border: '1px solid #dadce0' }}>
+                            {activeTrainingModule ? (
+                                <>
+                                    <div style={{ marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid #eee' }}>
+                                        <h3 style={{ marginBottom: '8px' }}>{activeTrainingModule.title} - Materials</h3>
+                                        <p style={{ color: '#64748B', margin: 0 }}>{activeTrainingModule.description}</p>
+                                    </div>
+
+                                    <form onSubmit={handleCreateMaterial} style={{ marginBottom: '24px', padding: '20px', background: '#f8fafc', borderRadius: '8px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                            <h4 style={{ fontSize: '1rem', margin: 0 }}>{editingMaterial ? 'Edit Material' : 'Add Material'}</h4>
+                                            {editingMaterial && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setEditingMaterial(null);
+                                                        setNewTrainingMaterial({ title: '', type: 'video', content_url: '', content_text: '', order_index: 0 });
+                                                    }}
+                                                    style={{ fontSize: '0.8rem', color: '#666', background: 'none', border: '1px solid #ddd', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }}
+                                                >
+                                                    Cancel Edit
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
+                                            <input
+                                                type="text"
+                                                placeholder="Material Title"
+                                                className="form-input"
+                                                value={newTrainingMaterial.title}
+                                                onChange={e => setNewTrainingMaterial({ ...newTrainingMaterial, title: e.target.value })}
+                                                required
+                                            />
+                                            <select
+                                                className="form-input"
+                                                value={newTrainingMaterial.type}
+                                                onChange={e => setNewTrainingMaterial({ ...newTrainingMaterial, type: e.target.value })}
+                                            >
+                                                <option value="video">Video URL</option>
+                                                <option value="pdf">PDF URL</option>
+                                                <option value="image">Image URL</option>
+                                                <option value="text">Text Content</option>
+                                            </select>
+                                        </div>
+
+                                        {newTrainingMaterial.type === 'text' ? (
+                                            <div style={{ marginBottom: '12px', background: 'white' }}>
+                                                <ReactQuill
+                                                    theme="snow"
+                                                    value={newTrainingMaterial.content_text}
+                                                    onChange={(value: string) => setNewTrainingMaterial({ ...newTrainingMaterial, content_text: value })}
+                                                    style={{ height: '200px', marginBottom: '50px' }}
+                                                    modules={{
+                                                        toolbar: [
+                                                            [{ 'header': [1, 2, 3, false] }],
+                                                            ['bold', 'italic', 'underline', 'strike'],
+                                                            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                                                            ['link', 'clean']
+                                                        ],
+                                                    }}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="form-group" style={{ marginBottom: '12px' }}>
+                                                <input
+                                                    type="text"
+                                                    placeholder={newTrainingMaterial.type === 'video' ? 'YouTube/Video URL' : 'File URL'}
+                                                    className="form-input"
+                                                    value={newTrainingMaterial.content_url}
+                                                    onChange={e => setNewTrainingMaterial({ ...newTrainingMaterial, content_url: e.target.value })}
+                                                />
+                                                {/* File Upload Helper */}
+                                                {(newTrainingMaterial.type === 'pdf' || newTrainingMaterial.type === 'image') && (
+                                                    <div style={{ marginTop: '8px' }}>
+                                                        <input
+                                                            type="file"
+                                                            accept={newTrainingMaterial.type === 'pdf' ? '.pdf' : 'image/*'}
+                                                            onChange={async e => {
+                                                                if (!e.target.files?.[0]) return;
+                                                                const formData = new FormData();
+                                                                formData.append('file', e.target.files[0]);
+                                                                const res = await fetch('/api/admin/upload-background', {
+                                                                    method: 'POST',
+                                                                    body: formData,
+                                                                });
+                                                                const data = await res.json();
+                                                                if (data.url) {
+                                                                    setNewTrainingMaterial({ ...newTrainingMaterial, content_url: data.url });
+                                                                }
+                                                            }}
+                                                        />
+                                                        <span style={{ fontSize: '0.8rem', color: '#666', marginLeft: '8px' }}>Upload to generate URL</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <button type="submit" className="btn btn-primary">
+                                            {editingMaterial ? 'Update Material' : 'Add Material'}
+                                        </button>
+                                    </form>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                        {trainingMaterials.map((material) => (
+                                            <div key={material.id} style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '8px', background: 'white' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <span style={{
+                                                            background: '#e0f2fe', color: '#0369a1',
+                                                            padding: '2px 8px', borderRadius: '4px',
+                                                            fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 'bold'
+                                                        }}>
+                                                            {material.type}
+                                                        </span>
+                                                        <h4 style={{ margin: 0 }}>{material.title}</h4>
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <button
+                                                            onClick={() => handleEditMaterial(material)}
+                                                            style={{ color: 'var(--primary-color)', background: 'none', border: 'none', cursor: 'pointer' }}
+                                                        >
+                                                            <i className="fas fa-edit"></i>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteMaterial(material.id)}
+                                                            style={{ color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer' }}
+                                                        >
+                                                            <i className="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {material.type === 'text' && (
+                                                    <p style={{ margin: 0, color: '#475569', fontSize: '0.9rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                        {material.content_text.replace(/<[^>]*>?/gm, '')}
+                                                    </p>
+                                                )}
+                                                {material.type !== 'text' && (
+                                                    <a href={material.content_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)', fontSize: '0.85rem', textDecoration: 'underline' }}>
+                                                        View Content <i className="fas fa-external-link-alt" style={{ fontSize: '0.8rem' }}></i>
+                                                    </a>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {trainingMaterials.length === 0 && <p style={{ color: '#94a3b8', textAlign: 'center', fontStyle: 'italic' }}>No materials added yet.</p>}
+                                </>
+                            ) : (
+                                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                                    <p>Select a module to view and manage materials</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )
                 }
 
                 {
