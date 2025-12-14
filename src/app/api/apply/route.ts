@@ -7,7 +7,7 @@ import { newApplicationEmail, applicationSubmittedEmail } from '@/lib/emailTempl
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { name, email, phone, city } = body;
+        const { name, email, phone, city, upi_id, bank_account_number, ifsc_code, bank_name } = body;
 
         if (!name || !email || !phone || !city) {
             return NextResponse.json({ message: 'All fields are required' }, { status: 400 });
@@ -20,11 +20,17 @@ export async function POST(request: Request) {
                 email VARCHAR(255) NOT NULL,
                 phone VARCHAR(50) NOT NULL,
                 city VARCHAR(100) NOT NULL,
+                state VARCHAR(100) DEFAULT 'N/A',
+                plan_selected VARCHAR(50) DEFAULT 'standard',
                 budget VARCHAR(100) DEFAULT 'N/A',
                 status VARCHAR(20) DEFAULT 'pending',
                 aadhar_url VARCHAR(500),
                 agreement_accepted BOOLEAN DEFAULT FALSE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                upi_id VARCHAR(100),
+                bank_account_number VARCHAR(100),
+                ifsc_code VARCHAR(50),
+                bank_name VARCHAR(100)
             )
         `;
 
@@ -33,10 +39,13 @@ export async function POST(request: Request) {
             values: [],
         });
 
-        const insertQuery = 'INSERT INTO franchise_requests (name, email, phone, city, budget, aadhar_url, agreement_accepted) VALUES (?, ?, ?, ?, ?, ?, ?)';
+        const insertQuery = 'INSERT INTO franchise_requests (name, email, phone, city, state, plan_selected, budget, aadhar_url, agreement_accepted, upi_id, bank_account_number, ifsc_code, bank_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
         const result = await executeQuery({
             query: insertQuery,
-            values: [name, email, phone, city, 'N/A', null, false],
+            values: [name, email, phone, city, 'N/A', 'standard', 'N/A', null, false, upi_id || null, bank_account_number || null, ifsc_code || null, bank_name || null],
+            // Note: Frontend currently doesn't send 'state' or 'plan' in the initial apply step (it's name/email/city/phone).
+            // 'plan' is usually selected LATER in payment step? 
+            // Wait, looking at Apply Page...
         });
 
         if ((result as any).error) {

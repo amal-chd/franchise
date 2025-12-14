@@ -23,7 +23,7 @@ export default function SupportPage() {
             } else {
                 setStatus('error');
             }
-        } catch (error) {
+        } catch (_) {
             setStatus('error');
         }
     };
@@ -34,7 +34,7 @@ export default function SupportPage() {
                 <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
                     <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
                         <h1 className="text-primary" style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>How can we help you?</h1>
-                        <p style={{ fontSize: '1.1rem', color: '#64748B' }}>We're here to help and answer any question you might have.</p>
+                        <p style={{ fontSize: '1.1rem', color: '#64748B' }}>We&apos;re here to help and answer any question you might have.</p>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', alignItems: 'start' }}>
@@ -83,7 +83,7 @@ export default function SupportPage() {
                                         <i className="fas fa-check" style={{ fontSize: '2.5rem', color: '#16A34A' }}></i>
                                     </div>
                                     <h4 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Message Sent!</h4>
-                                    <p style={{ color: '#64748B', marginBottom: '1.5rem' }}>We've received your ticket and will get back to you shortly.</p>
+                                    <p style={{ color: '#64748B', marginBottom: '1.5rem' }}>We&apos;ve received your ticket and will get back to you shortly.</p>
                                     <button onClick={() => setStatus('')} className="btn btn-primary">Send Another Message</button>
                                 </div>
                             ) : (

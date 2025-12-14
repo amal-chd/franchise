@@ -13,8 +13,9 @@ export async function POST(request: Request) {
 
         // Fetch pricing from database
         const settingsRows = await executeQuery({
-            query: 'SELECT * FROM site_settings WHERE setting_key IN (?, ?, ?)',
-            values: ['pricing_basic_price', 'pricing_premium_price', 'pricing_free_price']
+            query: 'SELECT * FROM site_settings WHERE setting_key IN (?, ?, ?, ?)',
+            values: ['pricing_basic_price', 'pricing_premium_price', 'pricing_free_price', 'pricing_elite_price']
+
         });
 
         const settings = (settingsRows as any[]).reduce((acc, row) => {
@@ -27,6 +28,8 @@ export async function POST(request: Request) {
             'free': 0,
             'basic': (parseInt(settings.pricing_basic_price) || 499) * 100,
             'premium': (parseInt(settings.pricing_premium_price) || 999) * 100,
+            'elite': (parseInt(settings.pricing_elite_price) || 2499) * 100,
+
         };
 
         const amount = planPricing[plan];

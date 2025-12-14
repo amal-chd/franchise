@@ -63,6 +63,9 @@ export const viewport: Viewport = {
 import ConditionalLayout from '@/components/ConditionalLayout';
 import DisableZoom from '@/components/DisableZoom';
 
+import { ToastProvider } from '@/context/ToastContext';
+import { ConfirmationProvider } from '@/context/ConfirmationContext';
+
 export default function RootLayout({
   children,
 }: {
@@ -76,9 +79,14 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <DisableZoom />
         <ConditionalLayout>
-          {children}
+          <ToastProvider>
+            <ConfirmationProvider>
+              {children}
+            </ConfirmationProvider>
+          </ToastProvider>
         </ConditionalLayout>
       </body>
     </html>
   )
 }
+

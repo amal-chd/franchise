@@ -30,7 +30,7 @@ export default function PrivacyPage() {
                     <h4>1.3 Delivery Agent Information</h4>
                     <p>For logistics and safety, delivery partners must provide:</p>
                     <ul>
-                        <li>Driver's License</li>
+                        <li>Driver&apos;s License</li>
                         <li>Vehicle Registration Details</li>
                         <li>Live Location (with permission)</li>
                         <li>Emergency Contact Number</li>
@@ -132,7 +132,7 @@ export default function PrivacyPage() {
                         <li>Location/log data – retained in aggregate, anonymized form</li>
                     </ul>
 
-                    <h3>9. Children's Privacy</h3>
+                    <h3>9. Children&apos;s Privacy</h3>
                     <p>Our services are not intended for users under the age of 13. We do not knowingly collect data from children. If we discover such data, it will be deleted immediately.</p>
 
                     <h3>10. International Data Transfers</h3>

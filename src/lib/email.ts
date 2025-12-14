@@ -27,9 +27,14 @@ export interface EmailOptions {
     to: string;
     subject: string;
     html: string;
+    attachments?: Array<{
+        filename: string;
+        content: string | Buffer; // Base64 string or Buffer
+        encoding?: string; // 'base64' if content is base64 string
+    }>;
 }
 
-export async function sendEmail({ to, subject, html }: EmailOptions) {
+export async function sendEmail({ to, subject, html, attachments }: EmailOptions) {
     try {
         console.log('📧 Attempting to send email...');
         console.log('SMTP Config:', {
@@ -50,6 +55,7 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
             to,
             subject,
             html,
+            attachments,
         });
 
         console.log('✅ Email sent successfully:', info.messageId);

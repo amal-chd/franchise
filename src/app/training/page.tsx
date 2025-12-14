@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
 export default function TrainingPage() {
@@ -11,19 +12,7 @@ export default function TrainingPage() {
     const [loading, setLoading] = useState(false);
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
 
-    useEffect(() => {
-        fetchModules();
-    }, [role]);
-
-    useEffect(() => {
-        if (activeModule) {
-            fetchMaterials(activeModule.id);
-        } else {
-            setMaterials([]);
-        }
-    }, [activeModule]);
-
-    const fetchModules = async () => {
+    const fetchModules = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch(`/api/admin/training/modules?role=${role}`);
@@ -40,9 +29,9 @@ export default function TrainingPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [role]);
 
-    const fetchMaterials = async (moduleId: number) => {
+    const fetchMaterials = useCallback(async (moduleId: number) => {
         try {
             const res = await fetch(`/api/admin/training/materials?moduleId=${moduleId}`);
             const data = await res.json();
@@ -50,7 +39,19 @@ export default function TrainingPage() {
         } catch (error) {
             console.error('Failed to fetch materials', error);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchModules();
+    }, [role, fetchModules]);
+
+    useEffect(() => {
+        if (activeModule) {
+            fetchMaterials(activeModule.id);
+        } else {
+            setMaterials([]);
+        }
+    }, [activeModule, fetchMaterials]);
 
     return (
         <div className="container section" style={{ minHeight: '80vh' }}>
