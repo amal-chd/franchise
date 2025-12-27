@@ -9,12 +9,10 @@ class ApiService {
   // For iOS Simulator: http://localhost:3000
   // For Android Emulator: http://10.0.2.2:3000
   static String get baseUrl {
-    // if (kDebugMode) {
-    //   if (kIsWeb) return 'http://localhost:3001';
-    //   if (Platform.isAndroid) return 'http://10.0.2.2:3001';
-    //   return 'http://localhost:3001';
-    // }
-    return 'https://franchise.thekada.in';
+    if (kIsWeb) {
+      return 'http://localhost:3000/api/';
+    }
+    return 'http://192.168.31.247:3000/api/';
   }
 
   ApiService() {

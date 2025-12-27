@@ -11,6 +11,7 @@ class CareersTab extends ConsumerWidget {
     final careersAsync = ref.watch(careersProvider);
 
     return Scaffold(
+      drawerEnableOpenDragGesture: false,
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddJobDialog(context, ref),
         child: const Icon(Icons.add),

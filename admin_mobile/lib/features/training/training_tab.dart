@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'training_provider.dart';
+import 'module_details_screen.dart';
 
 class TrainingTab extends ConsumerWidget {
   const TrainingTab({super.key});
@@ -11,6 +12,7 @@ class TrainingTab extends ConsumerWidget {
     final trainingAsync = ref.watch(trainingProvider);
 
     return Scaffold(
+      drawerEnableOpenDragGesture: false,
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(trainingProvider.future),
         child: trainingAsync.when(
@@ -25,6 +27,9 @@ class TrainingTab extends ConsumerWidget {
                   margin: const EdgeInsets.only(bottom: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   child: ListTile(
+                    onTap: () {
+                       Navigator.push(context, MaterialPageRoute(builder: (_) => ModuleDetailsScreen(module: m)));
+                    },
                     leading: CircleAvatar(
                       backgroundColor: const Color(0xFF0F172A),
                       child: const Icon(Icons.school, color: Colors.white, size: 20),

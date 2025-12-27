@@ -23,15 +23,15 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { sessionId, senderType, senderId, message } = body;
+        const { sessionId, senderType, senderId, message, attachmentUrl, attachmentType } = body;
 
-        if (!sessionId || !message) {
+        if (!sessionId || (!message && !attachmentUrl)) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
         await executeQuery({
-            query: 'INSERT INTO chat_messages (session_id, sender_type, sender_id, message) VALUES (?, ?, ?, ?)',
-            values: [sessionId, senderType, senderId, message]
+            query: 'INSERT INTO chat_messages (session_id, sender_type, sender_id, message, attachment_url, attachment_type) VALUES (?, ?, ?, ?, ?, ?)',
+            values: [sessionId, senderType, senderId, message || '', attachmentUrl || null, attachmentType || null]
         });
 
         // Update session last_message_at

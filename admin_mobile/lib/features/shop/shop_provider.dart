@@ -26,10 +26,10 @@ class Product {
       id: json['id'],
       name: json['name'] ?? '',
       description: json['description'] ?? '',
-      price: (json['price'] is int) ? (json['price'] as int).toDouble() : (json['price'] ?? 0.0),
+      price: double.tryParse(json['price'].toString()) ?? 0.0,
       imageUrl: json['image_url'] ?? '',
       category: json['category'] ?? 'Merchandise',
-      stock: json['stock'] ?? 0,
+      stock: int.tryParse(json['stock'].toString()) ?? 0,
     );
   }
 }
@@ -56,7 +56,7 @@ class ProductsNotifier extends AsyncNotifier<List<Product>> {
 
   Future<List<Product>> _fetchProducts() async {
     try {
-      final response = await _apiService.client.get('/api/shop/products');
+      final response = await _apiService.client.get('shop/products');
       final data = response.data as List;
       return data.map((e) => Product.fromJson(e)).toList();
     } catch (e) {
@@ -80,7 +80,7 @@ class AdminProductsNotifier extends AsyncNotifier<List<Product>> {
 
   Future<List<Product>> _fetchProducts() async {
     try {
-      final response = await _apiService.client.get('/api/shop/products?admin=true');
+      final response = await _apiService.client.get('shop/products?admin=true');
       final data = response.data as List;
       return data.map((e) => Product.fromJson(e)).toList();
     } catch (e) {
@@ -90,7 +90,7 @@ class AdminProductsNotifier extends AsyncNotifier<List<Product>> {
 
   Future<bool> addProduct(Map<String, dynamic> productData) async {
     try {
-      final response = await _apiService.client.post('/api/shop/products', data: productData);
+      final response = await _apiService.client.post('shop/products', data: productData);
       if (response.statusCode == 200 || response.statusCode == 201) {
         state = await AsyncValue.guard(() => _fetchProducts()); // Refresh list
         return true;
@@ -98,6 +98,324 @@ class AdminProductsNotifier extends AsyncNotifier<List<Product>> {
       return false;
     } catch (e) {
       return false;
+    }
+  }
+
+  Future<bool> editProduct(int id, Map<String, dynamic> productData) async {
+    try {
+      final response = await _apiService.client.put('shop/products', data: {'id': id, ...productData});
+      if (response.statusCode == 200) {
+         state = await AsyncValue.guard(() => _fetchProducts());
+         return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteProduct(int id) async {
+    try {
+      final response = await _apiService.client.delete('shop/products?id=$id');
+      if (response.statusCode == 200) {
+         state = await AsyncValue.guard(() => _fetchProducts());
+         return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+}
+
+// Enhanced Order Model
+class OrderModel {
+  final int id;
+  final int franchiseId;
+  final String? franchiseName;
+  final String? zoneName;
+  final int? zoneId;
+  final double totalAmount;
+  final String status;
+  final String paymentStatus;
+  final String? razorpayOrderId;
+  final String createdAt;
+  final String? updatedAt;
+  final int itemsCount;
+
+  OrderModel({
+    required this.id,
+    required this.franchiseId,
+    this.franchiseName,
+    this.zoneName,
+    this.zoneId,
+    required this.totalAmount,
+    required this.status,
+    required this.paymentStatus,
+    this.razorpayOrderId,
+    required this.createdAt,
+    this.updatedAt,
+    this.itemsCount = 0,
+  });
+
+  factory OrderModel.fromJson(Map<String, dynamic> json) {
+    return OrderModel(
+      id: json['id'],
+      franchiseId: json['franchise_id'],
+      franchiseName: json['franchise_name'],
+      zoneName: json['zone_name'],
+      zoneId: json['zone_id'],
+      totalAmount: double.tryParse(json['total_amount']?.toString() ?? '0') ?? 0,
+      status: json['status'] ?? 'pending',
+      paymentStatus: json['payment_status'] ?? 'pending',
+      razorpayOrderId: json['razorpay_order_id'],
+      createdAt: json['created_at'] ?? '',
+      updatedAt: json['updated_at'],
+      itemsCount: json['items_count'] ?? 0,
+    );
+  }
+}
+
+// Orders Filter State
+class OrdersFilter {
+  final List<String> statuses;
+  final List<String> paymentStatuses;
+  final String? search;
+  final String? dateFrom;
+  final String? dateTo;
+  final String sortBy;
+  final String sortOrder;
+  final int? zoneId;
+
+  OrdersFilter({
+    this.statuses = const [],
+    this.paymentStatuses = const [],
+    this.search,
+    this.dateFrom,
+    this.dateTo,
+    this.sortBy = 'created_at',
+    this.sortOrder = 'desc',
+    this.zoneId,
+  });
+
+  OrdersFilter copyWith({
+    List<String>? statuses,
+    List<String>? paymentStatuses,
+    String? search,
+    String? dateFrom,
+    String? dateTo,
+    String? sortBy,
+    String? sortOrder,
+    int? zoneId,
+    bool clearSearch = false,
+  }) {
+    return OrdersFilter(
+      statuses: statuses ?? this.statuses,
+      paymentStatuses: paymentStatuses ?? this.paymentStatuses,
+      search: clearSearch ? null : (search ?? this.search),
+      dateFrom: dateFrom ?? this.dateFrom,
+      dateTo: dateTo ?? this.dateTo,
+      sortBy: sortBy ?? this.sortBy,
+      sortOrder: sortOrder ?? this.sortOrder,
+      zoneId: zoneId ?? this.zoneId,
+    );
+  }
+
+  Map<String, String> toQueryParams() {
+    final params = <String, String>{};
+    if (statuses.isNotEmpty) params['status'] = statuses.join(',');
+    if (paymentStatuses.isNotEmpty) params['paymentStatus'] = paymentStatuses.join(',');
+    if (search != null && search!.isNotEmpty) params['search'] = search!;
+    if (dateFrom != null) params['dateFrom'] = dateFrom!;
+    if (dateTo != null) params['dateTo'] = dateTo!;
+    if (zoneId != null) params['zoneId'] = zoneId.toString();
+    params['sortBy'] = sortBy;
+    params['sortOrder'] = sortOrder;
+    return params;
+  }
+}
+
+// Paginated Orders Response
+class PaginatedOrders {
+  final List<OrderModel> orders;
+  final int page;
+  final int limit;
+  final int total;
+  final int totalPages;
+  final bool hasMore;
+
+  PaginatedOrders({
+    required this.orders,
+    required this.page,
+    required this.limit,
+    required this.total,
+    required this.totalPages,
+    required this.hasMore,
+  });
+
+  factory PaginatedOrders.fromJson(Map<String, dynamic> json) {
+    return PaginatedOrders(
+      orders: (json['orders'] as List).map((e) => OrderModel.fromJson(e)).toList(),
+      page: json['pagination']['page'],
+      limit: json['pagination']['limit'],
+      total: json['pagination']['total'],
+      totalPages: json['pagination']['totalPages'],
+      hasMore: json['pagination']['hasMore'],
+    );
+  }
+}
+
+// Orders Filter Provider
+final ordersFilterProvider = NotifierProvider<OrdersFilterNotifier, OrdersFilter>(() {
+  return OrdersFilterNotifier();
+});
+
+class OrdersFilterNotifier extends Notifier<OrdersFilter> {
+  @override
+  OrdersFilter build() {
+    return OrdersFilter();
+  }
+
+  void setStatusFilter(List<String> statuses) {
+    state = state.copyWith(statuses: statuses);
+  }
+
+  void setPaymentFilter(List<String> paymentStatuses) {
+    state = state.copyWith(paymentStatuses: paymentStatuses);
+  }
+
+  void setSearch(String? search) {
+    state = state.copyWith(search: search, clearSearch: search == null);
+  }
+
+  void setDateRange(String? from, String? to) {
+    state = state.copyWith(dateFrom: from, dateTo: to);
+  }
+
+  void setSorting(String sortBy, String sortOrder) {
+    state = state.copyWith(sortBy: sortBy, sortOrder: sortOrder);
+  }
+
+  void clearFilters() {
+    state = OrdersFilter();
+  }
+}
+
+// Selected Orders Provider (for bulk operations)
+final selectedOrdersProvider = NotifierProvider<SelectedOrdersNotifier, Set<int>>(() {
+  return SelectedOrdersNotifier();
+});
+
+class SelectedOrdersNotifier extends Notifier<Set<int>> {
+  @override
+  Set<int> build() {
+    return {};
+  }
+
+  void toggle(int orderId) {
+    if (state.contains(orderId)) {
+      state = {...state}..remove(orderId);
+    } else {
+      state = {...state, orderId};
+    }
+  }
+
+  void selectAll(List<int> orderIds) {
+    state = orderIds.toSet();
+  }
+
+  void clearSelection() {
+    state = {};
+  }
+}
+
+// Admin Orders Provider with Pagination
+final adminOrdersProvider = AsyncNotifierProvider<AdminOrdersNotifier, PaginatedOrders>(() {
+  return AdminOrdersNotifier();
+});
+
+class AdminOrdersNotifier extends AsyncNotifier<PaginatedOrders> {
+  final ApiService _apiService = ApiService();
+  int _currentPage = 1;
+
+  @override
+  Future<PaginatedOrders> build() async {
+    return _fetchOrders(page: 1);
+  }
+
+  Future<PaginatedOrders> _fetchOrders({required int page}) async {
+    try {
+      final filter = ref.read(ordersFilterProvider);
+      final params = {
+        'admin': 'true',
+        'page': page.toString(),
+        'limit': '50',
+        ...filter.toQueryParams(),
+      };
+
+      final queryString = params.entries
+          .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+          .join('&');
+
+      final response = await _apiService.client.get('shop/orders?$queryString');
+      _currentPage = page;
+      return PaginatedOrders.fromJson(response.data);
+    } catch (e) {
+      print('Orders fetch error: $e');
+      throw Exception('Failed to fetch orders');
+    }
+  }
+
+  Future<void> loadNextPage() async {
+    final currentState = state.value;
+    if (currentState != null && currentState.hasMore) {
+      state = const AsyncValue.loading();
+      state = await AsyncValue.guard(() => _fetchOrders(page: _currentPage + 1));
+    }
+  }
+
+  Future<void> refresh() async {
+    _currentPage = 1;
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() => _fetchOrders(page: 1));
+  }
+
+  Future<bool> updateStatus(int orderId, String status, {String? paymentStatus, String? notes}) async {
+    try {
+      final response = await _apiService.client.put('shop/orders', data: {
+        'id': orderId,
+        'status': status,
+        if (paymentStatus != null) 'paymentStatus': paymentStatus,
+        if (notes != null) 'notes': notes,
+      });
+
+      if (response.statusCode == 200) {
+        await refresh();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Status update error: $e');
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> bulkOperation(String action, List<int> orderIds, Map<String, dynamic>? data) async {
+    try {
+      final response = await _apiService.client.post('shop/orders/bulk', data: {
+        'action': action,
+        'orderIds': orderIds,
+        if (data != null) 'data': data,
+      });
+
+      if (response.statusCode == 200) {
+        await refresh();
+        return {'success': true, ...response.data};
+      }
+      return {'success': false, 'message': 'Bulk operation failed'};
+    } catch (e) {
+      print('Bulk operation error: $e');
+      return {'success': false, 'message': e.toString()};
     }
   }
 }
@@ -161,7 +479,7 @@ class OrderNotifier extends AsyncNotifier<bool> {
     return false;
   }
 
-  Future<bool> placeOrder(List<CartItem> items, double totalAmount) async {
+  Future<Map<String, dynamic>?> placeOrder(List<CartItem> items, double totalAmount) async {
     state = const AsyncValue.loading();
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -179,16 +497,26 @@ class OrderNotifier extends AsyncNotifier<bool> {
         'totalAmount': totalAmount
       };
 
-      final response = await _apiService.client.post('/api/shop/orders', data: orderData);
+      final response = await _apiService.client.post('shop/orders', data: orderData);
       
       if (response.statusCode == 200 || response.statusCode == 201) {
         state = const AsyncValue.data(true);
-        return true;
+        // Return JSON directly so UI can use it for Razorpay
+        return response.data as Map<String, dynamic>; 
       }
       state = const AsyncValue.data(false);
-      return false;
+      return null;
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
+      return null;
+    }
+  }
+
+  Future<bool> verifyPayment(Map<String, dynamic> data) async {
+    try {
+      final response = await _apiService.client.post('shop/verify', data: data);
+      return response.statusCode == 200 && response.data['success'] == true;
+    } catch (e) {
       return false;
     }
   }

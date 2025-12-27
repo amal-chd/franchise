@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import executeQuery from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 import { applicationApprovedEmail } from '@/lib/emailTemplates';
+import { sendNotification } from '@/lib/notifications';
 
 // POST: Create a new franchise
 export async function POST(request: Request) {
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
     try {
         const body = await request.json();
-        const { id, name, email, phone, city, plan_selected, status, upi_id, bank_account_number, ifsc_code, bank_name, password } = body;
+        const { id, name, email, phone, city, plan_selected, status, upi_id, bank_account_number, ifsc_code, bank_name, password, zone_id } = body;
 
         if (!id) {
             return NextResponse.json({ message: 'Franchise ID is required' }, { status: 400 });
@@ -67,7 +68,7 @@ export async function PUT(request: Request) {
         let query = `
             UPDATE franchise_requests 
             SET name = ?, email = ?, phone = ?, city = ?, plan_selected = ?, status = ?, 
-                upi_id = ?, bank_account_number = ?, ifsc_code = ?, bank_name = ?
+                upi_id = ?, bank_account_number = ?, ifsc_code = ?, bank_name = ?, zone_id = ?
         `;
 
         const values = [
@@ -80,7 +81,8 @@ export async function PUT(request: Request) {
             upi_id || null,
             bank_account_number || null,
             ifsc_code || null,
-            bank_name || null
+            bank_name || null,
+            zone_id || null
         ];
 
         if (password && password.trim() !== '') {
@@ -95,6 +97,17 @@ export async function PUT(request: Request) {
 
         if ((result as any).error) {
             throw new Error((result as any).error);
+        }
+
+        // Trigger notification for status change
+        if (status) {
+            await sendNotification({
+                franchiseId: id,
+                title: 'Account Status Updated',
+                message: `Your account status has been updated to: ${status}`,
+                type: 'franchise',
+                data: { status }
+            });
         }
 
         return NextResponse.json({ message: 'Franchise updated successfully' });

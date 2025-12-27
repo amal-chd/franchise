@@ -92,16 +92,34 @@ class CmsNotifier extends AsyncNotifier<CmsState> {
 
   Future<CmsState> _fetchData() async {
     final results = await Future.wait([
-       _apiService.client.get('/api/admin/cms'),
-       _apiService.client.get('/api/admin/settings'),
+       _apiService.client.get('admin/cms'),
+       _apiService.client.get('admin/settings'),
     ]);
 
     final cmsData = results[0].data as Map<String, dynamic>;
-    var testimonialsData = cmsData['testimonials'];
+    
+    // API returns { "testimonials": { "testimonials": "[...]" } }
+    // We need to access the inner value.
+    var testimonialsSection = cmsData['testimonials'];
+    var testimonialsData = testimonialsSection != null ? testimonialsSection['testimonials'] : null;
+    
     List<Testimonial> loadedList = [];
-    if (testimonialsData is String) testimonialsData = jsonDecode(testimonialsData);
-    if (testimonialsData is List) {
-      loadedList = testimonialsData.map((e) => Testimonial.fromJson(e)).toList();
+    if (testimonialsData != null) {
+      try {
+        if (testimonialsData is String) {
+          if (testimonialsData.toString().contains('[object Object]')) {
+             testimonialsData = []; // Handle corrupted data
+          } else {
+             testimonialsData = jsonDecode(testimonialsData);
+          }
+        }
+        if (testimonialsData is List) {
+          loadedList = (testimonialsData as List).map((e) => Testimonial.fromJson(e)).toList();
+        }
+      } catch (e) {
+        print('Error parsing testimonials: $e');
+        loadedList = [];
+      }
     }
 
     final settings = results[1].data as Map<String, dynamic>;
@@ -122,7 +140,7 @@ class CmsNotifier extends AsyncNotifier<CmsState> {
 
   Future<bool> saveSettings(Map<String, dynamic> newSettings) async {
     try {
-      final response = await _apiService.client.post('/api/admin/settings', data: {'settings': newSettings});
+      final response = await _apiService.client.post('admin/settings', data: {'settings': newSettings});
       if (response.statusCode == 200) {
         final current = state.asData?.value;
         if (current != null) {
@@ -138,7 +156,7 @@ class CmsNotifier extends AsyncNotifier<CmsState> {
 
   Future<bool> saveCmsSection(String section, Map<String, dynamic> content) async {
     try {
-      final response = await _apiService.client.post('/api/admin/cms', data: {
+      final response = await _apiService.client.post('admin/cms', data: {
         'section': section,
         'content': content
       });
@@ -160,7 +178,7 @@ class CmsNotifier extends AsyncNotifier<CmsState> {
 
   Future<bool> saveTestimonials(List<Testimonial> testimonials) async {
     try {
-      final response = await _apiService.client.post('/api/admin/cms', data: {
+      final response = await _apiService.client.post('admin/cms', data: {
         'section': 'testimonials',
         'content': {'testimonials': testimonials.map((e) => e.toJson()).toList()}
       });

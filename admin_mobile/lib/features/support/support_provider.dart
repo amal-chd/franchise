@@ -9,6 +9,8 @@ class SupportTicket {
   final String message;
   final String status;
   final String? reply;
+  final String franchiseName;
+  final String zoneName;
 
   SupportTicket({
     required this.id,
@@ -18,17 +20,21 @@ class SupportTicket {
     required this.message,
     required this.status,
     this.reply,
+    this.franchiseName = '',
+    this.zoneName = '',
   });
 
   factory SupportTicket.fromJson(Map<String, dynamic> json) {
     return SupportTicket(
-      id: json['id'],
-      name: json['name'],
-      email: json['email'],
-      subject: json['subject'],
-      message: json['message'],
-      status: json['status'],
-      reply: json['reply'],
+      id: json['id'] ?? 0,
+      name: json['name'] ?? 'Unknown',
+      email: json['email'] ?? '',
+      subject: json['subject'] ?? 'No Subject',
+      message: json['message'] ?? '',
+      status: json['status'] ?? 'Pending',
+      reply: json['latest_reply'] ?? json['reply'],
+      franchiseName: json['franchise_name'] ?? json['name'] ?? 'Unknown Franchise',
+      zoneName: json['zone_name'] ?? 'N/A',
     );
   }
 }
@@ -46,8 +52,17 @@ class SupportNotifier extends AsyncNotifier<List<SupportTicket>> {
   }
 
   Future<List<SupportTicket>> _fetchTickets() async {
-    final response = await _apiService.client.get('/api/admin/support/tickets');
-    return (response.data as List).map((e) => SupportTicket.fromJson(e)).toList();
+    try {
+      final response = await _apiService.client.get('admin/support/tickets');
+      if (response.data != null && response.data is List) {
+        final data = response.data as List;
+        return data.map((e) => SupportTicket.fromJson(e)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Support fetch error: $e');
+      rethrow;
+    }
   }
 
   Future<void> fetchTickets() async {
@@ -55,11 +70,14 @@ class SupportNotifier extends AsyncNotifier<List<SupportTicket>> {
     state = await AsyncValue.guard(() => _fetchTickets());
   }
 
-  Future<bool> replyToTicket(int id, String replyMessage) async {
+  Future<bool> replyToTicket(SupportTicket ticket, String replyMessage) async {
     try {
-      final response = await _apiService.client.post('/api/admin/support/reply', data: {
-        'id': id,
-        'reply': replyMessage,
+      final response = await _apiService.client.post('admin/support/reply', data: {
+        'ticketId': ticket.id,
+        'message': replyMessage,
+        'userEmail': ticket.email,
+        'userName': ticket.name,
+        'ticketSubject': ticket.subject,
       });
 
       if (response.statusCode == 200) {

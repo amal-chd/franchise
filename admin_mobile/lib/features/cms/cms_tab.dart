@@ -98,23 +98,27 @@ class _CmsTabState extends ConsumerState<CmsTab> with SingleTickerProviderStateM
     final cmsAsync = ref.watch(cmsProvider);
 
     return Scaffold(
+      drawerEnableOpenDragGesture: false,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(kToolbarHeight),
         child: Container(
           color: Colors.white,
-          child: TabBar(
-            controller: _tabController,
-            labelColor: const Color(0xFF0F172A),
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: const Color(0xFF0F172A),
-            isScrollable: true,
-            tabs: const [
-              Tab(text: 'Testimonials'),
-              Tab(text: 'Hero'),
-              Tab(text: 'About'),
-              Tab(text: 'Stats'),
-              Tab(text: 'Settings'),
-            ],
+          child: Material(
+            color: Colors.white,
+            child: TabBar(
+              controller: _tabController,
+              labelColor: const Color(0xFF0F172A),
+              unselectedLabelColor: Colors.grey,
+              indicatorColor: const Color(0xFF0F172A),
+              isScrollable: true,
+              tabs: const [
+                Tab(text: 'Testimonials'),
+                Tab(text: 'Hero'),
+                Tab(text: 'About'),
+                Tab(text: 'Stats'),
+                Tab(text: 'Settings'),
+              ],
+            ),
           ),
         ),
       ),

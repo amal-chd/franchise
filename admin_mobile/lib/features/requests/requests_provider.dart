@@ -14,6 +14,7 @@ class FranchiseRequest {
   final String? bankAccountNumber;
   final String? ifscCode;
   final String? bankName;
+  final int? zoneId;
 
   FranchiseRequest({
     required this.id,
@@ -28,6 +29,7 @@ class FranchiseRequest {
     this.bankAccountNumber,
     this.ifscCode,
     this.bankName,
+    this.zoneId,
   });
 
   factory FranchiseRequest.fromJson(Map<String, dynamic> json) {
@@ -35,7 +37,7 @@ class FranchiseRequest {
       id: json['id'],
       name: json['name'],
       email: json['email'],
-      city: json['city'],
+      city: json['city'] ?? '',
       status: json['status'],
       phone: json['phone'],
       kycUrl: json['aadhar_url'],
@@ -44,6 +46,7 @@ class FranchiseRequest {
       bankAccountNumber: json['bank_account_number'],
       ifscCode: json['ifsc_code'],
       bankName: json['bank_name'],
+      zoneId: json['zone_id'],
     );
   }
 }
@@ -61,13 +64,13 @@ class RequestsNotifier extends AsyncNotifier<List<FranchiseRequest>> {
   }
 
   Future<List<FranchiseRequest>> _fetchRequests() async {
-    final response = await _apiService.client.get('/api/admin/requests');
+    final response = await _apiService.client.get('admin/requests');
     return (response.data as List).map((e) => FranchiseRequest.fromJson(e)).toList();
   }
 
   Future<bool> createFranchise(Map<String, dynamic> data) async {
     try {
-      final response = await _apiService.client.post('/api/admin/franchises', data: data);
+      final response = await _apiService.client.post('admin/franchises', data: data);
       if (response.statusCode == 200 || response.statusCode == 201) {
         await refresh(); // Reload list
         return true;
@@ -87,7 +90,7 @@ class RequestsNotifier extends AsyncNotifier<List<FranchiseRequest>> {
 
   Future<bool> verifyRequest(int id, String status, {String? reason}) async {
     try {
-      final response = await _apiService.client.post('/api/admin/verify', data: {
+      final response = await _apiService.client.post('admin/verify', data: {
         'id': id,
         'status': status,
         if (reason != null) 'rejectionReason': reason,
@@ -105,7 +108,7 @@ class RequestsNotifier extends AsyncNotifier<List<FranchiseRequest>> {
   
   Future<bool> deleteRequest(int id) async {
      try {
-      final response = await _apiService.client.delete('/api/admin/franchises?id=$id');
+      final response = await _apiService.client.delete('admin/franchises?id=$id');
       if (response.statusCode == 200) {
         fetchRequests();
         return true;
@@ -117,7 +120,7 @@ class RequestsNotifier extends AsyncNotifier<List<FranchiseRequest>> {
   }
   Future<bool> updateFranchise(int id, Map<String, dynamic> data) async {
     try {
-      final response = await _apiService.client.put('/api/admin/franchises', data: {'id': id, ...data});
+      final response = await _apiService.client.put('admin/franchises', data: {'id': id, ...data});
       if (response.statusCode == 200) {
         await refresh();
         return true;
@@ -131,7 +134,7 @@ class RequestsNotifier extends AsyncNotifier<List<FranchiseRequest>> {
 
   Future<bool> registerPublicly(Map<String, dynamic> data) async {
     try {
-      final response = await _apiService.client.post('/api/franchise/register', data: data);
+      final response = await _apiService.client.post('franchise/register', data: data);
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       print('Registration Error: $e');

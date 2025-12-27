@@ -31,7 +31,7 @@ class NewsletterNotifier extends AsyncNotifier<List<Subscriber>> {
 
   Future<List<Subscriber>> _fetchSubscribers() async {
     try {
-      final response = await _apiService.client.get('/api/admin/newsletter');
+      final response = await _apiService.client.get('/admin/newsletter');
       final data = response.data as List;
       return data.map((e) => Subscriber.fromJson(e)).toList();
     } catch (e) {

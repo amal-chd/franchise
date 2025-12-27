@@ -1,0 +1,319 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/api_service.dart';
+
+// Franchise-specific Orders Provider with date filtering
+class FranchiseOrdersFilter {
+  final String? dateFrom;
+  final String? dateTo;
+  final String? status;
+  
+  FranchiseOrdersFilter({this.dateFrom, this.dateTo, this.status});
+  
+  FranchiseOrdersFilter copyWith({String? dateFrom, String? dateTo, String? status, bool clearDates = false}) {
+    return FranchiseOrdersFilter(
+      dateFrom: clearDates ? null : (dateFrom ?? this.dateFrom),
+      dateTo: clearDates ? null : (dateTo ?? this.dateTo),
+      status: status ?? this.status,
+    );
+  }
+  
+  Map<String, String> toQueryParams(int zoneId) {
+    final params = <String, String>{'zoneId': zoneId.toString()};
+    if (dateFrom != null) params['dateFrom'] = dateFrom!;
+    if (dateTo != null) params['dateTo'] = dateTo!;
+    if (status != null && status!.isNotEmpty) params['status'] = status!;
+    return params;
+  }
+}
+
+// Franchise Orders Filter Provider
+final franchiseOrdersFilterProvider = NotifierProvider<FranchiseOrdersFilterNotifier, FranchiseOrdersFilter>(() {
+  return FranchiseOrdersFilterNotifier();
+});
+
+class FranchiseOrdersFilterNotifier extends Notifier<FranchiseOrdersFilter> {
+  @override
+  FranchiseOrdersFilter build() {
+    return FranchiseOrdersFilter();
+  }
+  
+  void setDateRange(String? from, String? to) {
+    state = state.copyWith(dateFrom: from, dateTo: to);
+  }
+  
+  void setStatus(String? status) {
+    state = state.copyWith(status: status);
+  }
+  
+  void clearFilters() {
+    state = FranchiseOrdersFilter();
+  }
+}
+
+// Franchise Orders Provider
+final franchiseOrdersProvider = AsyncNotifierProvider<FranchiseOrdersNotifier, List<Map<String, dynamic>>>(() {
+  return FranchiseOrdersNotifier();
+});
+
+class FranchiseOrdersNotifier extends AsyncNotifier<List<Map<String, dynamic>>> {
+  final ApiService _apiService = ApiService();
+  
+  // Public getter for ApiService
+  ApiService get apiService => _apiService;
+  
+  @override
+  Future<List<Map<String, dynamic>>> build() async {
+    return _fetchOrders();
+  }
+  
+  Future<List<Map<String, dynamic>>> _fetchOrders() async {
+    try {
+      final prefs = await ref.read(sharedPreferencesProvider.future);
+      final zoneId = prefs.getInt('zoneId');
+      
+      if (zoneId == null) throw Exception('Zone ID not found');
+      
+      final filter = ref.read(franchiseOrdersFilterProvider);
+      final params = filter.toQueryParams(zoneId);
+      
+      final queryString = params.entries
+          .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+          .join('&');
+      
+      final response = await _apiService.client.get('/franchise/orders?$queryString');
+      
+      // Check if response contains an error
+      if (response.data is Map && response.data['error'] != null) {
+        final errorMsg = response.data['error'];
+        print('Orders API error: $errorMsg');
+        throw Exception(errorMsg);
+      }
+      
+      // Ensure response is a list before casting
+      if (response.data is! List) {
+        print('Orders fetch error: Expected List but got ${response.data.runtimeType}');
+        print('Response data: ${response.data}');
+        throw Exception('Invalid response format from server');
+      }
+      
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (e) {
+      print('Franchise orders fetch error: $e');
+      throw Exception('Failed to fetch orders');
+    }
+  }
+  
+  Future<void> refresh() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() => _fetchOrders());
+  }
+}
+
+// Payouts Model
+class PayoutSummary {
+  final int totalOrders;
+  final double totalEarnings;
+  final double restaurantEarnings;
+  final double deliveryEarnings;
+  final double totalTax;
+  final int todaysPendingOrders;
+  final double todaysPendingAmount;
+  
+  PayoutSummary({
+    required this.totalOrders,
+    required this.totalEarnings,
+    required this.restaurantEarnings,
+    required this.deliveryEarnings,
+    required this.totalTax,
+    required this.todaysPendingOrders,
+    required this.todaysPendingAmount,
+  });
+  
+  factory PayoutSummary.fromJson(Map<String, dynamic> json) {
+    return PayoutSummary(
+      totalOrders: json['summary']['totalOrders'] ?? 0,
+      totalEarnings: double.tryParse(json['summary']['totalEarnings']?.toString() ?? '0') ?? 0,
+      restaurantEarnings: double.tryParse(json['summary']['restaurantEarnings']?.toString() ?? '0') ?? 0,
+      deliveryEarnings: double.tryParse(json['summary']['deliveryEarnings']?.toString() ?? '0') ?? 0,
+      totalTax: double.tryParse(json['summary']['totalTax']?.toString() ?? '0') ?? 0,
+      todaysPendingOrders: json['todaysPending']['orders'] ?? 0,
+      todaysPendingAmount: double.tryParse(json['todaysPending']['amount']?.toString() ?? '0') ?? 0,
+    );
+  }
+}
+
+class PayoutEntry {
+  final String date;
+  final int totalOrders;
+  final double totalEarnings;
+  final double restaurantEarnings;
+  final double deliveryEarnings;
+  
+  PayoutEntry({
+    required this.date,
+    required this.totalOrders,
+    required this.totalEarnings,
+    required this.restaurantEarnings,
+    required this.deliveryEarnings,
+  });
+  
+  factory PayoutEntry.fromJson(Map<String, dynamic> json) {
+    return PayoutEntry(
+      date: json['payout_date'] ?? '',
+      totalOrders: int.tryParse(json['total_orders']?.toString() ?? '0') ?? 0,
+      totalEarnings: double.tryParse(json['total_earnings']?.toString() ?? '0') ?? 0,  
+      restaurantEarnings: double.tryParse(json['restaurant_earnings']?.toString() ?? '0') ?? 0,
+      deliveryEarnings: double.tryParse(json['delivery_earnings']?.toString() ?? '0') ?? 0,
+    );
+  }
+}
+
+class PayoutsData {
+  final PayoutSummary summary;
+  final List<PayoutEntry> payouts;
+  
+  PayoutsData({required this.summary, required this.payouts});
+}
+
+// Payouts Provider
+final payoutsProvider = AsyncNotifierProvider<PayoutsNotifier, PayoutsData>(() {
+  return PayoutsNotifier();
+});
+
+class PayoutsNotifier extends AsyncNotifier<PayoutsData> {
+  final ApiService _apiService = ApiService();
+  
+  @override
+  Future<PayoutsData> build() async {
+    return _fetchPayouts();
+  }
+  
+  Future<PayoutsData> _fetchPayouts({String? dateFrom, String? dateTo}) async {
+    try {
+      final prefs = await ref.read(sharedPreferencesProvider.future);
+      final zoneId = prefs.getInt('zoneId');
+      
+      if (zoneId == null) throw Exception('Zone ID not found');
+      
+      var url = '/franchise/payouts?zoneId=$zoneId';
+      if (dateFrom != null) url += '&dateFrom=$dateFrom';
+      if (dateTo != null) url += '&dateTo=$dateTo';
+      
+      final response = await _apiService.client.get(url);
+      
+      return PayoutsData(
+        summary: PayoutSummary.fromJson(response.data),
+        payouts: (response.data['payouts'] as List)
+            .map((e) => PayoutEntry.fromJson(e))
+            .toList(),
+      );
+    } catch (e) {
+      print('Payouts fetch error: $e');
+      throw Exception('Failed to fetch payouts');
+    }
+  }
+  
+  Future<void> refreshWithFilter(String? dateFrom, String? dateTo) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() => _fetchPayouts(dateFrom: dateFrom, dateTo: dateTo));
+  }
+}
+
+// Leaderboard Model
+class LeaderboardEntry {
+  final int rank;
+  final int zoneId;
+  final String zoneName;
+  final String franchiseName;
+  final int totalOrders;
+  final int completedOrders;
+  final double totalRevenue;
+  final double avgOrderValue;
+  
+  LeaderboardEntry({
+    required this.rank,
+    required this.zoneId,
+    required this.zoneName,
+    required this.franchiseName,
+    required this.totalOrders,
+    required this.completedOrders,
+    required this.totalRevenue,
+    required this.avgOrderValue,
+  });
+  
+  factory LeaderboardEntry.fromJson(Map<String, dynamic> json) {
+    return LeaderboardEntry(
+      rank: json['rank'] ?? 0,
+      zoneId: json['zone_id'] ?? 0,
+      zoneName: json['zone_name'] ?? 'Unknown',
+      franchiseName: json['franchise_name'] ?? 'Unknown',
+      totalOrders: int.tryParse(json['total_orders']?.toString() ?? '0') ?? 0,
+      completedOrders: int.tryParse(json['completed_orders']?.toString() ?? '0') ?? 0,
+      totalRevenue: double.tryParse(json['total_revenue']?.toString() ?? '0') ?? 0,
+      avgOrderValue: double.tryParse(json['avg_order_value']?.toString() ?? '0') ?? 0,
+    );
+  }
+}
+
+class LeaderboardData {
+  final String month;
+  final List<LeaderboardEntry> leaderboard;
+  final Map<String, dynamic> historical;
+  final int activeZones;
+  final int totalOrders;
+  
+  LeaderboardData({
+    required this.month,
+    required this.leaderboard,
+    required this.historical,
+    required this.activeZones,
+    required this.totalOrders,
+  });
+}
+
+// Leaderboard Provider
+final leaderboardProvider = AsyncNotifierProvider<LeaderboardNotifier, LeaderboardData>(() {
+  return LeaderboardNotifier();
+});
+
+class LeaderboardNotifier extends AsyncNotifier<LeaderboardData> {
+  final ApiService _apiService = ApiService();
+  
+  @override
+  Future<LeaderboardData> build() async {
+    return _fetchLeaderboard();
+  }
+  
+  Future<LeaderboardData> _fetchLeaderboard({String? month}) async {
+    try {
+      var url = '/franchise/leaderboard';
+      if (month != null) url += '?month=$month';
+      
+      final response = await _apiService.client.get(url);
+      
+      return LeaderboardData(
+        month: response.data['month'] ?? '',
+        leaderboard: (response.data['leaderboard'] as List)
+            .map((e) => LeaderboardEntry.fromJson(e))
+            .toList(),
+        historical: response.data['historical'] ?? {},
+        activeZones: response.data['stats']['activeZones'] ?? 0,
+        totalOrders: response.data['stats']['totalOrders'] ?? 0,
+      );
+    } catch (e) {
+      print('Leaderboard fetch error: $e');
+      throw Exception('Failed to fetch leaderboard');
+    }
+  }
+  
+  Future<void> refreshWithMonth(String month) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() => _fetchLeaderboard(month: month));
+  }
+}
+
+// SharedPreferences Provider
+final sharedPreferencesProvider = FutureProvider<SharedPreferences>((ref) async {
+  return await SharedPreferences.getInstance();
+});

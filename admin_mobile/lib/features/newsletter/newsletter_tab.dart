@@ -12,6 +12,7 @@ class NewsletterTab extends ConsumerWidget {
     final newsletterAsync = ref.watch(newsletterProvider);
 
     return Scaffold(
+      drawerEnableOpenDragGesture: false,
       appBar: AppBar(
         title: Text('Newsletter Subscribers', style: GoogleFonts.poppins(color: Colors.black)),
         backgroundColor: Colors.white,

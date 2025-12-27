@@ -111,9 +111,9 @@ class PayoutsNotifier extends AsyncNotifier<PayoutsState> {
   Future<PayoutsState> _loadData() async {
     final now = DateTime.now();
     final responses = await Future.wait([
-        _apiService.client.get('/api/admin/payouts'),
-        _apiService.client.get('/api/admin/settings'),
-        _apiService.client.get('/api/admin/payouts/history?month=${now.month}&year=${now.year}'),
+        _apiService.client.get('/admin/payouts'),
+        _apiService.client.get('/admin/settings'),
+        _apiService.client.get('/admin/payouts/history?month=${now.month}&year=${now.year}'),
     ]);
 
     List<FranchisePayout> payoutsData = [];
@@ -148,7 +148,12 @@ class PayoutsNotifier extends AsyncNotifier<PayoutsState> {
     if (prevState == null) return;
     
     try {
-      final response = await _apiService.client.get('/api/admin/payouts/history?month=$month&year=$year');
+      String url = '/admin/payouts/history';
+      if (month != 0) {
+        url += '?month=$month&year=$year';
+      }
+      
+      final response = await _apiService.client.get(url);
       List<PayoutHistoryItem> historyData = [];
       if (response.data is List) {
         historyData = (response.data as List).map((e) => PayoutHistoryItem.fromJson(e)).toList();
@@ -171,7 +176,7 @@ class PayoutsNotifier extends AsyncNotifier<PayoutsState> {
     required String invoiceBase64,
   }) async {
     try {
-      final response = await _apiService.client.post('/api/admin/payouts/process', data: {
+      final response = await _apiService.client.post('/admin/payouts/process', data: {
         'franchise_id': franchiseId,
         'amount': amount,
         'revenue_reported': revenue,

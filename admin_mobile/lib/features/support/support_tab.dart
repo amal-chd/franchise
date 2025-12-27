@@ -47,7 +47,8 @@ class SupportTab extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text('From: ${t.name} (${t.email})', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                      Text('From: ${t.franchiseName} (${t.zoneName})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      Text(t.email, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
                       const Divider(),
                       Text(t.message, style: const TextStyle(fontSize: 14)),
                       if (t.reply != null && t.reply!.isNotEmpty) ...[
@@ -70,7 +71,7 @@ class SupportTab extends ConsumerWidget {
                           child: ElevatedButton.icon(
                             icon: const Icon(Icons.reply, size: 16),
                             label: const Text('Reply'),
-                            onPressed: () => _showReplyDialog(context, ref, t.id),
+                            onPressed: () => _showReplyDialog(context, ref, t),
                           ),
                         ),
                       ],
@@ -87,7 +88,7 @@ class SupportTab extends ConsumerWidget {
     );
   }
 
-  void _showReplyDialog(BuildContext context, WidgetRef ref, int id) {
+  void _showReplyDialog(BuildContext context, WidgetRef ref, SupportTicket ticket) {
     final controller = TextEditingController();
     showDialog(
       context: context,
@@ -104,7 +105,7 @@ class SupportTab extends ConsumerWidget {
             onPressed: () async {
               Navigator.pop(context);
               if (controller.text.isNotEmpty) {
-                 final success = await ref.read(supportProvider.notifier).replyToTicket(id, controller.text);
+                 final success = await ref.read(supportProvider.notifier).replyToTicket(ticket, controller.text);
                  if (success && context.mounted) {
                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reply Sent')));
                  }

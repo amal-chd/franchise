@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_html/flutter_html.dart';
@@ -82,114 +83,209 @@ class _FranchiseRegistrationScreenState extends ConsumerState<FranchiseRegistrat
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Partner Application'),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF0F172A),
-        elevation: 0,
-      ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : Column(
-            children: [
-              _buildCustomStepper(),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                       if (_currentStep == 0) _buildDetailsStep(),
-                       if (_currentStep == 1) _buildKycStep(),
-                       if (_currentStep == 2) _buildPricingStep(),
-                       if (_currentStep == 3) _buildAgreementStep(),
-                       
-                       const SizedBox(height: 32),
-                       
-                       // Controls
-                       Row(
-                        children: [
-                          if (_currentStep > 0)
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => setState(() => _currentStep--),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  side: const BorderSide(color: Colors.grey),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                                child: const Text('Back', style: TextStyle(color: Colors.black)),
-                              ),
-                            ),
-                          if (_currentStep > 0) const SizedBox(width: 16),
-                          Expanded(
-                            flex: 2,
-                            child: ElevatedButton(
-                              onPressed: _handleStepContinue,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF0F172A),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              ),
-                              child: Text(_currentStep == 3 ? 'Sign & Complete' : 'Next'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-    );
-  }
+    final size = MediaQuery.of(context).size;
 
-  Widget _buildCustomStepper() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-      color: Colors.grey[50],
-      child: Row(
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Stack(
         children: [
-          _stepIndicator(0, 'Details', _currentStep >= 0),
-          _connector(_currentStep >= 1),
-          _stepIndicator(1, 'KYC', _currentStep >= 1),
-          _connector(_currentStep >= 2),
-          _stepIndicator(2, 'Plan', _currentStep >= 2),
-          _connector(_currentStep >= 3),
-          _stepIndicator(3, 'Sign', _currentStep >= 3),
+          // Subtle Decorative Accents
+          Positioned(
+            top: -100,
+            left: -50,
+            child: _buildDecorativeCircle(250, const Color(0xFF2563EB).withOpacity(0.04)),
+          ),
+          Positioned(
+            bottom: -50,
+            right: -80,
+            child: _buildDecorativeCircle(200, const Color(0xFF7C3AED).withOpacity(0.04)),
+          ),
+
+          SafeArea(
+            child: Column(
+              children: [
+                _buildModernHeader(),
+                
+                _buildModernStepper(),
+
+                Expanded(
+                  child: _isLoading 
+                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)))
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(28),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(30),
+                                border: Border.all(color: const Color(0xFFF1F5F9)),
+                                boxShadow: [
+                                  BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 40, offset: const Offset(0, 20)),
+                                ],
+                              ),
+                              child: Column(
+                                children: [
+                                   if (_currentStep == 0) _buildDetailsStep(),
+                                   if (_currentStep == 1) _buildKycStep(),
+                                   if (_currentStep == 2) _buildPricingStep(),
+                                   if (_currentStep == 3) _buildAgreementStep(),
+                                ],
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 32),
+                            _buildNavigationControls(),
+                            const SizedBox(height: 24),
+                          ],
+                        ),
+                      ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _stepIndicator(int step, String label, bool isActive) {
-     return Column(
-       children: [
-         CircleAvatar(
-           radius: 12,
-           backgroundColor: isActive ? const Color(0xFF0F172A) : Colors.grey[300],
-           child: isActive 
-             ? const Icon(Icons.check, size: 14, color: Colors.white) 
-             : Text((step + 1).toString(), style: const TextStyle(fontSize: 10, color: Colors.white)),
-         ),
-         const SizedBox(height: 4),
-         Text(label, style: TextStyle(fontSize: 10, fontWeight: isActive ? FontWeight.bold : FontWeight.normal, color: isActive ? Colors.black : Colors.grey)),
-       ],
-     );
+  Widget _buildDecorativeCircle(double size, Color color) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
   }
 
-  Widget _connector(bool isActive) {
-    return Expanded(
-      child: Container(
-        height: 2,
-        margin: const EdgeInsets.only(bottom: 14, left: 4, right: 4), // Align with circle center
-        color: isActive ? const Color(0xFF0F172A) : Colors.grey[300],
+  Widget _buildModernHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 24, 8),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF0F172A), size: 18),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Partner Application',
+            style: GoogleFonts.outfit(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF0F172A),
+            ),
+          ),
+        ],
       ),
     );
   }
+
+  Widget _buildModernStepper() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: List.generate(4, (index) {
+          final isActive = _currentStep >= index;
+          return Expanded(
+            child: Row(
+              children: [
+                _modernStepIndicator(index, isActive),
+                if (index < 3) 
+                  Expanded(
+                    child: Container(
+                      height: 3,
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: isActive ? const Color(0xFF2563EB) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _modernStepIndicator(int step, bool isActive) {
+     return Container(
+       width: 32,
+       height: 32,
+       decoration: BoxDecoration(
+         shape: BoxShape.circle,
+         color: isActive ? const Color(0xFF2563EB) : Colors.white,
+         border: Border.all(color: isActive ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0), width: 2),
+       ),
+       child: Center(
+         child: isActive 
+           ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
+           : Text(
+               (step + 1).toString(), 
+               style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13, fontWeight: FontWeight.bold),
+             ),
+       ),
+     );
+  }
+
+  Widget _buildNavigationControls() {
+    return Row(
+      children: [
+        if (_currentStep > 0)
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () => setState(() => _currentStep--),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                side: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
+              child: Text('Previous', style: GoogleFonts.inter(color: const Color(0xFF64748B), fontWeight: FontWeight.bold)),
+            ),
+          ),
+        if (_currentStep > 0) const SizedBox(width: 16),
+        Expanded(
+          flex: 2,
+          child: _buildPrimaryButton(
+            _currentStep == 3 ? 'Complete Now' : 'Continue Step',
+            _handleStepContinue,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPrimaryButton(String title, VoidCallback onTap) {
+    return Container(
+      height: 60,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: const LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)]),
+        boxShadow: [
+          BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 8)),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        ),
+        child: Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white)),
+      ),
+    );
+  }
+
   
   Widget _buildDetailsStep() {
     return Form(
@@ -197,27 +293,61 @@ class _FranchiseRegistrationScreenState extends ConsumerState<FranchiseRegistrat
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Personal Information', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 16),
-          TextFormField(controller: _nameCtrl, decoration: _inputDec('Full Name', Icons.person), validator: (v) => v!.isEmpty ? 'Required' : null),
-          const SizedBox(height: 12),
-          TextFormField(controller: _emailCtrl, decoration: _inputDec('Email', Icons.email), keyboardType: TextInputType.emailAddress, validator: (v) => v!.isEmpty ? 'Required' : null),
-          const SizedBox(height: 12),
-          TextFormField(controller: _phoneCtrl, decoration: _inputDec('Phone', Icons.phone), keyboardType: TextInputType.phone, validator: (v) => v!.isEmpty ? 'Required' : null),
-          const SizedBox(height: 12),
-          TextFormField(controller: _cityCtrl, decoration: _inputDec('City', Icons.location_city), validator: (v) => v!.isEmpty ? 'Required' : null),
-          const SizedBox(height: 12),
-          TextFormField(controller: _passwordCtrl, decoration: _inputDec('Set Password', Icons.lock), obscureText: true, validator: (v) => v!.length < 6 ? 'Min 6 chars' : null),
-          const SizedBox(height: 24),
-          Text('Payout Details (Optional)', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 16),
-          TextFormField(controller: _upiCtrl, decoration: _inputDec('UPI ID', Icons.payment)),
-          const SizedBox(height: 12),
-          TextFormField(controller: _bankNameCtrl, decoration: _inputDec('Bank Name', Icons.account_balance)),
-          const SizedBox(height: 12),
-          TextFormField(controller: _accountCtrl, decoration: _inputDec('Account Number', Icons.numbers)),
-          const SizedBox(height: 12),
-          TextFormField(controller: _ifscCtrl, decoration: _inputDec('IFSC Code', Icons.code)),
+          _sectionTitle('PERSONAL PROFILE'),
+          _buildFormField(_nameCtrl, 'Full Name', Icons.person_outline_rounded),
+          _buildFormField(_emailCtrl, 'Email Address', Icons.email_outlined, type: TextInputType.emailAddress),
+          _buildFormField(_phoneCtrl, 'Mobile Number', Icons.phone_outlined, type: TextInputType.phone),
+          _buildFormField(_cityCtrl, 'Service City', Icons.location_on_outlined),
+          _buildFormField(_passwordCtrl, 'Account Password', Icons.lock_outline_rounded, obscure: true),
+          
+          const SizedBox(height: 32),
+          _sectionTitle('PAYOUT PREFERENCES'),
+          _buildFormField(_upiCtrl, 'UPI ID (Recommended)', Icons.account_balance_wallet_outlined),
+          _buildFormField(_bankNameCtrl, 'Bank Institution', Icons.account_balance_rounded),
+          _buildFormField(_accountCtrl, 'Account Number', Icons.numbers_rounded),
+          _buildFormField(_ifscCtrl, 'IFSC Registry Code', Icons.code_rounded),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Text(
+        title, 
+        style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 11, color: const Color(0xFF94A3B8), letterSpacing: 1.5)
+      ),
+    );
+  }
+
+  Widget _buildFormField(TextEditingController ctrl, String label, IconData icon, {TextInputType type = TextInputType.text, bool obscure = false}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFF1F5F9)),
+            ),
+            child: TextFormField(
+              controller: ctrl,
+              keyboardType: type,
+              obscureText: obscure,
+              style: GoogleFonts.inter(color: const Color(0xFF0F172A), fontSize: 15, fontWeight: FontWeight.w600),
+              decoration: InputDecoration(
+                hintText: label,
+                hintStyle: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 14, fontWeight: FontWeight.w500),
+                prefixIcon: Icon(icon, color: const Color(0xFF64748B), size: 20),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              ),
+              validator: (v) => v!.isEmpty ? 'Required' : null,
+            ),
+          ),
         ],
       ),
     );
@@ -226,30 +356,39 @@ class _FranchiseRegistrationScreenState extends ConsumerState<FranchiseRegistrat
   Widget _buildKycStep() {
     return Column(
       children: [
-        const Text('Upload Aadhar or PAN Card', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        const Text('Supported formats: JPG, PNG, PDF', style: TextStyle(color: Colors.grey)),
-        const SizedBox(height: 24),
+        _sectionTitle('KYC DOCUMENTATION'),
+        Text(
+          'Please upload a clear copy of your Identity Document (Aadhar/PAN)', 
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(color: const Color(0xFF64748B), fontSize: 14, height: 1.5)
+        ),
+        const SizedBox(height: 40),
         GestureDetector(
           onTap: _pickFile,
           child: Container(
-            height: 150,
+            height: 200,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: Colors.grey[100],
-              border: Border.all(color: Colors.grey[300]!),
-              borderRadius: BorderRadius.circular(12),
+              color: const Color(0xFFF8FAFC),
+              border: Border.all(color: const Color(0xFFE2E8F0), style: BorderStyle.solid),
+              borderRadius: BorderRadius.circular(24),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.cloud_upload_outlined, size: 48, color: Colors.blue[700]),
-                const SizedBox(height: 8),
-                Text(
-                  _kycFile != null ? _kycFile!.path.split('/').last : 'Tap to Upload Document',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.blue[700], fontWeight: FontWeight.w600),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(color: const Color(0xFF2563EB).withOpacity(0.08), shape: BoxShape.circle),
+                  child: const Icon(Icons.upload_file_rounded, size: 48, color: Color(0xFF2563EB)),
                 ),
+                const SizedBox(height: 20),
+                Text(
+                  _kycFile != null ? _kycFile!.path.split('/').last : 'Upload Credentials',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(color: const Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 4),
+                Text('PDF, JPG or PNG up to 5MB', style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 11)),
               ],
             ),
           ),
@@ -261,84 +400,118 @@ class _FranchiseRegistrationScreenState extends ConsumerState<FranchiseRegistrat
   Widget _buildPricingStep() {
     return Column(
       children: [
-        const Text('Choose Your Plan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 16),
-        _planCard('Starter (Free)', 'free', '50% Revenue Share', Colors.green),
-        _planCard('Standard (₹499/yr)', 'basic', '60% Revenue Share', Colors.blue),
-        _planCard('Premium (₹999/yr)', 'premium', '70% Revenue Share', Colors.red),
-        _planCard('Elite (₹2499/yr)', 'elite', '80% Revenue Share', Colors.orange),
+        _sectionTitle('SELECT PARTNERSHIP PLAN'),
+        _planCardModern('Starter', 'free', '50% Revenue Share', '₹0', const Color(0xFF10B981)),
+        _planCardModern('Standard', 'basic', '60% Revenue Share', '₹499/yr', const Color(0xFF3B82F6)),
+        _planCardModern('Premium', 'premium', '70% Revenue Share', '₹999/yr', const Color(0xFF6366F1)),
+        _planCardModern('Elite', 'elite', '80% Revenue Share', '₹2,499/yr', const Color(0xFFF59E0B)),
       ],
+    );
+  }
+
+  Widget _planCardModern(String title, String value, String subsidy, String price, Color color) {
+    final isSelected = _selectedPlan == value;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedPlan = value),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.04) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isSelected ? color : const Color(0xFFF1F5F9), width: 2),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
+              child: Icon(Icons.verified_rounded, color: color, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: GoogleFonts.outfit(color: const Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 17)),
+                  Text(subsidy, style: GoogleFonts.inter(color: const Color(0xFF64748B), fontSize: 12, fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ),
+            Text(price, style: GoogleFonts.outfit(color: isSelected ? color : const Color(0xFF0F172A), fontWeight: FontWeight.w900, fontSize: 16)),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildAgreementStep() {
     return Column(
       children: [
-        const Text('Franchise Partner Agreement', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 16),
+        _sectionTitle('TERMS & CONDITIONS'),
         Container(
-          height: 300,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
-          child: SingleChildScrollView(
-            child: Html(
-              data: _agreementHtml,
-              style: {
-                "body": Style(margin: Margins.zero, padding: HtmlPaddings.zero, fontSize: FontSize(14)),
-                "p": Style(lineHeight: LineHeight(1.5)),
-              },
+          height: 380,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            border: Border.all(color: const Color(0xFFF1F5F9)),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Html(
+                data: _agreementHtml,
+                style: {
+                  "body": Style(
+                    margin: Margins.zero, 
+                    padding: HtmlPaddings.zero, 
+                    fontSize: FontSize(14),
+                    color: const Color(0xFF475569),
+                    fontFamily: 'Inter',
+                  ),
+                  "p": Style(lineHeight: LineHeight(1.6)),
+                },
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Checkbox(value: _agreementAccepted, onChanged: (v) => setState(() => _agreementAccepted = v!)),
-            const Expanded(child: Text('I have read and agree to the terms')),
-          ],
+        const SizedBox(height: 28),
+        InkWell(
+          onTap: () => setState(() => _agreementAccepted = !_agreementAccepted),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: _agreementAccepted ? const Color(0xFF10B981) : Colors.white,
+                    border: Border.all(color: _agreementAccepted ? const Color(0xFF10B981) : const Color(0xFFCBD5E1), width: 2),
+                  ),
+                  child: _agreementAccepted ? const Icon(Icons.check_rounded, size: 18, color: Colors.white) : null,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    'I confirm that I have read and accepted the partner agreement',
+                    style: GoogleFonts.inter(color: const Color(0xFF0F172A), fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
         )
       ],
     );
   }
   
-  Widget _planCard(String title, String value, String subtitle, Color color) {
-    final isSelected = _selectedPlan == value;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedPlan = value),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          border: Border.all(color: isSelected ? color : Colors.grey[200]!, width: isSelected ? 2 : 1),
-          borderRadius: BorderRadius.circular(12),
-          color: isSelected ? color.withOpacity(0.05) : Colors.white,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: color)),
-                  Text(subtitle, style: const TextStyle(color: Colors.grey)),
-                ],
-              ),
-            ),
-            if (isSelected) Icon(Icons.check_circle, color: color),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget _planCard(String a, String b, String c, Color d) => const SizedBox(); // Dummy
   
-  InputDecoration _inputDec(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, color: Colors.grey),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    );
-  }
+  InputDecoration _inputDec(String label, IconData icon) => const InputDecoration(); // Dummy for replacement safety
 
   Future<void> _pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['jpg', 'pdf', 'png', 'jpeg']);
@@ -388,7 +561,7 @@ class _FranchiseRegistrationScreenState extends ConsumerState<FranchiseRegistrat
     
     try {
         final api = ApiService();
-        final res = await api.client.post('/api/franchise/register', data: data);
+        final res = await api.client.post('franchise/register', data: data);
         if (res.statusCode == 200 || res.statusCode == 201) {
             _franchiseId = res.data['franchiseId'] ?? res.data['requestId']; 
             setState(() { _currentStep++; _isLoading = false; });
@@ -427,9 +600,9 @@ class _FranchiseRegistrationScreenState extends ConsumerState<FranchiseRegistrat
         'requestId': _franchiseId.toString(), 
       });
 
-      final res = await api.client.post('/api/kyc', data: formData);
+      final res = await api.client.post('kyc', data: formData);
       
-      if (res.statusCode == 200) {
+      if (res.statusCode == 200 || res.statusCode == 201) {
         setState(() { _currentStep++; _isLoading = false; });
       } else {
         throw _parseError(res);
@@ -449,15 +622,19 @@ class _FranchiseRegistrationScreenState extends ConsumerState<FranchiseRegistrat
     setState(() => _isLoading = true);
     try {
        final api = ApiService();
-       final res = await api.client.post('/api/pricing/create-order', data: {
+       final res = await api.client.post('pricing/create-order', data: {
          'requestId': _franchiseId,
          'plan': _selectedPlan
        });
        
-       if (res.data['isFree'] == true) {
-          setState(() { _currentStep++; _isLoading = false; });
+       if (res.statusCode == 200 || res.statusCode == 201) {
+          if (res.data['isFree'] == true) {
+             setState(() { _currentStep++; _isLoading = false; });
+          } else {
+             _openRazorpay(res.data);
+          }
        } else {
-          _openRazorpay(res.data);
+          throw _parseError(res);
        }
     } catch (e) {
        setState(() => _isLoading = false);
@@ -492,7 +669,7 @@ class _FranchiseRegistrationScreenState extends ConsumerState<FranchiseRegistrat
      setState(() => _isLoading = true);
      try {
        final api = ApiService();
-       final res = await api.client.get('/api/content');
+       final res = await api.client.get('content');
        setState(() {
           _agreementHtml = res.data['agreement_text'] ?? '<p>Standard Agreement...</p>';
           _currentStep++; 
@@ -511,13 +688,12 @@ class _FranchiseRegistrationScreenState extends ConsumerState<FranchiseRegistrat
       setState(() => _isLoading = true);
       try {
          final api = ApiService();
-         final res = await api.client.post('/api/agreement', data: { 'requestId': _franchiseId });
-         
-         if (res.statusCode == 200) {
-            _showSuccessDialog();
-         } else {
-            throw _parseError(res);
-         }
+         final res = await api.client.post('agreement', data: { 'requestId': _franchiseId });
+         if (res.statusCode == 200 || res.statusCode == 201) {
+             _showSuccessDialog();
+          } else {
+             throw _parseError(res);
+          }
       } catch (e) {
          setState(() => _isLoading = false);
          _showError(e);

@@ -24,7 +24,7 @@ export default function Home() {
 
   // Auto-rotate testimonials
   useEffect(() => {
-    const testimonialCount = content.testimonials?.testimonials?.length || 3;
+    const testimonialCount = (Array.isArray(content.testimonials?.testimonials) ? content.testimonials.testimonials.length : 0) || 3;
     const interval = setInterval(() => {
       setTestimonialIndex((prev) => (prev + 1) % testimonialCount);
     }, 5000); // Change every 5 seconds
@@ -421,7 +421,7 @@ export default function Home() {
                 msOverflowStyle: 'none',
                 WebkitOverflowScrolling: 'touch'
               }}>
-                {(content.testimonials?.testimonials?.length > 0 ? content.testimonials.testimonials : [
+                {(Array.isArray(content.testimonials?.testimonials) && content.testimonials.testimonials.length > 0 ? content.testimonials.testimonials : [
                   {
                     name: "Rahul Sharma",
                     role: "Franchise Owner",
@@ -518,7 +518,7 @@ export default function Home() {
                 gap: '0.5rem',
                 marginTop: '1rem'
               }}>
-                {(content.testimonials?.testimonials?.length > 0 ? content.testimonials.testimonials : [1, 2, 3]).map((_: any, index: number) => (
+                {(Array.isArray(content.testimonials?.testimonials) && content.testimonials.testimonials.length > 0 ? content.testimonials.testimonials : [1, 2, 3]).map((_: any, index: number) => (
                   <div
                     key={index}
                     style={{

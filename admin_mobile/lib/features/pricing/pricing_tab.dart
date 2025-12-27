@@ -31,17 +31,13 @@ class _PricingTabState extends ConsumerState<PricingTab> {
     final cmsAsync = ref.watch(cmsProvider);
 
     return Scaffold(
+      drawerEnableOpenDragGesture: false,
       appBar: AppBar(
         title: Text('Pricing & Plans', style: GoogleFonts.poppins(color: Colors.black)),
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.save, color: Color(0xFF0F172A)),
-            onPressed: () => _saveSettings(cmsAsync.value?.settings ?? {}),
-          )
-        ],
+        // actions: removed as per request to use bottom button only
       ),
       body: cmsAsync.when(
         data: (state) {

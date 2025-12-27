@@ -64,7 +64,7 @@ final trainingProvider = AsyncNotifierProvider<TrainingNotifier, List<TrainingMo
 final trainingMaterialsProvider = FutureProvider.family<List<TrainingMaterial>, int>((ref, moduleId) async {
   final api = ApiService();
   try {
-    final response = await api.client.get('/api/admin/training/materials?moduleId=$moduleId');
+    final response = await api.client.get('admin/training/materials?moduleId=$moduleId');
     final data = response.data as List;
     return data.map((e) => TrainingMaterial.fromJson(e)).toList();
   } catch (e) {
@@ -82,7 +82,7 @@ class TrainingNotifier extends AsyncNotifier<List<TrainingModule>> {
 
   Future<List<TrainingModule>> _fetchModules() async {
     try {
-      final response = await _apiService.client.get('/api/admin/training/modules');
+      final response = await _apiService.client.get('admin/training/modules');
       final data = response.data as List;
       return data.map((e) => TrainingModule.fromJson(e)).toList();
     } catch (e) {
@@ -92,7 +92,7 @@ class TrainingNotifier extends AsyncNotifier<List<TrainingModule>> {
 
   Future<bool> createModule(Map<String, dynamic> data) async {
     try {
-      final response = await _apiService.client.post('/api/admin/training/modules', data: data);
+      final response = await _apiService.client.post('admin/training/modules', data: data);
       if (response.statusCode == 200 || response.statusCode == 201) {
         ref.invalidateSelf();
         return true;
@@ -105,7 +105,7 @@ class TrainingNotifier extends AsyncNotifier<List<TrainingModule>> {
 
   Future<bool> updateModule(int id, Map<String, dynamic> data) async {
     try {
-      final response = await _apiService.client.put('/api/admin/training/modules', data: {...data, 'id': id});
+      final response = await _apiService.client.put('admin/training/modules', data: {...data, 'id': id});
       if (response.statusCode == 200) {
         ref.invalidateSelf();
         return true;
@@ -118,12 +118,40 @@ class TrainingNotifier extends AsyncNotifier<List<TrainingModule>> {
 
   Future<bool> deleteModule(int id) async {
     try {
-      final response = await _apiService.client.delete('/api/admin/training/modules?id=$id');
+      final response = await _apiService.client.delete('admin/training/modules?id=$id');
       if (response.statusCode == 200) {
         ref.invalidateSelf();
         return true;
       }
       return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Material Methods
+  Future<bool> createMaterial(Map<String, dynamic> data) async {
+    try {
+      final response = await _apiService.client.post('admin/training/materials', data: data);
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> updateMaterial(int id, Map<String, dynamic> data) async {
+    try {
+      final response = await _apiService.client.put('admin/training/materials', data: {...data, 'id': id});
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteMaterial(int id) async {
+    try {
+      final response = await _apiService.client.delete('admin/training/materials?id=$id');
+      return response.statusCode == 200;
     } catch (e) {
       return false;
     }

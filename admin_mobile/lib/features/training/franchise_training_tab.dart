@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'training_provider.dart';
+import '../../widgets/premium_widgets.dart';
 
 class FranchiseTrainingTab extends ConsumerWidget {
   const FranchiseTrainingTab({super.key});
@@ -13,11 +14,14 @@ class FranchiseTrainingTab extends ConsumerWidget {
     final trainingAsync = ref.watch(trainingProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('My Training', style: GoogleFonts.poppins(color: const Color(0xFF1E293B), fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1E293B),
-        elevation: 0,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: AppBar(
+          title: Text('Partner Academy', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF0F172A))),
+          backgroundColor: Colors.white.withOpacity(0.8),
+          elevation: 0,
+          centerTitle: true,
+        ),
       ),
       backgroundColor: Colors.grey[50],
       body: RefreshIndicator(
@@ -26,46 +30,54 @@ class FranchiseTrainingTab extends ConsumerWidget {
           data: (allModules) {
             final modules = allModules.where((m) => m.role == 'franchise').toList();
 
-            if (modules.isEmpty) return Center(child: Text('No training modules assigned.', style: GoogleFonts.inter(color: Colors.grey)));
+            if (modules.isEmpty) {
+              return const IllustrativeState(
+                icon: Icons.school_rounded,
+                title: 'No Training Found',
+                subtitle: 'There are no active educational modules assigned to your profile at this moment.',
+              );
+            }
             
             return ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(24),
+              physics: const BouncingScrollPhysics(),
               itemCount: modules.length,
               itemBuilder: (context, index) {
                 final m = modules[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 2,
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => TrainingMaterialsScreen(moduleId: m.id, moduleTitle: m.title)));
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(color: const Color(0xFFE0F2FE), borderRadius: BorderRadius.circular(12)),
-                            child: const Icon(Icons.school, color: Color(0xFF2563EB), size: 24),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(m.title, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
-                                const SizedBox(height: 4),
-                                Text(m.category, style: GoogleFonts.inter(color: const Color(0xFF64748B), fontSize: 12, fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 4),
-                                Text(m.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                              ],
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: PremiumGlassCard(
+                    padding: 0,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => TrainingMaterialsScreen(moduleId: m.id, moduleTitle: m.title)));
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(color: const Color(0xFF2563EB).withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
+                              child: const Icon(Icons.school_rounded, color: Color(0xFF2563EB), size: 24),
                             ),
-                          ),
-                          const Icon(Icons.chevron_right, color: Colors.grey),
-                        ],
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(m.title, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16, color: const Color(0xFF0F172A))),
+                                  const SizedBox(height: 4),
+                                  Text(m.category.toUpperCase(), style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                                  const SizedBox(height: 8),
+                                  Text(m.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: GoogleFonts.inter(color: const Color(0xFF64748B), fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8)),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -92,11 +104,23 @@ class TrainingMaterialsScreen extends ConsumerWidget {
     final materialsAsync = ref.watch(trainingMaterialsProvider(moduleId));
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(moduleTitle, style: GoogleFonts.poppins(color: const Color(0xFF1E293B), fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1E293B),
-        elevation: 0,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: AppBar(
+          title: Text(moduleTitle, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF0F172A))),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+          leadingWidth: 70,
+          leading: Navigator.of(context).canPop() ? IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: const Color(0xFF0F172A).withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Color(0xFF0F172A)),
+            ),
+            onPressed: () => Navigator.of(context).pop(),
+          ) : null,
+        ),
       ),
       backgroundColor: Colors.grey[50],
       body: materialsAsync.when(

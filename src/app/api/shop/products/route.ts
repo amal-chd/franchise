@@ -62,3 +62,38 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });
     }
 }
+
+export async function PUT(request: Request) {
+    try {
+        const body = await request.json();
+        const { id, name, description, price, image_url, category, stock } = body;
+
+        if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
+
+        await executeQuery({
+            query: 'UPDATE products SET name=?, description=?, price=?, image_url=?, category=?, stock=? WHERE id=?',
+            values: [name, description, price, image_url, category, stock, id]
+        });
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        return NextResponse.json({ error: 'Failed to update product' }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: Request) {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
+
+    try {
+        await executeQuery({
+            query: 'DELETE FROM products WHERE id = ?',
+            values: [id]
+        });
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
+    }
+}

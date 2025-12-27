@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
         // Fetch Franchise Email
         const franchiseData: any = await executeQuery({
-            query: 'SELECT email, full_name, city FROM franchises WHERE id = ?',
+            query: 'SELECT email, name, city FROM franchise_requests WHERE id = ?',
             values: [franchise_id]
         });
 
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
                     html: `
                         <div style="font-family: Arial, sans-serif; color: #333;">
                             <h2>Payout Processed! 💰</h2>
-                            <p>Dear ${franchise.full_name},</p>
+                            <p>Dear ${franchise.name},</p>
                             <p>Your payout of <strong>₹${amount}</strong> for the recent period has been successfully processed.</p>
                             <p>Please find the detailed invoice attached to this email.</p>
                             <br>

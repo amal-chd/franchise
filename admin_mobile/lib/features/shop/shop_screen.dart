@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'shop_provider.dart';
 
 class ShopScreen extends ConsumerWidget {
@@ -130,22 +131,90 @@ class ShopScreen extends ConsumerWidget {
   }
 }
 
-class CartScreen extends ConsumerWidget {
+class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends ConsumerState<CartScreen> {
+  late Razorpay _razorpay;
+  Map<String, dynamic>? _currentOrderData;
+
+  @override
+  void initState() {
+    super.initState();
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+  }
+
+  @override
+  void dispose() {
+    _razorpay.clear();
+    super.dispose();
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    if (_currentOrderData == null) return;
+
+    final verifyData = {
+      'razorpay_order_id': response.orderId,
+      'razorpay_payment_id': response.paymentId,
+      'razorpay_signature': response.signature,
+      'orderId': _currentOrderData!['orderId'],
+    };
+
+    final verified = await ref.read(orderProvider.notifier).verifyPayment(verifyData);
+    
+    if (context.mounted) {
+      if (verified) {
+        ref.read(cartProvider.notifier).clearCart();
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment Successful! Order Placed.'), backgroundColor: Colors.green));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment Verification Failed'), backgroundColor: Colors.red));
+      }
+    }
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Payment Failed: ${response.message}"), backgroundColor: Colors.red),
+    );
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("External Wallet Selected: ${response.walletName}")),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final cart = ref.watch(cartProvider);
-    final total = ref.read(cartProvider.notifier).totalAmount; // Use read for getters usually, but here watch is safer for updates? No, notifier rebuilds.
-    // Actually accessing notifier property directly inside build is not reactive. better use ref.watch(cartProvider) then calculate.
     final totalAmount = cart.fold(0.0, (sum, item) => sum + (item.product.price * item.quantity));
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('My Cart', style: GoogleFonts.poppins(color: const Color(0xFF1E293B), fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1E293B),
-        elevation: 0,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: AppBar(
+          title: Text('My Cart', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF0F172A))),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+          leadingWidth: 70,
+          leading: Navigator.of(context).canPop() ? IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: const Color(0xFF0F172A).withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Color(0xFF0F172A)),
+            ),
+            onPressed: () => Navigator.of(context).pop(),
+          ) : null,
+        ),
       ),
       body: cart.isEmpty
           ? Center(child: Text('Your cart is empty', style: GoogleFonts.inter(color: Colors.grey)))
@@ -228,20 +297,42 @@ class CartScreen extends ConsumerWidget {
                         height: 50,
                         child: ElevatedButton(
                           onPressed: () async {
-                             final success = await ref.read(orderProvider.notifier).placeOrder(cart, totalAmount);
-                             if (success && context.mounted) {
-                               ref.read(cartProvider.notifier).clearCart();
-                               Navigator.pop(context);
-                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order placed successfully!')));
+                             final orderData = await ref.read(orderProvider.notifier).placeOrder(cart, totalAmount);
+                             
+                             if (orderData != null) {
+                               setState(() => _currentOrderData = orderData);
+                               
+                               var options = {
+                                 'key': orderData['keyId'],
+                                 'amount': orderData['amount'],
+                                 'name': 'The Kada Franchise',
+                                 'description': 'Shop Order #${orderData['orderId']}',
+                                 'order_id': orderData['razorpayOrderId'], 
+                                 'prefill': {
+                                   'contact': '', // Could prefill from user profile
+                                   'email': ''
+                                 },
+                                 'external': {
+                                   'wallets': ['paytm']
+                                 }
+                               };
+
+                               try {
+                                 _razorpay.open(options);
+                               } catch (e) {
+                                 if (context.mounted) {
+                                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error launching payment: $e')));
+                                 }
+                               }
                              } else if (context.mounted) {
-                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to place order')));
+                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to initiate order. Try again.')));
                              }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF1E293B),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          child: const Text('Place Order', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                          child: const Text('Pay & Order', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],

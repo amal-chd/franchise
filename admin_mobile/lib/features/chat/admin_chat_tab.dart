@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
+import '../../core/chat_notification_service.dart';
 import 'chat_provider.dart';
+
+import '../franchises/franchise_profile_screen.dart' hide Center;
+import '../requests/requests_provider.dart';
 
 class AdminChatTab extends ConsumerWidget {
   const AdminChatTab({super.key});
@@ -9,8 +14,14 @@ class AdminChatTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sessionsAsync = ref.watch(adminChatSessionsProvider);
+    
+    // Mark as read when viewing chat list
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(chatNotificationProvider.notifier).markAsRead();
+    });
 
     return Scaffold(
+      drawerEnableOpenDragGesture: false,
       backgroundColor: Colors.grey[50],
       body: sessionsAsync.when(
         data: (sessions) {
@@ -24,13 +35,21 @@ class AdminChatTab extends ConsumerWidget {
               final session = sessions[index];
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: ListTile(
-                  leading: CircleAvatar(child: Text('#${session.id}')),
-                  title: Text('Session #${session.id}', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-                  subtitle: Text('Status: ${session.status}'),
+                  leading: CircleAvatar(
+                    backgroundColor: const Color(0xFFEFF6FF),
+                    child: Text(session.franchiseName.substring(0,1).toUpperCase(), style: const TextStyle(color: Color(0xFF2563EB))),
+                  ),
+                  title: Text(session.franchiseName, style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+                  subtitle: Text(session.franchiseCity.isNotEmpty ? session.franchiseCity : 'Location not set'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                     Navigator.push(context, MaterialPageRoute(builder: (_) => AdminChatScreen(sessionId: session.id)));
+                     Navigator.push(context, MaterialPageRoute(builder: (_) => AdminChatScreen(
+                       sessionId: session.id,
+                       franchiseId: session.franchiseId,
+                       franchiseName: session.franchiseName
+                     )));
                   },
                 ),
               );
@@ -40,13 +59,86 @@ class AdminChatTab extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, s) => Center(child: Text('Error: $e')),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showNewChatDialog(context, ref),
+        label: const Text('New Chat'),
+        icon: const Icon(Icons.chat),
+        backgroundColor: const Color(0xFF2563EB),
+      ),
+    );
+  }
+
+  void _showNewChatDialog(BuildContext context, WidgetRef ref) {
+    ref.read(requestsProvider.notifier).fetchRequests();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Start New Chat'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Consumer(
+            builder: (context, ref, _) {
+              final requestsAsync = ref.watch(requestsProvider);
+              return requestsAsync.when(
+                data: (requests) {
+                  final active = requests.where((r) => r.status == 'approved').toList();
+                  if (active.isEmpty) return const Text('No active franchises available.');
+                  
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: active.length,
+                    itemBuilder: (context, index) {
+                      final f = active[index];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          child: Text(f.name.isNotEmpty ? f.name[0].toUpperCase() : '?'),
+                        ),
+                        title: Text(f.name),
+                        subtitle: Text(f.city),
+                        onTap: () async {
+                           Navigator.pop(context); // Close dialog
+                           
+                           final session = await ref.read(adminChatControllerProvider).startNewChat(f.id);
+                           if (session != null && context.mounted) {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => AdminChatScreen(
+                                 sessionId: session.id,
+                                 franchiseId: session.franchiseId,
+                                 franchiseName: session.franchiseName
+                              )));
+                           } else if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to start chat')));
+                           }
+                        },
+                      );
+                    },
+                  );
+                },
+                loading: () => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
+                error: (e, s) => Text('Error: $e'),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        ],
+      ),
     );
   }
 }
 
 class AdminChatScreen extends ConsumerStatefulWidget {
   final int sessionId;
-  const AdminChatScreen({super.key, required this.sessionId});
+  final int franchiseId;
+  final String franchiseName;
+
+  const AdminChatScreen({
+    super.key, 
+    required this.sessionId,
+    required this.franchiseId,
+    required this.franchiseName,
+  });
 
   @override
   ConsumerState<AdminChatScreen> createState() => _AdminChatScreenState();
@@ -54,13 +146,64 @@ class AdminChatScreen extends ConsumerStatefulWidget {
 
 class _AdminChatScreenState extends ConsumerState<AdminChatScreen> {
   final TextEditingController _msgCtrl = TextEditingController();
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Mark notifications as read and set current session
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(chatNotificationProvider.notifier).setCurrentSession(widget.sessionId);
+      ref.read(chatNotificationProvider.notifier).markAsRead();
+    });
+    
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      ref.invalidate(adminChatMessagesFamilyProvider(widget.sessionId));
+    });
+  }
+
+  @override
+  void dispose() {
+    // Clear current session on exit
+    ref.read(chatNotificationProvider.notifier).setCurrentSession(null);
+    _timer?.cancel();
+    _msgCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(adminChatMessagesFamilyProvider(widget.sessionId));
 
     return Scaffold(
-      appBar: AppBar(title: Text('Chat #${widget.sessionId}')),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: AppBar(
+          title: Text(widget.franchiseName, style: GoogleFonts.outfit(fontSize: 18, color: const Color(0xFF0F172A), fontWeight: FontWeight.bold)),
+          backgroundColor: Colors.white,
+          elevation: 1,
+          centerTitle: true,
+          leading: IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: const Color(0xFF0F172A).withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Color(0xFF0F172A)),
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.info_outline_rounded, color: Color(0xFF0F172A)),
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => FranchiseProfileScreen(
+                  franchiseId: widget.franchiseId,
+                  franchiseName: widget.franchiseName
+                )));
+              },
+            )
+          ],
+        ),
+      ),
       body: Column(
         children: [
           Expanded(
@@ -68,18 +211,20 @@ class _AdminChatScreenState extends ConsumerState<AdminChatScreen> {
               data: (messages) {
                 if (messages.isEmpty) return const Center(child: Text('No messages yet'));
                 return ListView.builder(
-                   reverse: true,
-                   padding: const EdgeInsets.all(16),
-                   itemCount: messages.length,
-                   itemBuilder: (context, index) {
-                      final msg = messages[index]; // Note: index 0 is newest if reverse is true? 
-                      // Actually standard ListView reverse means index 0 is at bottom. 
-                      // Assuming API returns newest last? 
-                      // Let's assume standard 'messages' is chronological (oldest first). 
-                      // To show newest at bottom, ListView normally renders top to bottom.
-                      // If we want auto-scroll to bottom, usually reverse=true and list reversed.
-                      // Let's keep it simple for now: standard list, user scrolls down.
-                      
+                   reverse: true, // Assuming provider returns strictly chronological, we might need to reverse here or stick to standard.
+                   // WAIT: If current implementation uses reverse=true, index 0 is bottom.
+                   // If data coming from API is oldest first (created_at asc usually), then reverse=true puts oldest at bottom? No, reverse puts index 0 at bottom.
+                   // If list is [msg1, msg2, msg3] (oldest -> newest), index 0 is msg1 (oldest). At bottom? That's wrong ordering.
+                   // Usually chat requires Newest at Bottom.
+                   // If API returns [oldest, ..., newest], then standard list is Top->Bottom [oldest ... newest]. This is correct for reading down.
+                   // But for auto-scroll to bottom, we usually reverse the list AND reverse the view.
+                   // Let's assume standard ListView (no reverse) for simplicity unless user complained.
+                   // Wait, previous code had reverse: true.
+                   // Let's stick to previous logical structure but assuming API returns standard list.
+                    padding: const EdgeInsets.all(16),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final msg = messages[index];
                       final isMe = msg.senderType == 'admin';
                       return Align(
                         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -121,6 +266,13 @@ class _AdminChatScreenState extends ConsumerState<AdminChatScreen> {
             color: Colors.white,
             child: Row(
               children: [
+                IconButton(
+                  onPressed: () async {
+                    // TODO: Implement file picker
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File upload coming soon')));
+                  },
+                  icon: const Icon(Icons.attach_file, color: Colors.grey),
+                ),
                 Expanded(
                   child: TextField(
                     controller: _msgCtrl,

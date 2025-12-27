@@ -43,7 +43,7 @@ class CareersNotifier extends AsyncNotifier<List<JobPosting>> {
   }
 
   Future<List<JobPosting>> _fetchJobs() async {
-    final response = await _apiService.client.get('/api/admin/careers');
+    final response = await _apiService.client.get('admin/careers');
     return (response.data as List).map((e) => JobPosting.fromJson(e)).toList();
   }
 
@@ -54,7 +54,7 @@ class CareersNotifier extends AsyncNotifier<List<JobPosting>> {
 
   Future<bool> addJob(Map<String, dynamic> jobData) async {
     try {
-      final response = await _apiService.client.post('/api/admin/careers', data: jobData);
+      final response = await _apiService.client.post('admin/careers', data: jobData);
       if (response.statusCode == 200 || response.statusCode == 201) {
         fetchJobs();
         return true;

@@ -24,7 +24,7 @@ class PlanUpgradeNotifier extends AsyncNotifier<bool> {
 
       if (franchiseId == null) throw Exception('Franchise ID not found');
 
-      final response = await _apiService.client.post('/api/franchise/plan-upgrade', data: {
+      final response = await _apiService.client.post('franchise/plan-upgrade', data: {
         'franchiseId': franchiseId,
         'currentPlan': currentPlan,
         'requestedPlan': newPlan,
@@ -58,11 +58,23 @@ class _PlanUpgradeScreenState extends ConsumerState<PlanUpgradeScreen> {
     final upgradeState = ref.watch(planUpgradeProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Manage Plan', style: GoogleFonts.poppins(color: const Color(0xFF1E293B), fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1E293B),
-        elevation: 0,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: AppBar(
+          title: Text('Membership Plan', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF0F172A))),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+          leadingWidth: 70,
+          leading: Navigator.of(context).canPop() ? IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: const Color(0xFF0F172A).withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Color(0xFF0F172A)),
+            ),
+            onPressed: () => Navigator.of(context).pop(),
+          ) : null,
+        ),
       ),
       backgroundColor: Colors.grey[50],
       body: SingleChildScrollView(

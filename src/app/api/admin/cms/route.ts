@@ -35,13 +35,14 @@ export async function POST(request: Request) {
 
         // Update or insert content
         for (const [key, value] of Object.entries(content)) {
+            const valueToStore = typeof value === 'object' ? JSON.stringify(value) : value;
             await executeQuery({
                 query: `
                     INSERT INTO site_content (section, content_key, content_value)
                     VALUES (?, ?, ?)
                     ON DUPLICATE KEY UPDATE content_value = ?
                 `,
-                values: [section, key, value, value]
+                values: [section, key, valueToStore, valueToStore]
             });
         }
 
