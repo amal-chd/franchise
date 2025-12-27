@@ -14,7 +14,7 @@ export async function GET(request: Request) {
         console.log('DEBUG: Zones Count:', Array.isArray(result) ? result.length : 'Not an array');
 
         return NextResponse.json(result);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Zone Fetch Error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }

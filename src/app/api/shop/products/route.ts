@@ -41,7 +41,7 @@ export async function GET(request: Request) {
     try {
         const products = await executeQuery({ query: cleanQuery, values: cleanValues });
         return NextResponse.json(products);
-    } catch (error) {
+    } catch (error: any) {
         return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
     }
 }
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
         });
 
         return NextResponse.json({ success: true, result });
-    } catch (error) {
+    } catch (error: any) {
         return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });
     }
 }
@@ -76,7 +76,7 @@ export async function PUT(request: Request) {
         });
 
         return NextResponse.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
         return NextResponse.json({ error: 'Failed to update product' }, { status: 500 });
     }
 }
@@ -93,7 +93,7 @@ export async function DELETE(request: Request) {
             values: [id]
         });
         return NextResponse.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
         return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
     }
 }

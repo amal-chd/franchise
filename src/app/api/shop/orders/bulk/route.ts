@@ -51,7 +51,7 @@ export async function POST(request: Request) {
                         } else {
                             failedIds.push(orderId);
                         }
-                    } catch (error) {
+                    } catch (error: any) {
                         console.error(`Failed to update order ${orderId}:`, error);
                         failedIds.push(orderId);
                     }
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
                             values: [data.paymentStatus, orderId]
                         });
                         successCount++;
-                    } catch (error) {
+                    } catch (error: any) {
                         failedIds.push(orderId);
                     }
                 }
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
                         });
 
                         successCount++;
-                    } catch (error) {
+                    } catch (error: any) {
                         failedIds.push(orderId);
                     }
                 }
@@ -141,7 +141,7 @@ export async function POST(request: Request) {
                         csvData,
                         filename: `orders_export_${Date.now()}.csv`
                     });
-                } catch (error) {
+                } catch (error: any) {
                     return NextResponse.json({ error: 'Export failed' }, { status: 500 });
                 }
 
@@ -157,7 +157,7 @@ export async function POST(request: Request) {
             message: `Successfully processed ${successCount} out of ${orderIds.length} orders`
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Bulk operation error:', error);
         return NextResponse.json({ error: 'Bulk operation failed' }, { status: 500 });
     }

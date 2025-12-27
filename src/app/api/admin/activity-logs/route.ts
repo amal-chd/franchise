@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
                 totalPages: Math.ceil(total / limit)
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Activity Logs GET Error:', error);
         return NextResponse.json({ error: 'Failed to fetch activity logs' }, { status: 500 });
     }
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
             id: result.insertId,
             message: 'Activity logged successfully'
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Activity Logs POST Error:', error);
         return NextResponse.json({ error: 'Failed to create activity log' }, { status: 500 });
     }

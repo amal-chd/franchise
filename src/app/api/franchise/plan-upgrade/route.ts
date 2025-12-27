@@ -12,7 +12,7 @@ export async function POST(request: Request) {
         });
 
         return NextResponse.json({ success: true, message: 'Request submitted' });
-    } catch (error) {
+    } catch (error: any) {
         return NextResponse.json({ error: 'Failed to submit request' }, { status: 500 });
     }
 }

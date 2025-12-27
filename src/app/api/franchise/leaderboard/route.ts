@@ -119,7 +119,7 @@ export async function GET(request: Request) {
             }
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Leaderboard fetch error:', error);
         return NextResponse.json({ error: 'Failed to fetch leaderboard' }, { status: 500 });
     }

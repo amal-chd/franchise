@@ -21,7 +21,7 @@ export async function GET(request: Request) {
         });
 
         return NextResponse.json(notifications);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Fetch notifications error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
@@ -37,7 +37,7 @@ export async function PUT(request: Request) {
 
         await markAsRead(id);
         return NextResponse.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Mark notification read error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }

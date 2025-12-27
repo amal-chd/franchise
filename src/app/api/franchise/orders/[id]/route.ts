@@ -106,7 +106,7 @@ export async function GET(
             ...order,
             items: items
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Order details fetch error:', error);
         return NextResponse.json({ error: 'Failed to fetch order details' }, { status: 500 });
     }

@@ -61,7 +61,7 @@ export async function POST(request: Request) {
             message: 'Application submitted successfully',
             requestId
         }, { status: 201 });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Request Error:', error);
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }

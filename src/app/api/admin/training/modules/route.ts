@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     try {
         const result = await executeQuery({ query, values });
         return NextResponse.json(result);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching training modules:', error);
         return NextResponse.json({ error: 'Failed to fetch modules' }, { status: 500 });
     }
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
         });
 
         return NextResponse.json({ success: true, result });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error creating training module:', error);
         return NextResponse.json({ error: 'Failed to create module' }, { status: 500 });
     }
@@ -60,7 +60,7 @@ export async function PUT(request: Request) {
         });
 
         return NextResponse.json({ success: true, result });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error updating training module:', error);
         return NextResponse.json({ error: 'Failed to update module' }, { status: 500 });
     }
@@ -80,7 +80,7 @@ export async function DELETE(request: Request) {
             values: [id]
         });
         return NextResponse.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
         return NextResponse.json({ error: 'Failed to delete module' }, { status: 500 });
     }
 }

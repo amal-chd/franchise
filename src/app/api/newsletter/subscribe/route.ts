@@ -21,7 +21,7 @@ export async function POST(request: Request) {
             }
             throw error;
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error('Newsletter subscription error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }

@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
         const history = await executeQuery({ query, values });
         return NextResponse.json(history);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching payout history:', error);
         return NextResponse.json({ error: 'Failed to fetch history' }, { status: 500 });
     }

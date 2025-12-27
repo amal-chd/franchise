@@ -11,7 +11,7 @@ export async function GET() {
         await executeQuery({ query, values: [] });
 
         return NextResponse.json({ message: 'Migration successful: Added password column' });
-    } catch (error) {
+    } catch (error: any) {
         return NextResponse.json({ message: 'Migration failed', error: (error as Error).message }, { status: 500 });
     }
 }

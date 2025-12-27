@@ -20,7 +20,7 @@ export async function GET(request: Request) {
         }
 
         return NextResponse.json({ error: 'Franchise not found' }, { status: 404 });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Profile Fetch Error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
@@ -52,7 +52,7 @@ export async function PUT(request: Request) {
         });
 
         return NextResponse.json({ success: true, message: 'Profile updated successfully' });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Profile Update Error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }

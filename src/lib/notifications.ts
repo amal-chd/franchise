@@ -42,7 +42,7 @@ export async function sendNotification({
 
         await executeQuery({ query, values });
         return { success: true };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Failed to send notification:', error);
         return { success: false, error };
     }

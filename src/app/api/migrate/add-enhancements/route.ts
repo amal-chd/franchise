@@ -88,7 +88,7 @@ export async function GET() {
         });
 
         return NextResponse.json({ success: true, message: 'Enhancement tables created successfully' });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Migration failed:', error);
         return NextResponse.json({ error: 'Migration failed', details: error }, { status: 500 });
     }

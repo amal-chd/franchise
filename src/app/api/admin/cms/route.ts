@@ -18,7 +18,7 @@ export async function GET() {
         }, {});
 
         return NextResponse.json(content);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching CMS content:', error);
         return NextResponse.json({ error: 'Failed to fetch content' }, { status: 500 });
     }
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
         }
 
         return NextResponse.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error updating CMS content:', error);
         return NextResponse.json({ error: 'Failed to update content' }, { status: 500 });
     }

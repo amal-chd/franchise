@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:riverpod/riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
 
@@ -20,35 +20,23 @@ class ChatNotificationState {
     this.lastMessagePreview,
     this.sessionId,
   });
-
-  ChatNotificationState copyWith({
-    int? unreadCount,
-    String? lastMessageSender,
-    String? lastMessagePreview,
-    int? sessionId,
-  }) {
-    return ChatNotificationState(
-      unreadCount: unreadCount ?? this.unreadCount,
-      lastMessageSender: lastMessageSender ?? this.lastMessageSender,
-      lastMessagePreview: lastMessagePreview ?? this.lastMessagePreview,
-      sessionId: sessionId ?? this.sessionId,
-    );
-  }
 }
 
-/// Provider for chat notification state
-final chatNotificationProvider = StateNotifierProvider<ChatNotificationNotifier, ChatNotificationState>((ref) {
+/// Provider for chat notification state using Notifier pattern
+final chatNotificationProvider = NotifierProvider<ChatNotificationNotifier, ChatNotificationState>(() {
   return ChatNotificationNotifier();
 });
 
-class ChatNotificationNotifier extends StateNotifier<ChatNotificationState> {
-  ChatNotificationNotifier() : super(ChatNotificationState());
-  
+class ChatNotificationNotifier extends Notifier<ChatNotificationState> {
   Timer? _pollingTimer;
   final ApiService _apiService = ApiService();
   int _lastKnownMessageId = 0;
-  String? _currentRole;
   int? _currentSessionId;
+
+  @override
+  ChatNotificationState build() {
+    return ChatNotificationState();
+  }
 
   /// Start polling for new messages
   void startPolling() {
@@ -70,14 +58,13 @@ class ChatNotificationNotifier extends StateNotifier<ChatNotificationState> {
 
   /// Reset unread count (when user views chat)
   void markAsRead() {
-    state = state.copyWith(unreadCount: 0);
+    state = ChatNotificationState(unreadCount: 0);
   }
 
   Future<void> _checkForNewMessages() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final role = prefs.getString('userRole');
-      _currentRole = role;
 
       if (role == 'admin') {
         await _checkAdminMessages();
@@ -91,7 +78,6 @@ class ChatNotificationNotifier extends StateNotifier<ChatNotificationState> {
 
   Future<void> _checkAdminMessages() async {
     try {
-      // Get all sessions and check for new messages
       final response = await _apiService.client.get('admin/chat/sessions');
       if (response.data == null) return;
 
@@ -104,11 +90,9 @@ class ChatNotificationNotifier extends StateNotifier<ChatNotificationState> {
 
       for (var session in sessions) {
         final sessionId = session['id'];
-        // Fetch messages for each session
         final msgResponse = await _apiService.client.get('chat/messages?sessionId=$sessionId');
         if (msgResponse.data != null) {
           final messages = msgResponse.data as List;
-          // Count messages from franchise that are newer than last known
           for (var msg in messages) {
             if (msg['sender_type'] == 'franchise' && msg['id'] > _lastKnownMessageId) {
               totalUnread++;
@@ -124,7 +108,6 @@ class ChatNotificationNotifier extends StateNotifier<ChatNotificationState> {
       }
 
       if (totalUnread > 0 && latestMessageId > _lastKnownMessageId) {
-        // Don't notify if viewing this session
         if (_currentSessionId != latestSessionId) {
           _showNotification(latestSender ?? 'New Message', latestMessage ?? 'You have a new message');
         }
@@ -146,13 +129,10 @@ class ChatNotificationNotifier extends StateNotifier<ChatNotificationState> {
       final franchiseId = prefs.getInt('franchiseId');
       if (franchiseId == null) return;
 
-      // Get session
       final sessionResponse = await _apiService.client.get('chat/session?franchiseId=$franchiseId');
       if (sessionResponse.data == null) return;
 
       final sessionId = sessionResponse.data['id'];
-      
-      // Get messages
       final msgResponse = await _apiService.client.get('chat/messages?sessionId=$sessionId');
       if (msgResponse.data == null) return;
 
@@ -172,7 +152,6 @@ class ChatNotificationNotifier extends StateNotifier<ChatNotificationState> {
       }
 
       if (unreadCount > 0 && latestMessageId > _lastKnownMessageId) {
-        // Don't notify if already viewing chat
         if (_currentSessionId != sessionId) {
           _showNotification('Admin Support', latestMessage ?? 'You have a new message');
         }
@@ -210,10 +189,7 @@ class ChatNotificationNotifier extends StateNotifier<ChatNotificationState> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
+                    Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     Text(
                       message.length > 50 ? '${message.substring(0, 50)}...' : message,
                       style: const TextStyle(fontSize: 12, color: Colors.white70),
@@ -233,9 +209,7 @@ class ChatNotificationNotifier extends StateNotifier<ChatNotificationState> {
           action: SnackBarAction(
             label: 'View',
             textColor: Colors.white,
-            onPressed: () {
-              // This would navigate to chat - handled by consumer
-            },
+            onPressed: () {},
           ),
         ),
       );

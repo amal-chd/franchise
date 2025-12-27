@@ -36,7 +36,7 @@ export async function GET() {
         // The frontend can map plan_selected -> revenue share using its known settings.
 
         return NextResponse.json(results);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Fetch Error:', error);
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }

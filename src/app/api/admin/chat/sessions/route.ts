@@ -28,7 +28,7 @@ export async function GET() {
             values: []
         });
         return NextResponse.json(sessions);
-    } catch (error) {
+    } catch (error: any) {
         return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 });
     }
 }

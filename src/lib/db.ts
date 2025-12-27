@@ -18,7 +18,7 @@ export default async function executeQuery({ query, values }: { query: string; v
         const results = await db.query(query, values);
         await db.end();
         return results;
-    } catch (error) {
+    } catch (error: any) {
         console.error('Database Error:', error);
         return { error };
     }

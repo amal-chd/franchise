@@ -47,7 +47,7 @@ export async function GET() {
         };
 
         return NextResponse.json(responseData);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching site content:', error);
         return NextResponse.json({ error: 'Failed to fetch content' }, { status: 500 });
     }

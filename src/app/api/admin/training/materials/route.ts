@@ -15,7 +15,7 @@ export async function GET(request: Request) {
             values: [moduleId]
         });
         return NextResponse.json(result);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching training materials:', error);
         return NextResponse.json({ error: 'Failed to fetch materials' }, { status: 500 });
     }
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
         });
 
         return NextResponse.json({ success: true, result });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error adding training material:', error);
     }
 }
@@ -56,7 +56,7 @@ export async function PUT(request: Request) {
         });
 
         return NextResponse.json({ success: true, result });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error updating training material:', error);
         return NextResponse.json({ error: 'Failed to update material' }, { status: 500 });
     }
@@ -76,7 +76,7 @@ export async function DELETE(request: Request) {
             values: [id]
         });
         return NextResponse.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
         return NextResponse.json({ error: 'Failed to delete material' }, { status: 500 });
     }
 }

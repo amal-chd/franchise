@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         }
 
         return NextResponse.json({ success: false, message: 'Invalid credentials or account not active' }, { status: 401 });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Login Error:', error);
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }

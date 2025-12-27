@@ -61,7 +61,7 @@ export async function sendEmail({ to, subject, html, attachments }: EmailOptions
         console.log('✅ Email sent successfully:', info.messageId);
         console.log('📬 Sent to:', to);
         return { success: true, messageId: info.messageId };
-    } catch (error) {
+    } catch (error: any) {
         console.error('❌ Email sending failed:', error);
         console.error('Error details:', {
             message: (error as Error).message,

@@ -27,7 +27,7 @@ export async function GET(request: Request) {
         });
 
         return NextResponse.json({ id: result.insertId, franchise_id: franchiseId, status: 'open' });
-    } catch (error) {
+    } catch (error: any) {
         return NextResponse.json({ error: 'Failed to get session' }, { status: 500 });
     }
 }

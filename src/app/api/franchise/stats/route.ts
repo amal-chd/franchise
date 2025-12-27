@@ -123,7 +123,7 @@ export async function GET(request: Request) {
             ...responseData,
             _cached: false
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Stats calculation error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }

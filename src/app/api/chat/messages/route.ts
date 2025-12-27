@@ -15,7 +15,7 @@ export async function GET(request: Request) {
             values: [sessionId]
         });
         return NextResponse.json(messages);
-    } catch (error) {
+    } catch (error: any) {
         return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 });
     }
 }
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
         });
 
         return NextResponse.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
         return NextResponse.json({ error: 'Failed to send message' }, { status: 500 });
     }
 }

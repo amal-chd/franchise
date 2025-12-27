@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
                 totalPages: Math.ceil(total / limit)
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Franchise Activity Logs GET Error:', error);
         return NextResponse.json({ error: 'Failed to fetch activity logs' }, { status: 500 });
     }

@@ -138,7 +138,7 @@ export async function GET(request: Request) {
                 dateTo
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Orders fetch error:', error);
         return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 });
     }
@@ -223,7 +223,7 @@ export async function POST(request: Request) {
             amount: amountInPaise,
             keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Order creation failed", error);
         return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
     }
@@ -295,7 +295,7 @@ export async function PUT(request: Request) {
         }
 
         return NextResponse.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Order update error:', error);
         return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
     }

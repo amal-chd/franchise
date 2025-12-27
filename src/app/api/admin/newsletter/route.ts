@@ -7,7 +7,7 @@ export async function GET() {
             query: 'SELECT * FROM newsletter_subscribers ORDER BY subscribed_at DESC'
         });
         return NextResponse.json(result);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching subscribers:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }

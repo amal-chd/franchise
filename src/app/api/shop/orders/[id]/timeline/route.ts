@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import executeQuery from '@/lib/db';
 
 // Get order timeline/history
-export async function GET(request: Request, { params }: { params: { id: string } }) {
-    const orderId = params.id;
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    const { id: orderId } = await params;
 
     if (!orderId) {
         return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
@@ -64,7 +64,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
             timeline: history
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Order timeline error:', error);
         return NextResponse.json({ error: 'Failed to fetch order timeline' }, { status: 500 });
     }

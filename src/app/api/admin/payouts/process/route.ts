@@ -78,7 +78,7 @@ export async function POST(request: Request) {
         }
 
         return NextResponse.json({ success: true, message: 'Payout processed and invoice sent successfully' });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error processing payout:', error);
         return NextResponse.json({ error: 'Failed to process payout' }, { status: 500 });
     }

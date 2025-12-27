@@ -49,7 +49,7 @@ export async function POST(request: Request) {
         }
 
         return NextResponse.json({ message: 'Franchise added successfully', id: (result as any).insertId }, { status: 201 });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Create Franchise Error:', error);
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
@@ -111,7 +111,7 @@ export async function PUT(request: Request) {
         }
 
         return NextResponse.json({ message: 'Franchise updated successfully' });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Update Franchise Error:', error);
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
@@ -135,7 +135,7 @@ export async function DELETE(request: Request) {
         }
 
         return NextResponse.json({ message: 'Franchise deleted successfully' });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Delete Franchise Error:', error);
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }

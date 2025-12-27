@@ -21,7 +21,7 @@ export default async function executeFranchiseQuery({ query, values }: { query: 
         const results = await franchiseDb.query(query, values);
         await franchiseDb.end();
         return results;
-    } catch (error) {
+    } catch (error: any) {
         console.error('Franchise Read-Only Database Error:', error);
         return { error };
     }

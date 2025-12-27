@@ -17,7 +17,7 @@ export async function GET() {
             values: []
         });
         return NextResponse.json(requests);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Failed to fetch plan requests:', error);
         return NextResponse.json({ error: 'Failed to fetch plan requests' }, { status: 500 });
     }
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json({ success: true, message: `Request ${action}ed successfully` });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Failed to process plan request:', error);
         return NextResponse.json({ error: 'Failed to process request' }, { status: 500 });
     }

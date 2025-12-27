@@ -18,7 +18,7 @@ export async function GET() {
         });
 
         return NextResponse.json({ message: 'Database schema updated successfully: Added banking columns.' });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Migration Error:', error);
         return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }

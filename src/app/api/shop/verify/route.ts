@@ -24,7 +24,7 @@ export async function POST(request: Request) {
         } else {
             return NextResponse.json({ success: false, message: 'Invalid signature' }, { status: 400 });
         }
-    } catch (error) {
+    } catch (error: any) {
         return NextResponse.json({ success: false, error: 'Verification failed' }, { status: 500 });
     }
 }
