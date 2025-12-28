@@ -20,7 +20,7 @@ class CommunityTab extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: ModernDashboardHeader(
-        title: 'Community',
+        title: '',
         isHome: false,
         leadingWidget: Padding(
           padding: const EdgeInsets.only(left: 8.0),

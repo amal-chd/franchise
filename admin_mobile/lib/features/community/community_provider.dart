@@ -1,8 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:io';
+// import 'dart:io';
 import '../../core/api_service.dart';
+import 'package:image_picker/image_picker.dart';
 
 // Models
 class CommunityPost {
@@ -146,7 +147,7 @@ class CommunityFeedNotifier extends AsyncNotifier<List<CommunityPost>> {
     }
   }
 
-  Future<String?> uploadImage(File file) async {
+  Future<String?> uploadImage(XFile file) async {
     return await _apiService.uploadFile(file, folder: 'community_posts');
   }
 }

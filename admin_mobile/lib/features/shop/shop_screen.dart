@@ -17,7 +17,7 @@ class ShopScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: ModernDashboardHeader(
-        title: 'Franchise Shop',
+        title: '',
         leadingWidget: Padding(
           padding: const EdgeInsets.only(left: 8.0),
           child: Hero(

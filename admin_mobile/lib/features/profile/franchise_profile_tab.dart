@@ -36,7 +36,7 @@ class _FranchiseProfileTabState extends ConsumerState<FranchiseProfileTab> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: ModernDashboardHeader(
-        title: 'My Profile',
+        title: '',
         leadingWidget: Padding(
           padding: const EdgeInsets.only(left: 8.0),
           child: Hero(

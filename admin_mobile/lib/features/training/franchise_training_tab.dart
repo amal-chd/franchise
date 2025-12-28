@@ -34,7 +34,7 @@ class FranchiseTrainingTab extends ConsumerWidget {
 
     return Scaffold(
       appBar: ModernDashboardHeader(
-        title: 'Franchise Academy',
+        title: '',
         leadingWidget: Padding(
           padding: const EdgeInsets.only(left: 8.0),
           child: Hero(

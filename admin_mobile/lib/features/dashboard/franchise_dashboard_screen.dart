@@ -37,7 +37,6 @@ class _FranchiseDashboardScreenState extends ConsumerState<FranchiseDashboardScr
     const ShopScreen(),
     const FranchiseTrainingTab(),
     const CommunityTab(),
-    const ChatScreen(),
     const FranchiseProfileTab(),
   ];
 
@@ -65,7 +64,6 @@ class _FranchiseDashboardScreenState extends ConsumerState<FranchiseDashboardScr
           PremiumNavItem(icon: Icons.shopping_bag_rounded, label: 'Shop'),
           PremiumNavItem(icon: Icons.school_rounded, label: 'Training'),
           PremiumNavItem(icon: Icons.people_rounded, label: 'Community'),
-          PremiumNavItem(icon: Icons.support_agent_rounded, label: 'Support'),
           PremiumNavItem(icon: Icons.person_rounded, label: 'Profile'),
         ],
       ),

@@ -56,7 +56,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     return Scaffold(
       appBar: ModernDashboardHeader(
-        title: 'Franchise Support',
+        title: '',
         leadingWidget: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -244,19 +244,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: source);
     if (pickedFile != null) {
-      _uploadAndSend(File(pickedFile.path), 'image');
+      _uploadAndSend(pickedFile, 'image');
     }
   }
 
   Future<void> _pickFile() async {
     Navigator.pop(context);
-    final result = await FilePicker.platform.pickFiles();
+    final result = await FilePicker.platform.pickFiles(withData: true); // withData needed for web bytes if not using xFile
     if (result != null && result.files.single.path != null) {
-      _uploadAndSend(File(result.files.single.path!), 'file');
+      // For mobile/desktop where path exists
+       _uploadAndSend(XFile(result.files.single.path!), 'file');
+    } else if (result != null && result.files.single.bytes != null) {
+      // For web
+      _uploadAndSend(XFile.fromData(result.files.single.bytes!, name: result.files.single.name), 'file');
     }
   }
 
-  Future<void> _uploadAndSend(File file, String type) async {
+  Future<void> _uploadAndSend(XFile file, String type) async {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Uploading...')));
     final url = await ref.read(chatMessagesProvider.notifier).uploadFile(file);
     if (url != null) {

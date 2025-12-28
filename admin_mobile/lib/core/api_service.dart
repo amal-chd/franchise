@@ -1,4 +1,5 @@
-import 'dart:io';
+// import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cookie_jar/cookie_jar.dart';
@@ -37,6 +38,8 @@ class ApiService {
   }
 
   void _initCookies() async {
+    // Cookie persistence temporarily disabled for Web compatibility
+    /*
     if (!kIsWeb) {
       try {
         final appDocDir = await getApplicationDocumentsDirectory();
@@ -46,17 +49,28 @@ class ApiService {
         if (kDebugMode) print('Cookie initialization failed: $e');
       }
     }
+    */
   }
 
   Dio get client => _dio;
 
-  Future<String?> uploadFile(File file, {String folder = 'uploads'}) async {
+  Future<String?> uploadFile(XFile file, {String folder = 'uploads'}) async {
     try {
-      String fileName = file.path.split('/').last;
-      FormData formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(file.path, filename: fileName),
-        'folder': folder,
-      });
+      String fileName = file.name;
+      FormData formData;
+
+      if (kIsWeb) {
+        final bytes = await file.readAsBytes();
+        formData = FormData.fromMap({
+          'file': MultipartFile.fromBytes(bytes, filename: fileName),
+          'folder': folder,
+        });
+      } else {
+        formData = FormData.fromMap({
+          'file': await MultipartFile.fromFile(file.path, filename: fileName),
+          'folder': folder,
+        });
+      }
 
       final response = await _dio.post('mobile/upload', data: formData);
       if (response.statusCode == 200 && response.data['success'] == true) {

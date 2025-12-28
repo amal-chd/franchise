@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // Add for kIsWeb
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -14,14 +15,14 @@ class CreatePostScreen extends ConsumerStatefulWidget {
 
 class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   final _contentController = TextEditingController();
-  File? _imageFile;
+  XFile? _imageFile;
   bool _isLoading = false;
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery);
     if (picked != null) {
-        setState(() => _imageFile = File(picked.path));
+        setState(() => _imageFile = picked);
     }
   }
 
@@ -97,7 +98,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                     children: [
                         ClipRRect(
                             borderRadius: BorderRadius.circular(12),
-                            child: Image.file(_imageFile!, height: 200, width: double.infinity, fit: BoxFit.cover),
+                            child: kIsWeb 
+                                ? Image.network(_imageFile!.path, height: 200, width: double.infinity, fit: BoxFit.cover)
+                                : Image.file(File(_imageFile!.path), height: 200, width: double.infinity, fit: BoxFit.cover),
                         ),
                         Positioned(
                             top: 8, right: 8,

@@ -1,7 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
-import 'dart:io';
+// import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import '../../core/api_service.dart';
 
 class ChatMessage {
@@ -146,7 +147,7 @@ class ChatMessagesNotifier extends AsyncNotifier<List<ChatMessage>> {
     }
   }
 
-  Future<String?> uploadFile(File file) async {
+  Future<String?> uploadFile(XFile file) async {
       // Use the centralized upload method
       return await _apiService.uploadFile(file, folder: 'chat');
   }
