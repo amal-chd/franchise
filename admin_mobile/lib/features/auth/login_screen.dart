@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/api_service.dart';
 import 'auth_provider.dart';
 import 'franchise_registration_screen.dart';
+import '../../core/chat_notification_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -17,23 +18,53 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
+  String? _errorMessage;
 
-  void _handleLogin() {
+  @override
+  void initState() {
+    super.initState();
+    // Clear error message when user starts typing
+    _usernameController.addListener(() {
+      if (_errorMessage != null) setState(() => _errorMessage = null);
+    });
+    _passwordController.addListener(() {
+      if (_errorMessage != null) setState(() => _errorMessage = null);
+    });
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
 
     if (username.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please enter credentials', style: GoogleFonts.inter()),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      setState(() => _errorMessage = 'Please enter credentials');
       return;
     }
 
-    ref.read(authProvider.notifier).login(username, password);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await ref.read(authProvider.notifier).login(username, password);
+      // Success will trigger main.dart to switch screens via authProvider watcher
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString().replaceAll('Exception: ', '');
+        });
+      }
+    }
   }
 
   void _showForgotPasswordDialog() {
@@ -101,13 +132,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ElevatedButton(
               onPressed: isLoading ? null : () async {
                 if (emailController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Please enter your email', style: GoogleFonts.inter()),
-                      backgroundColor: Colors.redAccent,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
+                   if (scaffoldMessengerKey.currentState != null) {
+                      scaffoldMessengerKey.currentState!.showSnackBar(
+                      SnackBar(
+                        content: Text('Please enter your email', style: GoogleFonts.inter()),
+                        backgroundColor: Colors.redAccent,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                   }
                   return;
                 }
 
@@ -115,13 +148,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 try {
                   final apiService = ApiService();
-                  final response = await apiService.client.post('auth/forgot-password', data: {
+                  await apiService.client.post('auth/forgot-password', data: {
                     'email': emailController.text.trim(),
                   });
 
                   Navigator.pop(context);
                   
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  if (scaffoldMessengerKey.currentState != null) {
+                    scaffoldMessengerKey.currentState!.showSnackBar(
                     SnackBar(
                       content: Row(
                         children: [
@@ -135,15 +169,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       duration: const Duration(seconds: 5),
                     ),
                   );
+                  }
                 } catch (e) {
                   setDialogState(() => isLoading = false);
-                  ScaffoldMessenger.of(context).showSnackBar(
+                   if (scaffoldMessengerKey.currentState != null) {
+                    scaffoldMessengerKey.currentState!.showSnackBar(
                     SnackBar(
                       content: Text('Failed to send reset email. Please try again.', style: GoogleFonts.inter()),
                       backgroundColor: Colors.redAccent,
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
+                   }
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -164,134 +201,217 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
-
-    ref.listen(authProvider, (previous, next) {
-      if (next is AsyncError) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next.error.toString(), style: GoogleFonts.inter()),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    });
-
-    final size = MediaQuery.of(context).size;
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
-          // Subtle Decorative Accents
+          // Background Decorations (Zomo Style)
           Positioned(
-            top: -100,
-            right: -50,
-            child: _buildDecorativeCircle(250, const Color(0xFF2563EB).withOpacity(0.04)),
+            top: -150,
+            left: -150,
+            child: Container(
+              width: 400,
+              height: 400,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF7C3AED).withOpacity(0.2), 
+                    const Color(0xFF25C6FA).withOpacity(0.0)
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
           ),
-          Positioned(
-            bottom: -50,
-            left: -80,
-            child: _buildDecorativeCircle(200, const Color(0xFF7C3AED).withOpacity(0.04)),
-          ),
-
+          
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
+                padding: const EdgeInsets.all(24),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Logo Section
+                    // Top Illustration / Logo Area
                     Hero(
                       tag: 'app_logo',
                       child: Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          shape: BoxShape.circle,
+                          borderRadius: BorderRadius.circular(30),
                           boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10)),
+                            BoxShadow(
+                              color: const Color(0xFF7C3AED).withOpacity(0.15),
+                              blurRadius: 30,
+                              offset: const Offset(0, 15),
+                            ),
                           ],
                         ),
                         child: Image.asset(
                           'assets/images/logo.png',
-                          height: 70,
+                          height: 80,
                           errorBuilder: (context, error, stackTrace) => 
-                             const Icon(Icons.storefront_rounded, size: 70, color: Color(0xFF2563EB)),
+                             const Icon(Icons.storefront_rounded, size: 80, color: Color(0xFF7C3AED)),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 32),
-                    Text(
-                      'Partner Portal',
-                      style: GoogleFonts.outfit(
-                        fontSize: 32, 
-                        fontWeight: FontWeight.bold, 
-                        color: const Color(0xFF0F172A),
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Excellence in Franchise Management',
-                      style: GoogleFonts.inter(
-                        color: const Color(0xFF64748B),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 40),
 
-                    // Login Card
+                    // Main Card
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                      padding: const EdgeInsets.all(32),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(32),
+                        borderRadius: BorderRadius.circular(40),
                         boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 40, offset: const Offset(0, 20)),
+                          BoxShadow(
+                            color: const Color(0xFF90A4AE).withOpacity(0.1),
+                            blurRadius: 60,
+                            offset: const Offset(0, 20),
+                          ),
                         ],
-                        border: Border.all(color: const Color(0xFFF1F5F9)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _buildModernTextField(
-                            controller: _usernameController,
-                            label: 'CREDENTIALS',
-                            hint: 'User ID or Email',
-                            icon: Icons.alternate_email_rounded,
+                          Text(
+                            'Welcome Back!',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1A202C),
+                            ),
                           ),
-                          const SizedBox(height: 24),
-                          _buildModernTextField(
+                          const SizedBox(height: 8),
+                          Text(
+                            'Sign in to manage your franchise',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: const Color(0xFFA0AEC0),
+                            ),
+                          ),
+                          const SizedBox(height: 40),
+
+                          // Inputs
+                          _buildZomoTextField(
+                            controller: _usernameController,
+                            hint: 'Username or Email',
+                            icon: Icons.person_outline_rounded,
+                            isError: _errorMessage != null,
+                          ),
+                          const SizedBox(height: 20),
+                          _buildZomoTextField(
                             controller: _passwordController,
-                            label: 'SECURITY',
                             hint: 'Password',
                             icon: Icons.lock_outline_rounded,
                             isPassword: true,
+                            isError: _errorMessage != null,
                           ),
-                          const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: _showForgotPasswordDialog,
+
+                          // Error Message
+                          if (_errorMessage != null) ...[
+                            const SizedBox(height: 16),
+                            Center(
                               child: Text(
-                                'Forgot Password?',
-                                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
+                                _errorMessage!,
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(
+                                  color: const Color(0xFFFF4C8B), 
+                                  fontSize: 13, 
+                                  fontWeight: FontWeight.w500
+                                ),
+                              ),
+                            ),
+                          ],
+
+                          const SizedBox(height: 30),
+
+                          // Login Button (Gradient)
+                          Container(
+                            height: 60,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF7C3AED), Color(0xFF25C6FA)],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF7C3AED).withOpacity(0.4),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 10),
+                                ),
+                              ],
+                            ),
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _handleLogin,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              ),
+                              child: _isLoading
+                                ? const CircularProgressIndicator(color: Colors.white)
+                                : Text(
+                                    'Sign In',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Footer Links
+                          TextButton(
+                            onPressed: _showForgotPasswordDialog,
+                            child: Text(
+                              'Forgot Password?',
+                              style: GoogleFonts.poppins(
+                                color: const Color(0xFFA0AEC0),
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ),
-                          const SizedBox(height: 28),
-                          
-                          _buildPremiumButton(authState),
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 40),
-                    _buildRegistrationFooter(),
+                    
+                    // Register Link
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Don't have an account? ",
+                          style: GoogleFonts.poppins(color: const Color(0xFF718096)),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                             Navigator.push(
+                              context, 
+                              MaterialPageRoute(builder: (_) => const FranchiseRegistrationScreen()),
+                            );
+                          },
+                          child: Text(
+                            "Register",
+                            style: GoogleFonts.poppins(
+                              color: const Color(0xFF7C3AED),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -302,133 +422,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildDecorativeCircle(double size, Color color) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-    );
-  }
-
-  Widget _buildModernTextField({
+  Widget _buildZomoTextField({
     required TextEditingController controller,
-    required String label,
     required String hint,
     required IconData icon,
     bool isPassword = false,
+    bool isError = false,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            color: const Color(0xFF94A3B8),
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.5,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFF1F5F9)),
-          ),
-          child: TextField(
-            controller: controller,
-            obscureText: isPassword ? _obscurePassword : false,
-            style: GoogleFonts.inter(color: const Color(0xFF0F172A), fontWeight: FontWeight.w600),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13, fontWeight: FontWeight.w500),
-              prefixIcon: Icon(icon, color: const Color(0xFF64748B), size: 20),
-              suffixIcon: isPassword ? IconButton(
-                icon: Icon(
-                  _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                  color: const Color(0xFF64748B),
-                  size: 20,
-                ),
-                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-              ) : null,
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPremiumButton(AsyncValue authState) {
-    final isLoading = authState is AsyncLoading;
-    
     return Container(
-      height: 58,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2563EB).withOpacity(0.2),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(20),
+        border: isError ? Border.all(color: const Color(0xFFFF4C8B), width: 1.5) : null,
       ),
-      child: ElevatedButton(
-        onPressed: isLoading ? null : _handleLogin,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        ),
-        child: isLoading
-            ? const SizedBox(
-                width: 22, 
-                height: 22, 
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-              )
-            : Text(
-                'Sign In Now',
-                style: GoogleFonts.inter(
-                  fontSize: 15, 
-                  fontWeight: FontWeight.bold, 
-                  color: Colors.white,
-                  letterSpacing: 0.5,
-                ),
-              ),
-      ),
-    );
-  }
-
-  Widget _buildRegistrationFooter() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          'Don\'t have a Franchise?',
-          style: GoogleFonts.inter(color: const Color(0xFF64748B), fontWeight: FontWeight.w500),
-        ),
-        TextButton(
-          onPressed: () {
-            Navigator.push(
-              context, 
-              MaterialPageRoute(builder: (_) => const FranchiseRegistrationScreen()),
-            );
-          },
-          child: Text(
-            'Get Started',
-            style: GoogleFonts.inter(
-              color: const Color(0xFF2563EB),
-              fontWeight: FontWeight.w800,
+      child: TextField(
+        controller: controller,
+        obscureText: isPassword ? _obscurePassword : false,
+        style: GoogleFonts.poppins(color: const Color(0xFF2D3748), fontWeight: FontWeight.w500),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: GoogleFonts.poppins(color: const Color(0xFFA0AEC0), fontSize: 14),
+          prefixIcon: Icon(icon, color: const Color(0xFFA0AEC0), size: 22),
+          suffixIcon: isPassword ? IconButton(
+            icon: Icon(
+              _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+              color: const Color(0xFFA0AEC0),
+              size: 22,
             ),
-          ),
+            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+          ) : null,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         ),
-      ],
+      ),
     );
   }
 }

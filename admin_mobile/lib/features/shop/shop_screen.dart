@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
+import '../../widgets/modern_header.dart';
 import 'shop_provider.dart';
+import 'product_details_screen.dart';
 
 class ShopScreen extends ConsumerWidget {
   const ShopScreen({super.key});
@@ -11,121 +13,307 @@ class ShopScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final productsAsync = ref.watch(productsProvider);
     final cart = ref.watch(cartProvider);
+    final filter = ref.watch(shopFilterProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Franchise Shop', style: GoogleFonts.poppins(color: const Color(0xFF1E293B), fontWeight: FontWeight.bold)),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.shopping_cart, color: Color(0xFF1E293B)),
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
-                },
+      appBar: ModernDashboardHeader(
+        title: 'Franchise Shop',
+        leadingWidget: Padding(
+          padding: const EdgeInsets.only(left: 8.0),
+          child: Hero(
+            tag: 'app_logo', 
+            child: Material(
+              color: Colors.transparent,
+              child: Image.asset(
+                'assets/images/logo_text.png', 
+                height: 24,
+                color: Colors.white,
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.store, color: Colors.white),
               ),
-              if (cart.isNotEmpty)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+            ),
+          ),
+        ),
+        isHome: false,
+        showLeading: false, 
+        trailingWidget: Stack(
+          alignment: Alignment.center,
+          children: [
+            _buildCircularButton(
+              icon: Icons.shopping_cart_rounded,
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen())),
+            ),
+            if (cart.isNotEmpty)
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: Colors.red, 
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                  child: Center(
                     child: Text(
                       '${cart.fold(0, (sum, item) => sum + item.quantity)}',
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
                   ),
-                )
-            ],
-          )
-        ],
+                ),
+              )
+          ],
+        ),
       ),
       backgroundColor: Colors.grey[50],
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(productsProvider.future),
         child: productsAsync.when(
           data: (products) {
-            if (products.isEmpty) {
-              return Center(child: Text('No products available.', style: GoogleFonts.inter(color: Colors.grey)));
-            }
-            return GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.75,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-              ),
-              itemCount: products.length,
-              itemBuilder: (context, index) {
-                final product = products[index];
-                return Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
-                  ),
+            // Extract Categories
+            final categories = ['All', ...products.map((p) => p.category).toSet().toList()];
+
+            // Filter Products
+            final filteredProducts = products.where((p) {
+              final matchesSearch = p.name.toLowerCase().contains(filter.searchQuery.toLowerCase());
+              final matchesCategory = filter.selectedCategory == 'All' || p.category == filter.selectedCategory;
+              return matchesSearch && matchesCategory;
+            }).toList();
+
+            return Column(
+              children: [
+                // Search & Filter Section
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                            image: product.imageUrl.isNotEmpty
-                                ? DecorationImage(image: NetworkImage(product.imageUrl), fit: BoxFit.cover)
-                                : null,
+                      // Search Bar
+                      TextField(
+                        onChanged: (val) => ref.read(shopFilterProvider.notifier).setSearch(val),
+                        decoration: InputDecoration(
+                          hintText: 'Search products...',
+                          prefixIcon: const Icon(Icons.search_rounded, color: Colors.grey),
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
                           ),
-                          child: product.imageUrl.isEmpty
-                              ? const Center(child: Icon(Icons.image, color: Colors.grey))
-                              : null,
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(product.name, style: GoogleFonts.poppins(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-                            const SizedBox(height: 4),
-                            Text('₹${product.price}', style: GoogleFonts.inter(color: const Color(0xFF2563EB), fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 32,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  ref.read(cartProvider.notifier).addToCart(product);
-                                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${product.name} added to cart')));
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF1E293B),
-                                  padding: EdgeInsets.zero,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      const SizedBox(height: 12),
+                      
+                      // Category Chips
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: categories.map((cat) {
+                            final isSelected = filter.selectedCategory == cat;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: FilterChip(
+                                label: Text(cat),
+                                selected: isSelected,
+                                onSelected: (_) => ref.read(shopFilterProvider.notifier).setCategory(cat),
+                                backgroundColor: Colors.white,
+                                selectedColor: const Color(0xFF2563EB),
+                                labelStyle: TextStyle(
+                                  color: isSelected ? Colors.white : Colors.black87,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                 ),
-                                child: const Text('Add', style: TextStyle(color: Colors.white, fontSize: 12)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                  side: BorderSide(
+                                    color: isSelected ? Colors.transparent : Colors.grey[300]!,
+                                  ),
+                                ),
+                                showCheckmark: false,
                               ),
-                            )
-                          ],
+                            );
+                          }).toList(),
                         ),
-                      )
+                      ),
                     ],
                   ),
-                );
-              },
+                ),
+
+                // Product Grid
+                Expanded(
+                  child: filteredProducts.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.search_off_rounded, size: 64, color: Colors.grey[300]),
+                              const SizedBox(height: 16),
+                              Text('No products found', style: GoogleFonts.inter(color: Colors.grey)),
+                            ],
+                          ),
+                        )
+                      : GridView.builder(
+                          padding: const EdgeInsets.all(16),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 0.7, // Taller card for premium look
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                          ),
+                          itemCount: filteredProducts.length,
+                          itemBuilder: (context, index) {
+                            final product = filteredProducts[index];
+                            return _buildProductCard(context, ref, product);
+                          },
+                        ),
+                ),
+              ],
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, stack) => Center(child: Text('Error: $err')),
         ),
+      ),
+    );
+  }
+
+  Widget _buildProductCard(BuildContext context, WidgetRef ref, Product product) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 300),
+          pageBuilder: (_, animation, __) => FadeTransition(opacity: animation, child: ProductDetailsScreen(product: product)),
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF2563EB).withOpacity(0.08),
+              blurRadius: 15,
+              offset: const Offset(0, 4),
+            )
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image
+            Expanded(
+              child: Stack(
+                children: [
+                  Hero(
+                    tag: 'product_${product.id}',
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        image: product.imageUrl.isNotEmpty
+                            ? DecorationImage(image: NetworkImage(product.imageUrl), fit: BoxFit.cover)
+                            : null,
+                      ),
+                      child: product.imageUrl.isEmpty
+                          ? const Center(child: Icon(Icons.image, color: Colors.grey))
+                          : null,
+                    ),
+                  ),
+                  if (product.stock < 5 && product.stock > 0)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Low Stock',
+                          style: GoogleFonts.inter(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            
+            // Details
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                   Text(
+                    product.category.toUpperCase(),
+                    style: GoogleFonts.inter(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    product.name,
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '₹${product.price}',
+                        style: GoogleFonts.outfit(
+                          color: const Color(0xFF2563EB),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () {
+                           ref.read(cartProvider.notifier).addToCart(product);
+                           ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                           ScaffoldMessenger.of(context).showSnackBar(
+                             SnackBar(
+                               content: Text('${product.name} added to cart'),
+                               backgroundColor: const Color(0xFF10B981),
+                               behavior: SnackBarBehavior.floating,
+                               duration: const Duration(milliseconds: 1500),
+                             )
+                           );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F172A),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCircularButton({required IconData icon, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: Colors.white, size: 20),
       ),
     );
   }
@@ -198,22 +386,32 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final totalAmount = cart.fold(0.0, (sum, item) => sum + (item.product.price * item.quantity));
 
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: AppBar(
-          title: Text('My Cart', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF0F172A))),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: true,
-          leadingWidth: 70,
-          leading: Navigator.of(context).canPop() ? IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: const Color(0xFF0F172A).withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Color(0xFF0F172A)),
+      appBar: ModernDashboardHeader(
+        title: 'My Cart',
+        leadingWidget: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+              ),
+              onPressed: () => Navigator.pop(context),
             ),
-            onPressed: () => Navigator.of(context).pop(),
-          ) : null,
+            Hero(
+              tag: 'app_logo', 
+              child: Material(
+                color: Colors.transparent,
+                child: Image.asset(
+                  'assets/images/logo_text.png', 
+                  height: 24,
+                  color: Colors.white,
+                  errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
       body: cart.isEmpty

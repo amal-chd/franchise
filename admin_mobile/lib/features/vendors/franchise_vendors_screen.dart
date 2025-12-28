@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../dashboard/franchise_provider.dart';
 import '../../widgets/premium_widgets.dart';
 
+import '../../widgets/modern_header.dart'; // Add import
+
 class FranchiseVendorsScreen extends ConsumerWidget {
   const FranchiseVendorsScreen({super.key});
 
@@ -12,23 +14,35 @@ class FranchiseVendorsScreen extends ConsumerWidget {
     final franchiseState = ref.watch(franchiseProvider);
 
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: AppBar(
-          title: Text('Vendor Network', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF0F172A))),
-          backgroundColor: Colors.white.withOpacity(0.8),
-          elevation: 0,
-          centerTitle: true,
-          leadingWidth: 70,
-          leading: Navigator.of(context).canPop() ? IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: const Color(0xFF0F172A).withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Color(0xFF0F172A)),
+      appBar: ModernDashboardHeader(
+        title: 'Vendor Network',
+        leadingWidget: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+              ),
+              onPressed: () => Navigator.of(context).pop(),
             ),
-            onPressed: () => Navigator.of(context).pop(),
-          ) : null,
+            Hero(
+              tag: 'app_logo', 
+              child: Material(
+                color: Colors.transparent,
+                child: Image.asset(
+                  'assets/images/logo_text.png', 
+                  height: 24,
+                  color: Colors.white,
+                  errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                ),
+              ),
+            ),
+          ],
         ),
+        showLeading: true,
+        isHome: false,
       ),
       body: franchiseState.when(
         data: (state) {

@@ -57,7 +57,14 @@ class ProductsNotifier extends AsyncNotifier<List<Product>> {
   Future<List<Product>> _fetchProducts() async {
     try {
       final response = await _apiService.client.get('shop/products');
-      final data = response.data as List;
+      List data = [];
+      if (response.data is List) {
+        data = response.data as List;
+      } else if (response.data is Map && response.data['products'] != null) {
+        data = response.data['products'] as List;
+      } else if (response.data is Map && response.data['data'] != null) {
+        data = response.data['data'] as List;
+      }
       return data.map((e) => Product.fromJson(e)).toList();
     } catch (e) {
       throw Exception('Failed to fetch products');
@@ -81,7 +88,14 @@ class AdminProductsNotifier extends AsyncNotifier<List<Product>> {
   Future<List<Product>> _fetchProducts() async {
     try {
       final response = await _apiService.client.get('shop/products?admin=true');
-      final data = response.data as List;
+      List data = [];
+      if (response.data is List) {
+        data = response.data as List;
+      } else if (response.data is Map && response.data['products'] != null) {
+        data = response.data['products'] as List;
+      } else if (response.data is Map && response.data['data'] != null) {
+        data = response.data['data'] as List;
+      }
       return data.map((e) => Product.fromJson(e)).toList();
     } catch (e) {
       throw Exception('Failed to fetch admin products');
@@ -254,13 +268,21 @@ class PaginatedOrders {
   });
 
   factory PaginatedOrders.fromJson(Map<String, dynamic> json) {
+    List ordersList = [];
+    final ordersData = json['orders'];
+    if (ordersData is List) {
+      ordersList = ordersData;
+    } else if (ordersData is Map && ordersData['data'] is List) {
+       ordersList = ordersData['data'];
+    }
+
     return PaginatedOrders(
-      orders: (json['orders'] as List).map((e) => OrderModel.fromJson(e)).toList(),
-      page: json['pagination']['page'],
-      limit: json['pagination']['limit'],
-      total: json['pagination']['total'],
-      totalPages: json['pagination']['totalPages'],
-      hasMore: json['pagination']['hasMore'],
+      orders: ordersList.map((e) => OrderModel.fromJson(e)).toList(),
+      page: json['pagination']?['page'] ?? 1,
+      limit: json['pagination']?['limit'] ?? 10,
+      total: json['pagination']?['total'] ?? 0,
+      totalPages: json['pagination']?['totalPages'] ?? 1,
+      hasMore: json['pagination']?['hasMore'] ?? false,
     );
   }
 }
@@ -359,7 +381,33 @@ class AdminOrdersNotifier extends AsyncNotifier<PaginatedOrders> {
 
       final response = await _apiService.client.get('shop/orders?$queryString');
       _currentPage = page;
-      return PaginatedOrders.fromJson(response.data);
+      
+      dynamic responseData = response.data;
+      if (responseData is List) {
+        responseData = <String, dynamic>{
+          'orders': responseData,
+          'pagination': <String, dynamic>{
+             'page': page,
+             'limit': 50,
+             'total': responseData.length,
+             'totalPages': 1,
+             'hasMore': false
+          }
+        };
+      } else if (responseData is Map && responseData['orders'] == null && responseData['data'] is List) {
+           responseData = <String, dynamic>{
+          'orders': responseData['data'],
+          'pagination': <String, dynamic>{
+             'page': page,
+             'limit': 50,
+             'total': (responseData['data'] as List).length,
+             'totalPages': 1,
+             'hasMore': false
+          }
+        };
+      }
+      
+      return PaginatedOrders.fromJson(responseData);
     } catch (e) {
       print('Orders fetch error: $e');
       throw Exception('Failed to fetch orders');
@@ -420,6 +468,38 @@ class AdminOrdersNotifier extends AsyncNotifier<PaginatedOrders> {
   }
 }
 
+// Shop Filter Provider
+final shopFilterProvider = NotifierProvider<ShopFilterNotifier, ShopFilterState>(() {
+  return ShopFilterNotifier();
+});
+
+class ShopFilterState {
+  final String searchQuery;
+  final String selectedCategory;
+
+  ShopFilterState({this.searchQuery = '', this.selectedCategory = 'All'});
+
+  ShopFilterState copyWith({String? searchQuery, String? selectedCategory}) {
+    return ShopFilterState(
+      searchQuery: searchQuery ?? this.searchQuery,
+      selectedCategory: selectedCategory ?? this.selectedCategory,
+    );
+  }
+}
+
+class ShopFilterNotifier extends Notifier<ShopFilterState> {
+  @override
+  ShopFilterState build() => ShopFilterState();
+
+  void setSearch(String query) {
+    state = state.copyWith(searchQuery: query);
+  }
+
+  void setCategory(String category) {
+    state = state.copyWith(selectedCategory: category);
+  }
+}
+
 // Cart Provider
 final cartProvider = NotifierProvider<CartNotifier, List<CartItem>>(() {
   return CartNotifier();
@@ -431,13 +511,13 @@ class CartNotifier extends Notifier<List<CartItem>> {
     return [];
   }
 
-  void addToCart(Product product) {
+  void addToCart(Product product, {int quantity = 1}) {
     final existingIndex = state.indexWhere((item) => item.product.id == product.id);
     if (existingIndex >= 0) {
-      state[existingIndex].quantity++;
+      state[existingIndex].quantity += quantity;
       state = [...state];
     } else {
-      state = [...state, CartItem(product: product)];
+      state = [...state, CartItem(product: product, quantity: quantity)];
     }
   }
 

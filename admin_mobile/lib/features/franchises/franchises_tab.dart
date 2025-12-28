@@ -5,243 +5,289 @@ import '../requests/requests_provider.dart';
 import '../payouts/payouts_provider.dart';
 import '../common/zones_provider.dart';
 import '../../widgets/premium_widgets.dart';
+import 'franchise_form_sheet.dart';
 
-class FranchisesTab extends ConsumerWidget {
+class FranchisesTab extends ConsumerStatefulWidget {
   const FranchisesTab({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FranchisesTab> createState() => _FranchisesTabState();
+}
+
+class _FranchisesTabState extends ConsumerState<FranchisesTab> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final requestsAsync = ref.watch(requestsProvider);
     final zonesAsync = ref.watch(zonesProvider);
     final zones = zonesAsync.asData?.value ?? [];
     
-    print('DEBUG: Zones loaded: ${zones.length}');
-    zones.forEach((z) => print('  Zone ${z.id}: ${z.name}'));
-
     return Container(
-      color: const Color(0xFFF8FAFC),
-      child: RefreshIndicator(
-        onRefresh: () => ref.read(requestsProvider.notifier).fetchRequests(),
-        child: requestsAsync.when(
-          data: (requests) {
-            // Filter for Approved/Active franchises only
-            final activeFranchises = requests.where((r) => r.status == 'approved').toList();
+      color: const Color(0xFFF1F5F9), // Light background
+      child: Column(
+        children: [
+          // Search Bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            color: Colors.white,
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search partners...',
+                hintStyle: GoogleFonts.inter(color: const Color(0xFF94A3B8)),
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF94A3B8)),
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
+            ),
+          ),
+          
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () => ref.read(requestsProvider.notifier).fetchRequests(),
+              child: requestsAsync.when(
+                data: (requests) {
+                  // Filter for Approved/Active franchises only
+                  final activeFranchises = requests.where((r) => r.status == 'approved').toList();
 
-            if (activeFranchises.isEmpty) {
-              return const IllustrativeState(
-                icon: Icons.store_rounded,
-                title: 'No Active Partners',
-                subtitle: 'Your franchise network is currently empty. Approved partners will appear here.',
-              );
-            }
+                  // Apply search filter
+                  final filteredFranchises = activeFranchises.where((f) {
+                    final query = _searchQuery.toLowerCase();
+                    return f.name.toLowerCase().contains(query) ||
+                           f.email.toLowerCase().contains(query) ||
+                           f.city.toLowerCase().contains(query);
+                  }).toList();
 
-            return ListView.builder(
-              padding: const EdgeInsets.all(24),
-              itemCount: activeFranchises.length,
-              itemBuilder: (context, index) {
-                final franchise = activeFranchises[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 24),
-                  child: PremiumGlassCard(
-                    padding: 20,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              franchise.name,
-                              style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF0F172A)),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF10B981).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text('ACTIVE', style: GoogleFonts.inter(color: const Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.w900)),
+                  if (filteredFranchises.isEmpty) {
+                    return IllustrativeState(
+                      icon: Icons.search_off_rounded,
+                      title: 'No Partners Found',
+                      subtitle: _searchQuery.isEmpty 
+                        ? 'Your franchise network is currently empty. Approved partners will appear here.'
+                        : 'No partners found matching "$_searchQuery".',
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(20),
+                    itemCount: filteredFranchises.length,
+                    itemBuilder: (context, index) {
+                      final franchise = filteredFranchises[index];
+                      // Highlight the first card for visual variety as per CRM style
+                      final isFeatured = index == 0 && _searchQuery.isEmpty; 
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF64748B).withOpacity(0.05),
+                              blurRadius: 15,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
-                        _buildInfoRow(Icons.location_on_outlined, franchise.city),
-                        _buildInfoRow(Icons.email_outlined, franchise.email),
-                        _buildInfoRow(Icons.phone_outlined, franchise.phone),
-                        const SizedBox(height: 16),
-                        const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFF8FAFC),
-                              foregroundColor: const Color(0xFF334155),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            onPressed: () => _showEditDialog(context, ref, franchise, zones),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.edit_note_rounded, size: 20),
-                                const SizedBox(width: 8),
-                                Text('Manage Partner', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
-                              ],
-                            ),
+                        child:Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 20,
+                                        backgroundColor: isFeatured ? const Color(0xFFFCD34D) : const Color(0xFFF1F5F9),
+                                        child: Text(
+                                          franchise.name[0].toUpperCase(),
+                                          style: GoogleFonts.outfit(
+                                            color: const Color(0xFF1E293B), 
+                                            fontWeight: FontWeight.bold
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            franchise.name,
+                                            style: GoogleFonts.outfit(
+                                              fontWeight: FontWeight.bold, 
+                                              fontSize: 16, 
+                                              color: const Color(0xFF1E293B)
+                                            ),
+                                          ),
+                                          if (franchise.planSelected != 'free')
+                                            Text(
+                                              franchise.planSelected.toUpperCase(),
+                                              style: GoogleFonts.inter(
+                                                fontSize: 10, 
+                                                fontWeight: FontWeight.w600, 
+                                                color: const Color(0xFF64748B)
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFDCFCE7), // Light green
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: const Color(0xFF86EFAC)),
+                                    ),
+                                    child: Text(
+                                      'ACTIVE', 
+                                      style: GoogleFonts.inter(
+                                        color: const Color(0xFF166534), 
+                                        fontSize: 10, 
+                                        fontWeight: FontWeight.w800
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                              
+                              Row(
+                                children: [
+                                  Expanded(child: _buildCRMInfoItem(Icons.location_on_rounded, franchise.city)),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: _buildCRMInfoItem(Icons.phone_rounded, franchise.phone)),
+                                ],
+                              ),
+
+                              const SizedBox(height: 20),
+                              
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF1E293B), // Dark Slate
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                  ),
+                                  onPressed: () => _showEditDialog(
+                                    context, 
+                                    ref, 
+                                    franchise.id,
+                                    {
+                                      'name': franchise.name,
+                                      'email': franchise.email,
+                                      'phone': franchise.phone,
+                                      'city': franchise.city,
+                                      'plan_selected': franchise.planSelected,
+                                      'status': franchise.status,
+                                      'upi_id': franchise.upiId,
+                                      'bank_account_number': franchise.bankAccountNumber,
+                                      'ifsc_code': franchise.ifscCode,
+                                      'bank_name': franchise.bankName,
+                                      'zone_id': franchise.zoneId,
+                                    },
+                                    zones
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.settings_rounded, size: 18),
+                                      const SizedBox(width: 8),
+                                      Text('Manage Partner', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, stack) => Center(child: Text('Error: $err')),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: Colors.grey[600]),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text, style: GoogleFonts.inter(fontSize: 14))),
+                      );
+                    },
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, stack) => Center(child: Text('Error: $err')),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  void _showEditDialog(BuildContext context, WidgetRef ref, FranchiseRequest f, List<Zone> zones) {
-    final nameCtrl = TextEditingController(text: f.name);
-    final emailCtrl = TextEditingController(text: f.email);
-    final phoneCtrl = TextEditingController(text: f.phone);
-    final cityCtrl = TextEditingController(text: f.city);
-    final upiCtrl = TextEditingController(text: f.upiId);
-    final accountCtrl = TextEditingController(text: f.bankAccountNumber);
-    final ifscCtrl = TextEditingController(text: f.ifscCode);
-    final bankNameCtrl = TextEditingController(text: f.bankName);
-    final passCtrl = TextEditingController();
-    
-    String plan = f.planSelected;
-    int? selectedZoneId = f.zoneId;
-
-    const allowedPlans = ['free', 'standard', 'premium', 'elite'];
-    if (!allowedPlans.contains(plan)) {
-      plan = 'free';
-    }
-    
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Edit Franchise'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Name', isDense: true)),
-                TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email', isDense: true)),
-                TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'Phone', isDense: true)),
-                TextField(controller: cityCtrl, decoration: const InputDecoration(labelText: 'City', isDense: true)),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: plan,
-                  decoration: const InputDecoration(labelText: 'Plan', isDense: true),
-                  items: const [
-                    DropdownMenuItem(value: 'free', child: Text('Starter (Free)')),
-                    DropdownMenuItem(value: 'standard', child: Text('Standard')),
-                    DropdownMenuItem(value: 'premium', child: Text('Premium')),
-                    DropdownMenuItem(value: 'elite', child: Text('Elite')),
-                  ],
-                  onChanged: (val) => setState(() => plan = val!),
-                ),
-                const SizedBox(height: 12),
-                // Zone Dropdown
-                DropdownButtonFormField<int>(
-                  value: zones.any((z) => z.id == selectedZoneId) ? selectedZoneId : null,
-                  decoration: const InputDecoration(labelText: 'Zone', isDense: true),
-                  items: [
-                   const DropdownMenuItem<int>(value: null, child: Text('Select Zone')),
-                    // Deduplicate zones by ID before mapping to DropdownMenuItem
-                    ...zones.fold<Map<int, Zone>>({}, (map, zone) {
-                      map[zone.id] = zone;
-                      return map;
-                    }).values.map((z) => DropdownMenuItem<int>(
-                      value: z.id,
-                      child: Text(z.name),
-                    )),
-                  ],
-                  onChanged: (val) => setState(() => selectedZoneId = val),
-                ),
-                const SizedBox(height: 16),
-                const Text('Banking Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                TextField(controller: upiCtrl, decoration: const InputDecoration(labelText: 'UPI ID', isDense: true)),
-                TextField(controller: accountCtrl, decoration: const InputDecoration(labelText: 'Account No', isDense: true)),
-                TextField(controller: ifscCtrl, decoration: const InputDecoration(labelText: 'IFSC Code', isDense: true)),
-                TextField(controller: bankNameCtrl, decoration: const InputDecoration(labelText: 'Bank Name', isDense: true)),
-                const SizedBox(height: 16),
-                const Text('Security', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                TextField(
-                  controller: passCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'New Password (Optional)', 
-                    isDense: true,
-                    helperText: 'Leave empty to keep current password'
-                  ),
-                  obscureText: true,
-                ),
-              ],
+  Widget _buildCRMInfoItem(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: const Color(0xFF94A3B8)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text, 
+              style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF475569), fontWeight: FontWeight.w500),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A), foregroundColor: Colors.white),
-              onPressed: () async {
-                final data = {
-                  'name': nameCtrl.text,
-                  'email': emailCtrl.text,
-                  'phone': phoneCtrl.text,
-                  'city': cityCtrl.text,
-                  'plan_selected': plan,
-                  'status': f.status,
-                  'upi_id': upiCtrl.text,
-                  'bank_account_number': accountCtrl.text,
-                  'ifsc_code': ifscCtrl.text,
-                  'bank_name': bankNameCtrl.text,
-                  'zone_id': selectedZoneId,
-                };
-                
-                if (passCtrl.text.isNotEmpty) {
-                  data['password'] = passCtrl.text;
-                }
-                
-                Navigator.pop(context);
-                
-                final success = await ref.read(requestsProvider.notifier).updateFranchise(f.id, data);
-                 if (success && context.mounted) {
-                   ref.read(payoutsProvider.notifier).loadData();
-                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Franchise Updated Successfully')));
-                 } else if (context.mounted) {
-                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update')));
-                 }
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditDialog(BuildContext context, WidgetRef ref, int franchiseId, Map<String, dynamic> currentData, List<Zone> zones) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => FranchiseFormSheet(
+        initialData: currentData,
+        zones: zones,
+        isEdit: true,
+        onSubmit: (data) async {
+          Navigator.pop(context);
+          final success = await ref.read(requestsProvider.notifier).updateFranchise(franchiseId, data);
+          if (context.mounted) {
+            if (success) {
+              ref.read(payoutsProvider.notifier).loadData();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Franchise Updated Successfully')),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Failed to update franchise')),
+              );
+            }
+          }
+        },
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../../widgets/modern_header.dart'; // Correctly placed import
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -19,6 +20,7 @@ import '../profile/franchise_profile_tab.dart';
 import 'franchise_provider.dart';
 import '../notifications/notification_screen.dart';
 import '../notifications/notification_provider.dart';
+import '../community/community_tab.dart';
 
 class FranchiseDashboardScreen extends ConsumerStatefulWidget {
   const FranchiseDashboardScreen({super.key});
@@ -34,6 +36,7 @@ class _FranchiseDashboardScreenState extends ConsumerState<FranchiseDashboardScr
     FranchiseHomeTab(onTabChanged: _onItemTapped),
     const ShopScreen(),
     const FranchiseTrainingTab(),
+    const CommunityTab(),
     const ChatScreen(),
     const FranchiseProfileTab(),
   ];
@@ -61,6 +64,7 @@ class _FranchiseDashboardScreenState extends ConsumerState<FranchiseDashboardScr
           PremiumNavItem(icon: Icons.home_rounded, label: 'Home'),
           PremiumNavItem(icon: Icons.shopping_bag_rounded, label: 'Shop'),
           PremiumNavItem(icon: Icons.school_rounded, label: 'Training'),
+          PremiumNavItem(icon: Icons.people_rounded, label: 'Community'),
           PremiumNavItem(icon: Icons.support_agent_rounded, label: 'Support'),
           PremiumNavItem(icon: Icons.person_rounded, label: 'Profile'),
         ],
@@ -68,6 +72,7 @@ class _FranchiseDashboardScreenState extends ConsumerState<FranchiseDashboardScr
     );
   }
 }
+
 
 class FranchiseHomeTab extends ConsumerStatefulWidget {
   final Function(int)? onTabChanged;
@@ -96,21 +101,26 @@ class _FranchiseHomeTabState extends ConsumerState<FranchiseHomeTab> {
   @override
   Widget build(BuildContext context) {
     final franchiseAsync = ref.watch(franchiseProvider);
+    final notificationCount = ref.watch(notificationProvider.notifier).unreadCount;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: AppBar(
-          title: Hero(tag: 'app_logo', child: Image.asset('assets/images/logo_text.png', height: 24)),
-          centerTitle: true,
-          backgroundColor: Colors.white.withOpacity(0.8),
-          elevation: 0,
-          actions: [
-            _buildNotificationAction(),
-            const SizedBox(width: 8),
-          ],
+      appBar: ModernDashboardHeader(
+        title: '',
+        titleWidget: Hero(
+          tag: 'app_logo', 
+          child: Image.asset(
+            'assets/images/logo_text.png', 
+            height: 28,
+            color: Colors.white, // Adapting for blue background
+            errorBuilder: (context, error, stackTrace) => 
+               const Text('FRANCHISE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
+          ),
         ),
+        isHome: true,
+        showLeading: false,
+        notificationCount: notificationCount,
+        onNotificationPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationScreen())),
       ),
       body: RefreshIndicator(
         onRefresh: () => ref.read(franchiseProvider.notifier).refresh(),
@@ -145,6 +155,7 @@ class _FranchiseHomeTabState extends ConsumerState<FranchiseHomeTab> {
   Widget _buildNotificationAction() {
     return Consumer(
       builder: (context, ref, child) {
+        // Kept for reference but unused in ModernDashboardHeader which handles its own action
         final unreadCount = ref.watch(notificationProvider.notifier).unreadCount;
         return Stack(
           alignment: Alignment.center,

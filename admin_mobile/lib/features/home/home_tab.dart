@@ -67,9 +67,28 @@ class HomeTab extends ConsumerWidget {
               const SizedBox(height: 16),
 
               // Advanced Insights Section
+              // Advanced Insights Section
               analyticsAsync.when(
                 data: (data) {
                   final trends = data['trends'] ?? {};
+                  
+                  // Safe extraction of lists (API might return Map/Object instead of Array)
+                  dynamic statusDistRaw = trends['statusDistribution'];
+                  List statusDistList = [];
+                  if (statusDistRaw is List) {
+                    statusDistList = statusDistRaw;
+                  } else if (statusDistRaw is Map) {
+                    statusDistList = statusDistRaw.values.toList();
+                  }
+
+                  dynamic zonePerfRaw = trends['zonePerformance'];
+                  List zonePerfList = [];
+                  if (zonePerfRaw is List) {
+                    zonePerfList = zonePerfRaw;
+                  } else if (zonePerfRaw is Map) {
+                    zonePerfList = zonePerfRaw.values.toList();
+                  }
+
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -81,7 +100,7 @@ class HomeTab extends ConsumerWidget {
                             child: DashboardChartContainer(
                               title: 'ORDER HEALTH',
                               height: 200,
-                              chart: OrderHealthPie(data: trends['statusDistribution'] ?? []),
+                              chart: OrderHealthPie(data: statusDistList),
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -89,7 +108,7 @@ class HomeTab extends ConsumerWidget {
                             child: DashboardChartContainer(
                               title: 'TOP ZONES',
                               height: 200,
-                              chart: ZonePerformanceBars(data: trends['zonePerformance'] ?? []),
+                              chart: ZonePerformanceBars(data: zonePerfList),
                             ),
                           ),
                         ],

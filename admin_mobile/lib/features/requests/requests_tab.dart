@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../common/zones_provider.dart';
 import '../../widgets/premium_widgets.dart';
 import 'requests_provider.dart';
+import '../franchises/franchise_form_sheet.dart';
 
 class RequestsTab extends ConsumerStatefulWidget {
   const RequestsTab({super.key});
@@ -25,20 +26,6 @@ class _RequestsTabState extends ConsumerState<RequestsTab> with SingleTickerProv
   void dispose() {
     _tabController.dispose();
     super.dispose();
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'approved':
-        return const Color(0xFF10B981);
-      case 'rejected':
-        return const Color(0xFFEF4444);
-      case 'pending_verification':
-      case 'under_review':
-        return const Color(0xFFF59E0B);
-      default:
-        return const Color(0xFF64748B);
-    }
   }
 
   Future<void> _handleRejection(BuildContext context, WidgetRef ref, int id) async {
@@ -87,33 +74,47 @@ class _RequestsTabState extends ConsumerState<RequestsTab> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     final requestsAsync = ref.watch(requestsProvider);
+    final zonesAsync = ref.watch(zonesProvider); 
+    final zones = zonesAsync.asData?.value ?? [];
 
     return Scaffold(
-      drawerEnableOpenDragGesture: false,
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFFF1F5F9), // Light background
       body: Column(
         children: [
+          // CRM-style Header/TabBar
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              labelColor: const Color(0xFF2563EB),
-              unselectedLabelColor: const Color(0xFF94A3B8),
-              indicatorColor: const Color(0xFF2563EB),
-              indicatorWeight: 3,
-              labelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
-              unselectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 13),
-              indicatorPadding: const EdgeInsets.symmetric(horizontal: 20),
-              tabs: const [
-                Tab(text: 'Pending Reviews'),
-                Tab(text: 'Rejected'),
-              ],
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            color: Colors.white,
+            child: Container(
+              height: 50,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(25),
+              ),
+              padding: const EdgeInsets.all(4),
+              child: TabBar(
+                controller: _tabController,
+                indicator: BoxDecoration(
+                  color: const Color(0xFF1E293B), // Dark Slate/Black
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2)),
+                  ],
+                ),
+                labelColor: Colors.white,
+                unselectedLabelColor: const Color(0xFF64748B),
+                labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+                unselectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 13),
+                dividerColor: Colors.transparent,
+                indicatorSize: TabBarIndicatorSize.tab,
+                tabs: const [
+                  Tab(text: 'Pending Reviews'),
+                  Tab(text: 'Rejected History'),
+                ],
+              ),
             ),
           ),
+          
           Expanded(
             child: RefreshIndicator(
               onRefresh: () => ref.read(requestsProvider.notifier).fetchRequests(),
@@ -125,8 +126,8 @@ class _RequestsTabState extends ConsumerState<RequestsTab> with SingleTickerProv
                   return TabBarView(
                     controller: _tabController,
                     children: [
-                      _buildList(context, ref, pending, isRejected: false),
-                      _buildList(context, ref, rejected, isRejected: true),
+                      _buildCRMList(context, ref, pending, isRejected: false),
+                      _buildCRMList(context, ref, rejected, isRejected: true),
                     ],
                   );
                 },
@@ -137,23 +138,26 @@ class _RequestsTabState extends ConsumerState<RequestsTab> with SingleTickerProv
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddFranchiseDialog(context, ref),
-        backgroundColor: const Color(0xFF0F172A),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddFranchiseDialog(context, ref, zones),
+        backgroundColor: const Color(0xFFFCD34D), // CRM Yellow
+        foregroundColor: Colors.black,
+        elevation: 4,
+        icon: const Icon(Icons.add_rounded),
+        label: Text('New Partner', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 
-  Widget _buildList(BuildContext context, WidgetRef ref, List<FranchiseRequest> requests, {required bool isRejected}) {
+  Widget _buildCRMList(BuildContext context, WidgetRef ref, List<FranchiseRequest> requests, {required bool isRejected}) {
     if (requests.isEmpty) {
       return IllustrativeState(
-        icon: isRejected ? Icons.history_rounded : Icons.fact_check_rounded,
-        title: isRejected ? 'No Rejected History' : 'All Clear',
+        icon: isRejected ? Icons.history_edu_rounded : Icons.inbox_rounded,
+        title: isRejected ? 'No Rejected Items' : 'All Caught Up',
         subtitle: isRejected 
-            ? 'There are currently no rejected partner applications in your history.' 
-            : 'You have reviewed all pending partner applications. New requests will appear here.',
+            ? 'Rejected applications will appear here.' 
+            : 'You have no pending approvals. Great job!',
       );
     }
     return ListView.builder(
@@ -161,266 +165,382 @@ class _RequestsTabState extends ConsumerState<RequestsTab> with SingleTickerProv
       itemCount: requests.length,
       itemBuilder: (context, index) {
         final req = requests[index];
-        final statusColor = _getStatusColor(req.status);
+        // Alternating colors or status-based colors for CRM look
+        final isHighlighted = index == 0 && !isRejected; // Highlight first item like in designs
         
         return Container(
-          margin: const EdgeInsets.only(bottom: 20),
+          margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isHighlighted ? const Color(0xFFFFFBEB) : Colors.white, // Yellow tint for first item
             borderRadius: BorderRadius.circular(24),
+            border: isHighlighted ? Border.all(color: const Color(0xFFFCD34D), width: 1.5) : Border.all(color: const Color(0xFFF1F5F9)),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 15, offset: const Offset(0, 8)),
+              BoxShadow(
+                color: const Color(0xFF64748B).withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
             ],
           ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'REQ #${req.id}',
-                          style: GoogleFonts.robotoMono(fontWeight: FontWeight.bold, color: const Color(0xFF94A3B8), fontSize: 12),
+          child: InkWell(
+            onTap: () => _showRequestDetails(context, ref, req),
+            borderRadius: BorderRadius.circular(24),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isHighlighted ? const Color(0xFFFCD34D) : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: statusColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
+                        child: Text(
+                          req.status.replaceAll('_', ' ').toUpperCase(),
+                          style: GoogleFonts.inter(
+                            fontSize: 10, 
+                            fontWeight: FontWeight.bold,
+                            color: isHighlighted ? const Color(0xFF1E293B) : const Color(0xFF64748B),
                           ),
-                          child: Text(
-                            req.status.toUpperCase().replaceAll('_', ' '),
-                            style: GoogleFonts.inter(color: statusColor, fontSize: 10, fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                      Text(
+                        '#${req.id}',
+                        style: GoogleFonts.robotoMono(color: const Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundColor: const Color(0xFFE2E8F0),
+                        child: Text(
+                          req.name[0].toUpperCase(),
+                          style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFF475569), fontSize: 20),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              req.name,
+                              style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
+                            ),
+                            Text(
+                              req.city,
+                              style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF64748B)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFE2E8F0))),
+                        child: IconButton(
+                          icon: const Icon(Icons.arrow_outward_rounded, size: 18, color: Color(0xFF1E293B)),
+                          onPressed: () => _showRequestDetails(context, ref, req),
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Quick Info Grid
+                  Row(
+                    children: [
+                      Expanded(child: _buildCRMInfoItem(Icons.email_outlined, 'Email', req.email)),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildCRMInfoItem(Icons.phone_outlined, 'Phone', req.phone)),
+                    ],
+                  ),
+
+                  if (!isRejected) ...[
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => _handleRejection(context, ref, req.id),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFEF4444),
+                              side: const BorderSide(color: Color(0xFFFECACA)), // Soft red
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            child: const Text('Reject'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              final success = await ref.read(requestsProvider.notifier).verifyRequest(req.id, 'approved');
+                              if (success && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Approved!')));
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1E293B),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              elevation: 0,
+                            ),
+                            child: const Text('Approve'),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    Text(req.name, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A))),
-                    const SizedBox(height: 8),
-                    _buildInfoRow(Icons.location_on_outlined, req.city),
-                    _buildInfoRow(Icons.email_outlined, req.email),
-                    _buildInfoRow(Icons.phone_outlined, req.phone),
-                    
-                    if (req.kycUrl != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: InkWell(
-                          onTap: () => launchUrl(Uri.parse(req.kycUrl!)),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(12)),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.description_outlined, size: 16, color: Color(0xFF2563EB)),
-                                const SizedBox(width: 8),
-                                Text('View KYC Document', style: GoogleFonts.inter(color: const Color(0xFF2563EB), fontSize: 12, fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
                   ],
-                ),
+                ],
               ),
-              const Divider(height: 1, color: Color(0xFFF1F5F9)),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: isRejected 
-                  ? _buildDeleteAction(context, ref, req)
-                  : _buildPendingActions(context, ref, req),
-              ),
-            ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _buildPendingActions(BuildContext context, WidgetRef ref, FranchiseRequest req) {
-    return Row(
-      children: [
-        Expanded(
-          child: TextButton(
-            onPressed: () => _handleRejection(context, ref, req.id),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFFEF4444)),
-            child: Text('Reject', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+  Widget _buildCRMInfoItem(IconData icon, String label, String value) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: const Color(0xFF94A3B8)),
+              const SizedBox(width: 6),
+              Text(label, style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8), fontWeight: FontWeight.w600)),
+            ],
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: ElevatedButton(
-            onPressed: () async {
-              final success = await ref.read(requestsProvider.notifier).verifyRequest(req.id, 'approved');
-              if (success && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request Approved')));
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF10B981),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: Text('Approve', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(
+            value, 
+            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF334155)),
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDeleteAction(BuildContext context, WidgetRef ref, FranchiseRequest req) {
-    return SizedBox(
-      width: double.infinity,
-      child: TextButton.icon(
-        icon: const Icon(Icons.delete_outline, size: 18),
-        label: Text('Delete History', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-        style: TextButton.styleFrom(foregroundColor: const Color(0xFFEF4444)),
-        onPressed: () async {
-          final confirm = await showDialog<bool>(
-            context: context,
-            builder: (c) => AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              title: const Text('Confirm Delete'),
-              content: const Text('Are you sure? This cannot be undone.'),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-                TextButton(
-                  onPressed: () => Navigator.pop(c, true),
-                  child: const Text('Delete', style: TextStyle(color: Color(0xFFEF4444))),
-                ),
-              ],
-            ),
-          );
-          if (confirm == true) {
-             await ref.read(requestsProvider.notifier).deleteRequest(req.id);
-          }
-        },
+        ],
       ),
     );
   }
 
-  void _showAddFranchiseDialog(BuildContext context, WidgetRef ref) {
-    final nameCtrl = TextEditingController();
-    final emailCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController();
-    final cityCtrl = TextEditingController();
-    final upiCtrl = TextEditingController();
-    final accountCtrl = TextEditingController();
-    final ifscCtrl = TextEditingController();
-    final bankNameCtrl = TextEditingController();
-    
-    String plan = 'free';
-    String status = 'pending_verification';
-
-    showDialog(
+  void _showRequestDetails(BuildContext context, WidgetRef ref, FranchiseRequest req) {
+    showModalBottomSheet(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-          title: Text('Add New Partner', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _dialogInput(nameCtrl, 'Name', Icons.person_outline),
-                _dialogInput(emailCtrl, 'Email', Icons.email_outlined),
-                _dialogInput(phoneCtrl, 'Phone', Icons.phone_outlined),
-                _dialogInput(cityCtrl, 'City', Icons.location_on_outlined),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: plan,
-                  decoration: InputDecoration(
-                    labelText: 'Partner Plan',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'free', child: Text('Starter (Free)')),
-                    DropdownMenuItem(value: 'standard', child: Text('Standard')),
-                    DropdownMenuItem(value: 'premium', child: Text('Premium')),
-                    DropdownMenuItem(value: 'elite', child: Text('Elite')),
-                  ],
-                  onChanged: (val) => setState(() => plan = val!),
-                ),
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 16),
-                Text('Banking Details', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF64748B))),
-                const SizedBox(height: 12),
-                _dialogInput(upiCtrl, 'UPI ID', Icons.payment_outlined),
-                _dialogInput(accountCtrl, 'Account No', Icons.account_balance_outlined),
-                _dialogInput(ifscCtrl, 'IFSC Code', Icons.code_outlined),
-                _dialogInput(bankNameCtrl, 'Bank Name', Icons.account_balance_wallet_outlined),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0F172A),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.85,
+        decoration: const BoxDecoration(
+          color: Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          children: [
+            // Handle Bar
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
               ),
-              onPressed: () async {
-                final data = {
-                  'name': nameCtrl.text,
-                  'email': emailCtrl.text,
-                  'phone': phoneCtrl.text,
-                  'city': cityCtrl.text,
-                  'plan_selected': plan,
-                  'status': status,
-                  'upi_id': upiCtrl.text,
-                  'bank_account_number': accountCtrl.text,
-                  'ifsc_code': ifscCtrl.text,
-                  'bank_name': bankNameCtrl.text,
-                };
-                
-                final success = await ref.read(requestsProvider.notifier).createFranchise(data);
-                if (!context.mounted) return;
-                
-                if (success) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Franchise Added Successfully')));
-                }
-              },
-              child: const Text('Add Partner'),
             ),
+            
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Column(
+                        children: [
+                          CircleAvatar(
+                            radius: 40,
+                            backgroundColor: const Color(0xFFE2E8F0),
+                            child: Text(
+                              req.name[0].toUpperCase(),
+                              style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold, color: const Color(0xFF475569)),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            req.name,
+                            style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
+                            textAlign: TextAlign.center,
+                          ),
+                           Text(
+                            'Request #${req.id}',
+                            style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF64748B)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    _sheetSection('Contact Info', [
+                      _sheetRow(Icons.email_outlined, 'Email', req.email),
+                      _sheetRow(Icons.phone_outlined, 'Phone', req.phone),
+                      _sheetRow(Icons.location_on_outlined, 'City', req.city),
+                    ]),
+                    
+                    const SizedBox(height: 24),
+                    
+                    _sheetSection('Plan & Status', [
+                      _sheetRow(Icons.verified_outlined, 'Plan', req.planSelected.toUpperCase()),
+                       _sheetRow(Icons.info_outline, 'Status', req.status.toUpperCase(), isStatus: true),
+                    ]),
+
+                    const SizedBox(height: 24),
+
+                    _sheetSection('Banking Details', [
+                      _sheetRow(Icons.payment_outlined, 'UPI ID', req.upiId ?? 'N/A'),
+                      _sheetRow(Icons.account_balance_outlined, 'Account No', req.bankAccountNumber ?? 'N/A'),
+                      _sheetRow(Icons.code_outlined, 'IFSC', req.ifscCode ?? 'N/A'),
+                      _sheetRow(Icons.account_balance_wallet_outlined, 'Bank', req.bankName ?? 'N/A'),
+                    ]),
+                    
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ),
+            
+            if (req.status != 'approved' && req.status != 'rejected')
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _handleRejection(context, ref, req.id);
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFEF4444),
+                          side: const BorderSide(color: Color(0xFFFECACA)),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: Text('Reject', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                           Navigator.pop(context);
+                           final success = await ref.read(requestsProvider.notifier).verifyRequest(req.id, 'approved');
+                           if (success && context.mounted) {
+                             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request Approved!')));
+                           }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E293B), // Dark Slate
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: Text('Approve', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _dialogInput(TextEditingController ctrl, String label, IconData icon) {
+  Widget _sheetSection(String title, List<Widget> children) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16, color: const Color(0xFF1E293B))),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [BoxShadow(color: Colors.grey.shade100, blurRadius: 10, offset: const Offset(0, 4))],
+          ),
+          child: Column(children: children),
+        ),
+      ],
+    );
+  }
+
+  Widget _sheetRow(IconData icon, String label, String value, {bool isStatus = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: ctrl,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon, size: 20),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, size: 18, color: const Color(0xFF64748B)),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF94A3B8))),
+                const SizedBox(height: 2),
+                isStatus 
+                ? Text(value, style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF166534)))
+                : Text(value, style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF334155))),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: const Color(0xFF94A3B8)),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text, style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF475569)))),
-        ],
+  void _showAddFranchiseDialog(BuildContext context, WidgetRef ref, List<Zone> zones) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => FranchiseFormSheet(
+        zones: zones,
+        isEdit: false,
+        onSubmit: (data) async {
+           Navigator.pop(context);
+           // Handle adding franchise logic here
+           final success = await ref.read(requestsProvider.notifier).createFranchise(data);
+            if (context.mounted) {
+              if (success) {
+                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Franchise Added Successfully')));
+              } else {
+                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to add franchise')));
+              }
+            }
+        },
       ),
     );
   }

@@ -26,7 +26,10 @@ class AuthNotifier extends AsyncNotifier<bool> {
   }
 
   Future<void> login(String username, String password) async {
-    state = const AsyncValue.loading();
+    // We do NOT set state = loading here because that triggers main.dart to rebuild
+    // and replace LoginScreen with a loading Scaffold, destroying the local state/context.
+    // Instead we handle loading state inside LoginScreen.
+    
     try {
       final response = await _apiService.client.post('auth/login', data: {
         'username': username,
@@ -51,9 +54,10 @@ class AuthNotifier extends AsyncNotifier<bool> {
         
         state = const AsyncValue.data(true);
       } else {
-        state = AsyncValue.error(response.data['message'] ?? 'Login failed', StackTrace.current);
+        // Don't update global state to error, just throw so UI can handle it
+        throw response.data['message'] ?? 'Login failed';
       }
-    } catch (e, st) {
+    } catch (e) {
       String errorMessage = 'An unexpected error occurred';
       if (e is DioException) {
         if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
@@ -71,7 +75,8 @@ class AuthNotifier extends AsyncNotifier<bool> {
       } else {
         errorMessage = e.toString();
       }
-      state = AsyncValue.error(errorMessage, st);
+      // Rethrow to let LoginScreen handle the error UI
+       throw errorMessage;
     }
   }
 

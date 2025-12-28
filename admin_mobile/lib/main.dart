@@ -28,67 +28,65 @@ class AdminApp extends ConsumerWidget {
       ),
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2563EB),
-          primary: const Color(0xFF2563EB),
-          secondary: const Color(0xFF0F172A),
-          surface: Colors.white,
-          background: const Color(0xFFF8FAFC),
-        ),
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: const Color(0xFFF8F9FD), // Soft blue-grey background
         
-        // Corporate Typography System
-        textTheme: GoogleFonts.interTextTheme(
-          const TextTheme(
-            displayLarge: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-            displayMedium: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-            displaySmall: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-            headlineLarge: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-            headlineMedium: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-            titleLarge: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-          ),
-        ).copyWith(
-          // Using Outfit for titles/headings
-          headlineLarge: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
-          headlineMedium: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
-          titleLarge: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
+        // Color System
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF7C3AED), // Zomo Purple
+          primary: const Color(0xFF7C3AED),
+          secondary: const Color(0xFF25C6FA), // Zomo Cyan
+          tertiary: const Color(0xFFFF4C8B), // Zomo Pink accent
+          surface: Colors.white,
+          background: const Color(0xFFF8F9FD),
         ),
 
-        // Premium Component Styling
+        // Typography
+        textTheme: GoogleFonts.poppinsTextTheme(
+          Theme.of(context).textTheme,
+        ).apply(
+          bodyColor: const Color(0xFF2D3748),
+          displayColor: const Color(0xFF1A202C),
+        ),
+
+        // Component Styling
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey[200]!)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey[200]!)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2)),
-          labelStyle: GoogleFonts.inter(color: Colors.grey[600], fontSize: 14),
-          floatingLabelStyle: GoogleFonts.inter(color: const Color(0xFF2563EB), fontWeight: FontWeight.bold),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          fillColor: const Color(0xFFF1F5F9), // Soft grey fill
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide.none, // No border by default
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: const BorderSide(color: Color(0xFF7C3AED), width: 1.5),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          hintStyle: GoogleFonts.poppins(color: const Color(0xFFA0AEC0), fontSize: 14),
         ),
-        
+
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF0F172A),
+            backgroundColor: const Color(0xFF7C3AED),
             foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            textStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
-            elevation: 0,
+            elevation: 8,
+            shadowColor: const Color(0xFF7C3AED).withOpacity(0.4),
+            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            textStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
           ),
         ),
 
         cardTheme: CardThemeData(
           color: Colors.white,
-          elevation: 2,
-          shadowColor: Colors.black.withOpacity(0.1),
+          elevation: 10,
+          shadowColor: const Color(0xFF90A4AE).withOpacity(0.15),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        ),
-        
-        appBarTheme: AppBarTheme(
-          backgroundColor: const Color(0xFFF8FAFC),
-          elevation: 0,
-          centerTitle: true,
-          titleTextStyle: GoogleFonts.outfit(color: const Color(0xFF0F172A), fontSize: 20, fontWeight: FontWeight.bold),
-          iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
+          margin: EdgeInsets.zero,
         ),
       ),
       home: authState.when(

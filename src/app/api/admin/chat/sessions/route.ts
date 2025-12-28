@@ -20,7 +20,9 @@ export async function GET() {
                     COALESCE(
                         (SELECT message FROM chat_messages WHERE session_id = cs.id ORDER BY created_at DESC LIMIT 1), 
                         'No messages'
-                    ) as last_message_preview 
+                    ) as last_message_preview,
+                    (SELECT sender_type FROM chat_messages WHERE session_id = cs.id ORDER BY created_at DESC LIMIT 1) as last_sender_type,
+                    (SELECT id FROM chat_messages WHERE session_id = cs.id ORDER BY created_at DESC LIMIT 1) as last_message_id 
                 FROM chat_sessions cs 
                 LEFT JOIN franchise_requests f ON cs.franchise_id = f.id
                 ORDER BY cs.last_message_at DESC

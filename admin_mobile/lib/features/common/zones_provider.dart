@@ -30,11 +30,6 @@ class ZonesNotifier extends AsyncNotifier<List<Zone>> {
   Future<List<Zone>> _fetchZones() async {
     try {
       final response = await _apiService.client.get('admin/zone/list');
-      // Assuming response.data is List or { 'zones': [...] } or similar.
-      // Based on typical stack, usually it returns list directly or wrapped.
-      // Will assume standard list return based on other providers.
-      // If endpoint is unknown, I might need to guess or check backend code if available.
-      // Assuming: GET /admin/zone/list -> [{id: 1, name: 'Zone A'}, ...]
       if (response.data is List) {
          return (response.data as List).map((e) => Zone.fromJson(e)).toList();
       } else if (response.data is Map && response.data['zones'] != null) {
@@ -44,6 +39,26 @@ class ZonesNotifier extends AsyncNotifier<List<Zone>> {
     } catch (e) {
       print('Error fetching zones: $e');
       return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchZoneReports() async {
+    try {
+      final response = await _apiService.client.get('admin/zone/reports');
+      return response.data;
+    } catch (e) {
+      print('Error fetching zone reports: $e');
+      return {};
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchZoneDetail(int zoneId) async {
+    try {
+      final response = await _apiService.client.get('admin/zone/reports', queryParameters: {'zoneId': zoneId});
+      return response.data;
+    } catch (e) {
+      print('Error fetching zone detail: $e');
+      return {};
     }
   }
 }

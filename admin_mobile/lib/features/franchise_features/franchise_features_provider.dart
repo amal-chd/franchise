@@ -90,14 +90,25 @@ class FranchiseOrdersNotifier extends AsyncNotifier<List<Map<String, dynamic>>> 
         throw Exception(errorMsg);
       }
       
-      // Ensure response is a list before casting
-      if (response.data is! List) {
-        print('Orders fetch error: Expected List but got ${response.data.runtimeType}');
-        print('Response data: ${response.data}');
-        throw Exception('Invalid response format from server');
+      // Robust extraction of list
+      List<Map<String, dynamic>> ordersList = [];
+      dynamic data = response.data;
+      
+      if (data is List) {
+        ordersList = List<Map<String, dynamic>>.from(data);
+      } else if (data is Map) {
+         if (data['data'] is List) {
+           ordersList = List<Map<String, dynamic>>.from(data['data']);
+         } else if (data['orders'] is List) {
+           ordersList = List<Map<String, dynamic>>.from(data['orders']);
+         } else if (data['orders'] is Map && data['orders']['data'] is List) {
+           ordersList = List<Map<String, dynamic>>.from(data['orders']['data']);
+         }
+      } else {
+        throw Exception('Invalid response format: Expected List or Map with data/orders');
       }
       
-      return List<Map<String, dynamic>>.from(response.data);
+      return ordersList;
     } catch (e) {
       print('Franchise orders fetch error: $e');
       throw Exception('Failed to fetch orders');
@@ -131,14 +142,16 @@ class PayoutSummary {
   });
   
   factory PayoutSummary.fromJson(Map<String, dynamic> json) {
+    final summary = json['summary'] ?? {};
+    final today = json['todaysPending'] ?? {};
     return PayoutSummary(
-      totalOrders: json['summary']['totalOrders'] ?? 0,
-      totalEarnings: double.tryParse(json['summary']['totalEarnings']?.toString() ?? '0') ?? 0,
-      restaurantEarnings: double.tryParse(json['summary']['restaurantEarnings']?.toString() ?? '0') ?? 0,
-      deliveryEarnings: double.tryParse(json['summary']['deliveryEarnings']?.toString() ?? '0') ?? 0,
-      totalTax: double.tryParse(json['summary']['totalTax']?.toString() ?? '0') ?? 0,
-      todaysPendingOrders: json['todaysPending']['orders'] ?? 0,
-      todaysPendingAmount: double.tryParse(json['todaysPending']['amount']?.toString() ?? '0') ?? 0,
+      totalOrders: summary['totalOrders'] ?? 0,
+      totalEarnings: double.tryParse(summary['totalEarnings']?.toString() ?? '0') ?? 0,
+      restaurantEarnings: double.tryParse(summary['restaurantEarnings']?.toString() ?? '0') ?? 0,
+      deliveryEarnings: double.tryParse(summary['deliveryEarnings']?.toString() ?? '0') ?? 0,
+      totalTax: double.tryParse(summary['totalTax']?.toString() ?? '0') ?? 0,
+      todaysPendingOrders: today['orders'] ?? 0,
+      todaysPendingAmount: double.tryParse(today['amount']?.toString() ?? '0') ?? 0,
     );
   }
 }
@@ -202,9 +215,17 @@ class PayoutsNotifier extends AsyncNotifier<PayoutsData> {
       
       final response = await _apiService.client.get(url);
       
+      final payoutsRaw = response.data['payouts'];
+      List payoutsList = [];
+      if (payoutsRaw is List) {
+        payoutsList = payoutsRaw;
+      } else if (payoutsRaw is Map) {
+        payoutsList = payoutsRaw.values.toList();
+      }
+
       return PayoutsData(
         summary: PayoutSummary.fromJson(response.data),
-        payouts: (response.data['payouts'] as List)
+        payouts: payoutsList
             .map((e) => PayoutEntry.fromJson(e))
             .toList(),
       );
@@ -292,14 +313,22 @@ class LeaderboardNotifier extends AsyncNotifier<LeaderboardData> {
       
       final response = await _apiService.client.get(url);
       
+      final lbRaw = response.data['leaderboard'];
+      List lbList = [];
+      if (lbRaw is List) {
+        lbList = lbRaw;
+      } else if (lbRaw is Map) {
+        lbList = lbRaw.values.toList();
+      }
+
       return LeaderboardData(
         month: response.data['month'] ?? '',
-        leaderboard: (response.data['leaderboard'] as List)
+        leaderboard: lbList
             .map((e) => LeaderboardEntry.fromJson(e))
             .toList(),
         historical: response.data['historical'] ?? {},
-        activeZones: response.data['stats']['activeZones'] ?? 0,
-        totalOrders: response.data['stats']['totalOrders'] ?? 0,
+        activeZones: response.data['stats']?['activeZones'] ?? 0,
+        totalOrders: response.data['stats']?['totalOrders'] ?? 0,
       );
     } catch (e) {
       print('Leaderboard fetch error: $e');

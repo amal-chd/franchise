@@ -80,38 +80,40 @@ class ChatNotificationNotifier extends Notifier<ChatNotificationState> {
     try {
       final response = await _apiService.client.get('admin/chat/sessions');
       if (response.data == null) return;
-
-      final sessions = response.data as List;
+      
+      List sessions = [];
+      if (response.data is List) {
+        sessions = response.data as List;
+      } else if (response.data is Map && response.data['sessions'] != null) {
+        sessions = response.data['sessions'] as List;
+      }
+      
       int totalUnread = 0;
       String? latestSender;
       String? latestMessage;
       int? latestSessionId;
-      int latestMessageId = 0;
+      int maxMessageIdFound = _lastKnownMessageId;
 
       for (var session in sessions) {
-        final sessionId = session['id'];
-        final msgResponse = await _apiService.client.get('chat/messages?sessionId=$sessionId');
-        if (msgResponse.data != null) {
-          final messages = msgResponse.data as List;
-          for (var msg in messages) {
-            if (msg['sender_type'] == 'franchise' && msg['id'] > _lastKnownMessageId) {
-              totalUnread++;
-              if (msg['id'] > latestMessageId) {
-                latestMessageId = msg['id'];
-                latestSender = session['franchise_name'] ?? 'Franchise';
-                latestMessage = msg['message'];
-                latestSessionId = sessionId;
-              }
-            }
+        final lastMsgId = session['last_message_id'] as int? ?? 0;
+        final senderType = session['last_sender_type'] as String?;
+        
+        if (lastMsgId > _lastKnownMessageId && senderType == 'franchise') {
+          totalUnread++;
+          if (lastMsgId > maxMessageIdFound) {
+            maxMessageIdFound = lastMsgId;
+            latestSender = session['franchise_name'] ?? 'Franchise';
+            latestMessage = session['last_message_preview'] ?? 'Value';
+            latestSessionId = session['id'];
           }
         }
       }
 
-      if (totalUnread > 0 && latestMessageId > _lastKnownMessageId) {
+      if (totalUnread > 0) {
         if (_currentSessionId != latestSessionId) {
           _showNotification(latestSender ?? 'New Message', latestMessage ?? 'You have a new message');
         }
-        _lastKnownMessageId = latestMessageId;
+        _lastKnownMessageId = maxMessageIdFound;
         state = ChatNotificationState(
           unreadCount: totalUnread,
           lastMessageSender: latestSender,
@@ -132,34 +134,20 @@ class ChatNotificationNotifier extends Notifier<ChatNotificationState> {
       final sessionResponse = await _apiService.client.get('chat/session?franchiseId=$franchiseId');
       if (sessionResponse.data == null) return;
 
-      final sessionId = sessionResponse.data['id'];
-      final msgResponse = await _apiService.client.get('chat/messages?sessionId=$sessionId');
-      if (msgResponse.data == null) return;
+      final session = sessionResponse.data;
+      final sessionId = session['id'];
+      final lastMsgId = session['last_message_id'] as int? ?? 0;
+      final senderType = session['last_sender_type'] as String?;
 
-      final messages = msgResponse.data as List;
-      int unreadCount = 0;
-      String? latestMessage;
-      int latestMessageId = 0;
-
-      for (var msg in messages) {
-        if (msg['sender_type'] == 'admin' && msg['id'] > _lastKnownMessageId) {
-          unreadCount++;
-          if (msg['id'] > latestMessageId) {
-            latestMessageId = msg['id'];
-            latestMessage = msg['message'];
-          }
-        }
-      }
-
-      if (unreadCount > 0 && latestMessageId > _lastKnownMessageId) {
+      if (lastMsgId > _lastKnownMessageId && senderType == 'admin') {
         if (_currentSessionId != sessionId) {
-          _showNotification('Admin Support', latestMessage ?? 'You have a new message');
+          _showNotification('Admin Support', session['last_message_preview'] ?? 'You have a new message');
         }
-        _lastKnownMessageId = latestMessageId;
+        _lastKnownMessageId = lastMsgId;
         state = ChatNotificationState(
-          unreadCount: unreadCount,
+          unreadCount: state.unreadCount + 1, // Franchise usually expects 1 active thread
           lastMessageSender: 'Admin',
-          lastMessagePreview: latestMessage,
+          lastMessagePreview: session['last_message_preview'],
           sessionId: sessionId,
         );
       }

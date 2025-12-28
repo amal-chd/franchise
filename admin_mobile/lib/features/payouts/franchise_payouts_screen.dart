@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import '../franchise_features/franchise_features_provider.dart';
 import '../../widgets/premium_widgets.dart';
 
+import '../../widgets/modern_header.dart'; // Add import
+
 class ImprovedPayoutsScreen extends ConsumerStatefulWidget {
   const ImprovedPayoutsScreen({super.key});
 
@@ -21,33 +23,41 @@ class _ImprovedPayoutsScreenState extends ConsumerState<ImprovedPayoutsScreen> {
     final payoutsAsync = ref.watch(payoutsProvider);
 
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: AppBar(
-          title: Text('Financial Payouts', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF0F172A))),
-          backgroundColor: Colors.white.withOpacity(0.8),
-          elevation: 0,
-          centerTitle: true,
-          leadingWidth: 70,
-          leading: Navigator.of(context).canPop() ? IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: const Color(0xFF0F172A).withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Color(0xFF0F172A)),
-            ),
-            onPressed: () => Navigator.of(context).pop(),
-          ) : null,
-          actions: [
+      appBar: ModernDashboardHeader(
+        title: 'Financial Payouts',
+        leadingWidget: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
             IconButton(
               icon: Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: const Color(0xFF0F172A).withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.date_range_rounded, size: 20, color: Color(0xFF0F172A)),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
               ),
-              onPressed: () => _showDateFilterDialog(context),
+              onPressed: () => Navigator.of(context).pop(),
             ),
-            const SizedBox(width: 8),
+            Hero(
+              tag: 'app_logo', 
+              child: Material(
+                color: Colors.transparent,
+                child: Image.asset(
+                  'assets/images/logo_text.png', 
+                  height: 24,
+                  color: Colors.white,
+                  errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                ),
+              ),
+            ),
           ],
+        ),
+        showLeading: true,
+        trailingWidget: IconButton(
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.date_range_rounded, size: 20, color: Colors.white),
+          ),
+          onPressed: () => _showDateFilterDialog(context),
         ),
       ),
       backgroundColor: Colors.grey[50],

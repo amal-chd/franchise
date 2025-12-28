@@ -44,7 +44,13 @@ class CareersNotifier extends AsyncNotifier<List<JobPosting>> {
 
   Future<List<JobPosting>> _fetchJobs() async {
     final response = await _apiService.client.get('admin/careers');
-    return (response.data as List).map((e) => JobPosting.fromJson(e)).toList();
+    List data = [];
+    if (response.data is List) {
+      data = response.data as List;
+    } else if (response.data is Map && response.data['data'] != null) {
+      data = response.data['data'] as List;
+    }
+    return data.map((e) => JobPosting.fromJson(e)).toList();
   }
 
   Future<void> fetchJobs() async {

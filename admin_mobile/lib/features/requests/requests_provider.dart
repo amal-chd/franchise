@@ -34,19 +34,19 @@ class FranchiseRequest {
 
   factory FranchiseRequest.fromJson(Map<String, dynamic> json) {
     return FranchiseRequest(
-      id: json['id'],
-      name: json['name'],
-      email: json['email'],
-      city: json['city'] ?? '',
-      status: json['status'],
-      phone: json['phone'],
-      kycUrl: json['aadhar_url'],
+      id: int.tryParse(json['id'].toString()) ?? 0,
+      name: json['name'] ?? 'Unknown Name',
+      email: json['email'] ?? 'No Email',
+      city: json['city']?.toString() ?? '',
+      status: json['status'] ?? 'pending',
+      phone: json['phone']?.toString() ?? 'No Phone',
+      kycUrl: json['aadhar_url']?.toString(),
       planSelected: json['plan_selected'] ?? 'free',
-      upiId: json['upi_id'],
-      bankAccountNumber: json['bank_account_number'],
-      ifscCode: json['ifsc_code'],
-      bankName: json['bank_name'],
-      zoneId: json['zone_id'],
+      upiId: json['upi_id']?.toString(),
+      bankAccountNumber: json['bank_account_number']?.toString(),
+      ifscCode: json['ifsc_code']?.toString(),
+      bankName: json['bank_name']?.toString(),
+      zoneId: int.tryParse(json['zone_id']?.toString() ?? ''),
     );
   }
 }
@@ -65,7 +65,13 @@ class RequestsNotifier extends AsyncNotifier<List<FranchiseRequest>> {
 
   Future<List<FranchiseRequest>> _fetchRequests() async {
     final response = await _apiService.client.get('admin/requests');
-    return (response.data as List).map((e) => FranchiseRequest.fromJson(e)).toList();
+    List data = [];
+    if (response.data is List) {
+      data = response.data as List;
+    } else if (response.data is Map && response.data['data'] != null) {
+      data = response.data['data'] as List;
+    }
+    return data.map((e) => FranchiseRequest.fromJson(e)).toList();
   }
 
   Future<bool> createFranchise(Map<String, dynamic> data) async {

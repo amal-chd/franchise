@@ -3,7 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../requests/requests_provider.dart';
+import '../payouts/payouts_provider.dart';
+import '../common/zones_provider.dart';
 import '../../widgets/premium_widgets.dart';
+import '../../widgets/modern_header.dart';
+import 'franchise_form_sheet.dart';
 
 class FranchiseProfileScreen extends ConsumerWidget {
   final int franchiseId;
@@ -14,53 +18,159 @@ class FranchiseProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final requestsAsync = ref.watch(requestsProvider);
+    final zonesAsync = ref.watch(zonesProvider);
+    final zones = zonesAsync.asData?.value ?? [];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: Text('Franchise Profile', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leadingWidth: 70,
-        leading: Navigator.of(context).canPop() ? IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
-          ),
-          onPressed: () => Navigator.of(context).pop(),
-        ) : null,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
+      backgroundColor: const Color(0xFFF1F5F9), // Light CRM Body
+      appBar: ModernDashboardHeader(
+        title: 'Partner Profile',
+        subtitle: franchiseName,
+        leadingIcon: Icons.arrow_back_rounded,
+        onLeadingPressed: () => Navigator.pop(context),
+        trailingWidget: GestureDetector(
+           onTap: () {
+             // Handle Star/Favorite logic if needed
+           },
+           child: Container(
+             width: 40, 
+             height: 40,
+             decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), shape: BoxShape.circle),
+             child: const Icon(Icons.star_outline_rounded, color: Colors.white, size: 20),
+           ),
+        ),
       ),
       body: requestsAsync.when(
         data: (requests) {
           try {
             final franchise = requests.firstWhere((r) => r.id == franchiseId);
+            
             return SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
               physics: const BouncingScrollPhysics(),
               child: Column(
                 children: [
-                   const SizedBox(height: 100), // Height for the transparent app bar
-                  // Premium Header
-                  _buildHeader(context, franchise),
+                   // Profile Header (CRM Style)
+                   Column(
+                    children: [
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundColor: const Color(0xFFE2E8F0),
+                        child: Text(
+                          franchise.name[0].toUpperCase(),
+                          style: GoogleFonts.outfit(fontSize: 40, fontWeight: FontWeight.bold, color: const Color(0xFF475569)),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        franchise.name,
+                        style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Franchise Partner • ${franchise.city}',
+                        style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF64748B)),
+                      ),
+                      const SizedBox(height: 24),
+                      
+                      // Action Row (Quick Actions)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildQuickAction(Icons.edit_outlined, () {
+                            _showEditSheet(context, ref, franchise, zones);
+                          }),
+                          const SizedBox(width: 16),
+                          _buildQuickAction(Icons.email_outlined, () {
+                            // Email Action
+                          }),
+                          const SizedBox(width: 16),
+                          _buildQuickAction(Icons.phone_outlined, () {
+                            // Phone Action
+                          }),
+                          const SizedBox(width: 16),
+                          _buildQuickAction(Icons.calendar_today_rounded, () {}),
+                        ],
+                      ),
+                    ],
+                  ),
                   
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  const SizedBox(height: 32),
+                  
+                  // Detailed Info Section
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [BoxShadow(color: const Color(0xFF64748B).withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10))],
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _sectionTitle('Contact Information'),
-                        _buildInfoGrid([
-                          _infoTile(Icons.email_outlined, 'Email', franchise.email),
-                          _infoTile(Icons.phone_outlined, 'Phone', franchise.phone),
-                          _infoTile(Icons.location_city_outlined, 'City', franchise.city),
-                          _infoTile(Icons.star_outline, 'Active Plan', franchise.planSelected.toUpperCase(), color: Colors.blue),
-                        ]),
-                        
-                        const SizedBox(height: 32),
-                        _sectionTitle('Banking & Payouts'),
-                        _buildBankCard(context, franchise),
+                        Text('Detailed Information', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                         const SizedBox(height: 20),
+                         _buildDetailRow('Email', franchise.email),
+                         _buildDetailRow('Phone', franchise.phone),
+                         _buildDetailRow('City', franchise.city),
+                         _buildDetailRow('Plan', franchise.planSelected.toUpperCase()),
+                         _buildDetailRow('Status', franchise.status.toUpperCase(), isStatus: true),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Financial / Banking Card (Yellow/Black Style)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFCD34D), // CRM Yellow
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
+                              child: const Icon(Icons.account_balance_rounded, color: Colors.white, size: 24),
+                            ),
+                            const Icon(Icons.arrow_outward_rounded, color: Colors.black, size: 28),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        Text('Banking Details', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.black54)),
+                        const SizedBox(height: 8),
+                        Text(
+                          franchise.bankAccountNumber ?? 'Not Provided',
+                          style: GoogleFonts.robotoMono(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black, letterSpacing: -0.5),
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('BANK', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black45)),
+                                Text(franchise.bankName?.toUpperCase() ?? 'N/A', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black)),
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text('IFSC', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black45)),
+                                Text(franchise.ifscCode?.toUpperCase() ?? 'N/A', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black)),
+                              ],
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -68,206 +178,88 @@ class FranchiseProfileScreen extends ConsumerWidget {
               ),
             );
           } catch (e) {
-            return const IllustrativeState(
-              icon: Icons.person_search_rounded,
-              title: 'Not Found',
-              subtitle: 'We couldn\'t locate the details for this specific partner profile.',
-            );
+            return const Center(child: Text('Profile Not Found'));
           }
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, st) => IllustrativeState(
-          icon: Icons.error_outline_rounded,
-          title: 'Profile Sync Error',
-          subtitle: 'An unexpected error occurred while retrieving this partner profile. $err',
-          onRetry: () => ref.invalidate(requestsProvider),
-          retryLabel: 'Sync Profile',
-        ),
+        error: (err, st) => Center(child: Text('Error: $err')),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, dynamic franchise) {
-    return Container(
-      width: double.infinity,
-      height: 280,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(40),
-          bottomRight: Radius.circular(40),
-        ),
+  void _showEditSheet(BuildContext context, WidgetRef ref, dynamic franchise, List<Zone> zones) {
+     showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => FranchiseFormSheet(
+        initialData: {
+          'name': franchise.name,
+          'email': franchise.email,
+          'phone': franchise.phone,
+          'city': franchise.city,
+          'plan_selected': franchise.planSelected,
+          'status': franchise.status,
+          'upi_id': franchise.upiId,
+          'bank_account_number': franchise.bankAccountNumber,
+          'ifsc_code': franchise.ifscCode,
+          'bank_name': franchise.bankName,
+          'zone_id': franchise.zoneId,
+        },
+        zones: zones,
+        isEdit: true,
+        onSubmit: (data) async {
+          Navigator.pop(context);
+          final success = await ref.read(requestsProvider.notifier).updateFranchise(franchise.id, data);
+          if (context.mounted) {
+            if (success) {
+              ref.read(payoutsProvider.notifier).loadData();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Profile Updated Successfully')),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Failed to update profile')),
+              );
+            }
+          }
+        },
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withOpacity(0.2), width: 2),
-              ),
-              child: CircleAvatar(
-                radius: 45,
-                backgroundColor: Colors.blue[600],
-                child: Text(
-                  franchise.name.substring(0, 1).toUpperCase(),
-                  style: GoogleFonts.outfit(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              franchise.name,
-              style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                'Partner ID: #${franchise.id}',
-                style: GoogleFonts.inter(fontSize: 12, color: Colors.white70),
-              ),
-            ),
+    );
+  }
+
+  Widget _buildQuickAction(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 50, height: 50,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+             BoxShadow(color: const Color(0xFF64748B).withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
           ],
         ),
+        child: Icon(icon, color: const Color(0xFF64748B), size: 22),
       ),
     );
   }
 
-  Widget _sectionTitle(String title) {
+  Widget _buildDetailRow(String label, String value, {bool isStatus = false}) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 16),
-      child: Text(
-        title,
-        style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
-      ),
-    );
-  }
-
-  Widget _buildInfoGrid(List<Widget> children) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 1.6,
-        children: children,
-      ),
-    );
-  }
-
-  Widget _infoTile(IconData icon, String label, String value, {Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: color ?? Colors.grey[400]),
-              const SizedBox(width: 8),
-              Text(label, style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.w600)),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBankCard(BuildContext context, dynamic franchise) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Icon(Icons.account_balance_wallet_outlined, color: Colors.white, size: 32),
-              Image.asset('assets/images/logo.png', height: 24, color: Colors.white70, errorBuilder: (_,__,___) => const SizedBox()),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Text(
-            franchise.bankAccountNumber ?? 'Not Provided',
-            style: GoogleFonts.outfit(fontSize: 22, color: Colors.white, letterSpacing: 2, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('BANK NAME', style: GoogleFonts.inter(fontSize: 10, color: Colors.white60)),
-                  Text(franchise.bankName?.toUpperCase() ?? 'N/A', style: GoogleFonts.inter(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold)),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('IFSC CODE', style: GoogleFonts.inter(fontSize: 10, color: Colors.white60)),
-                  Text(franchise.ifscCode?.toUpperCase() ?? 'N/A', style: GoogleFonts.inter(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ],
-          ),
-          const Divider(height: 32, color: Colors.white24),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('UPI ID', style: GoogleFonts.inter(fontSize: 10, color: Colors.white60)),
-                    Text(franchise.upiId ?? 'N/A', style: GoogleFonts.inter(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.copy, color: Colors.white70, size: 20),
-                onPressed: () {
-                   Clipboard.setData(ClipboardData(text: franchise.upiId ?? ''));
-                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('UPI ID Copied')));
-                },
-              ),
-            ],
-          ),
+          Text(label, style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontWeight: FontWeight.w500)),
+          isStatus 
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: const Color(0xFFDCFCE7), borderRadius: BorderRadius.circular(8)),
+                child: Text(value, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12, color: const Color(0xFF166534))),
+              )
+            : Text(value, style: GoogleFonts.inter(color: const Color(0xFF334155), fontWeight: FontWeight.w600)),
         ],
       ),
     );

@@ -11,6 +11,8 @@ import 'personal_info_screen.dart';
 import 'banking_details_screen.dart';
 import 'security_settings_screen.dart';
 
+import '../../widgets/modern_header.dart'; // Add import
+
 class FranchiseProfileTab extends ConsumerStatefulWidget {
   const FranchiseProfileTab({super.key});
 
@@ -33,11 +35,25 @@ class _FranchiseProfileTabState extends ConsumerState<FranchiseProfileTab> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: Text('Account Profile', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF0F172A))),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
+      appBar: ModernDashboardHeader(
+        title: 'My Profile',
+        leadingWidget: Padding(
+          padding: const EdgeInsets.only(left: 8.0),
+          child: Hero(
+            tag: 'app_logo', 
+            child: Material(
+              color: Colors.transparent,
+              child: Image.asset(
+                'assets/images/logo_text.png', 
+                height: 24,
+                color: Colors.white,
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, color: Colors.white),
+              ),
+            ),
+          ),
+        ),
+        isHome: false,
+        showLeading: false, 
       ),
       body: RefreshIndicator(
         onRefresh: () => ref.read(profileProvider.notifier).refresh(),

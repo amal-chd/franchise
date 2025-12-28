@@ -8,6 +8,8 @@ import 'dart:io';
 import 'dart:async';
 import 'chat_provider.dart';
 
+import '../../widgets/modern_header.dart';
+
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
 
@@ -23,8 +25,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      ref.invalidate(chatMessagesProvider);
+    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      ref.read(chatMessagesProvider.notifier).refresh();
     });
   }
 
@@ -50,25 +52,42 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final sessionAsync = ref.watch(chatSessionProvider);
     final messagesAsync = ref.watch(chatMessagesProvider);
+    final canPop = Navigator.of(context).canPop();
 
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: AppBar(
-          title: Text('Concierge Support', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF0F172A))),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: true,
-          leadingWidth: 70,
-          leading: Navigator.of(context).canPop() ? IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: const Color(0xFF0F172A).withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Color(0xFF0F172A)),
+      appBar: ModernDashboardHeader(
+        title: 'Franchise Support',
+        leadingWidget: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (Navigator.of(context).canPop())
+               IconButton(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+              )
+            else
+               const SizedBox(width: 8),
+            
+            Hero(
+              tag: 'app_logo', 
+              child: Material(
+                color: Colors.transparent,
+                child: Image.asset(
+                  'assets/images/logo_text.png', 
+                  height: 24,
+                  color: Colors.white,
+                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.support_agent, color: Colors.white),
+                ),
+              ),
             ),
-            onPressed: () => Navigator.of(context).pop(),
-          ) : null,
+          ],
         ),
+        isHome: false,
+        showLeading: false, 
       ),
       backgroundColor: Colors.grey[50],
       body: Column(
@@ -288,29 +307,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _openAttachment(String url) async {
-    // Construct full URL if needed (assuming backend returns full path or relative)
-    // If relative, prepend base URL. But backend returns fileUrl which might be /uploads/...
-    // I should create a helper to get full URL.
     Uri uri = Uri.parse(url);
     if (!uri.hasScheme) {
-       // Assume relative to base URL. HARDCODING for now or get from ApiService constant if possible.
-       // Current base: Next.js on 3000.
-       // The `fileUrl` from backend is likely relative `/uploads/...` or absolute Blob URL.
-       // If starts with /, prepend.
+       // If relative URL, prepend production base URL
        if (url.startsWith('/')) {
-         // Assuming base URL from ApiService logic. 
-         // Since I can't easily access ApiService.baseUrl here without check, I'll pass generic logic.
-         // Actually `ApiService` usually handles base URL for formatting? No.
-         // Let's assume absolute URL for Blob, and construct relative for local.
-         // HACK: Hardcode local fallback or assume absolute?
-         // User is running locally `npm run dev` (localhost:3000).
-         // Emulator 10.0.2.2 or real device 192.x. 
-         // Let's use `ApiService.baseUrl` if accessible? No.
-         // I'll assume the URL returned by backend is fully qualified OR I need to fix backend to return full URL.
-         // Backend: returns `blob.url` (absolute) or `/uploads/...`.
-         // I will assume it works for Blob. For local `/uploads`, `url_launcher` might fail if not absolute http.
-         // I will try to parse.
-         uri = Uri.parse('http://192.168.31.247:3000$url'); // Using user's IP seen in previous logs
+          uri = Uri.parse('https://franchise.thekada.in$url');
        }
     }
     if (await canLaunchUrl(uri)) {

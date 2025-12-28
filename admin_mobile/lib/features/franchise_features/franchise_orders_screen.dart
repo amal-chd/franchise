@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import '../franchise_features/franchise_features_provider.dart';
 import '../../widgets/premium_widgets.dart';
 
+import '../../widgets/modern_header.dart'; // Add import
+
 class FranchiseOrdersScreen extends ConsumerStatefulWidget {
   const FranchiseOrdersScreen({super.key});
 
@@ -20,42 +22,56 @@ class _FranchiseOrdersScreenState extends ConsumerState<FranchiseOrdersScreen> {
   Widget build(BuildContext context) {
     final ordersAsync = ref.watch(franchiseOrdersProvider);
     final filter = ref.watch(franchiseOrdersFilterProvider);
+    final canPop = Navigator.of(context).canPop();
 
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: AppBar(
-          title: Text('Order Lifecycle', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF0F172A))),
-          backgroundColor: Colors.white.withOpacity(0.8),
-          elevation: 0,
-          centerTitle: true,
-          leadingWidth: 70,
-          leading: Navigator.of(context).canPop() ? IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: const Color(0xFF0F172A).withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Color(0xFF0F172A)),
-            ),
-            onPressed: () => Navigator.of(context).maybePop(),
-          ) : null,
-          actions: [
+      appBar: ModernDashboardHeader(
+        title: 'Order Lifecycle',
+        leadingWidget: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
             IconButton(
               icon: Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: const Color(0xFF0F172A).withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.tune_rounded, size: 20, color: Color(0xFF0F172A)),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+              ),
+              onPressed: () => Navigator.of(context).maybePop(),
+            ),
+            Hero(
+              tag: 'app_logo', 
+              child: Material(
+                color: Colors.transparent,
+                child: Image.asset(
+                  'assets/images/logo_text.png', 
+                  height: 24,
+                  color: Colors.white,
+                  errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                ),
+              ),
+            ),
+          ],
+        ),
+        showLeading: true,
+        trailingWidget: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.tune_rounded, size: 20, color: Colors.white),
               ),
               onPressed: () => _showFilterDialog(context),
             ),
             IconButton(
               icon: Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: const Color(0xFF0F172A).withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.refresh_rounded, size: 20, color: Color(0xFF0F172A)),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.refresh_rounded, size: 20, color: Colors.white),
               ),
               onPressed: () => ref.read(franchiseOrdersProvider.notifier).refresh(),
             ),
-            const SizedBox(width: 8),
           ],
         ),
       ),

@@ -157,7 +157,7 @@ class _AdminChatScreenState extends ConsumerState<AdminChatScreen> {
       ref.read(chatNotificationProvider.notifier).markAsRead();
     });
     
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
       ref.invalidate(adminChatMessagesFamilyProvider(widget.sessionId));
     });
   }

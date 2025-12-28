@@ -1,3 +1,4 @@
+import "../../widgets/modern_header.dart";
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -28,6 +29,7 @@ import '../notifications/notification_screen.dart';
 import '../notifications/notification_provider.dart';
 import '../profile/admin_profile_tab.dart';
 import '../../widgets/premium_widgets.dart';
+import '../reports/zone_reports_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -56,6 +58,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     const NewsletterTab(),
     const PricingTab(),
     const AdminOrdersTab(), // Index 14
+    const ZoneReportsScreen(), // Index 15
   ];
 
   static const List<String> _titles = [
@@ -74,6 +77,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     'Newsletter',
     'Pricing',
     'Merchandise Orders',
+    'Zone Reports',
   ];
 
   void _onItemTapped(int index) {
@@ -101,27 +105,40 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+ // Import this
+
   @override
   Widget build(BuildContext context) {
+    // Get unread notification count
+    final notificationCount = ref.watch(notificationProvider.notifier).unreadCount;
+    
+    // Determine title and subtitle
+    String title = _titles[_selectedIndex];
+    String? subtitle;
+    
+    if (_selectedIndex == 0) {
+      title = 'Welcome, Admin';
+      subtitle = 'Overview of your business';
+    } else if (_selectedIndex == 4) {
+      // Profile tab handled its own header in the original code, but we can unify or hide
+      // If ProfileTab has its own scaffold/appbar, we might want null here, or keep consistent.
+      // The original code hid the appbar for index 4.
+    }
+
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: (_selectedIndex == 4) 
-            ? const SizedBox() 
-            : Text(_titles[_selectedIndex]),
-        backgroundColor: (_selectedIndex == 4) ? Colors.transparent : Colors.white,
-        elevation: (_selectedIndex == 4) ? 0 : 1,
-        centerTitle: true,
-        leading: IconButton(
-        icon: const Icon(Icons.menu_rounded),
-        onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-      ),
-        actions: [
-          _buildNotificationAction(),
-          const SizedBox(width: 16),
-        ],
-      ),
+      extendBodyBehindAppBar: _selectedIndex == 4, // Allow profile to go behind if needed
+      appBar: (_selectedIndex == 4) 
+          ? null // Profile tab might have its own fancy header
+          : ModernDashboardHeader(
+              title: title,
+              subtitle: subtitle,
+              isHome: _selectedIndex == 0,
+              notificationCount: notificationCount,
+              onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
+              onNotificationPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationScreen())),
+            ),
       drawer: _buildDrawer(context),
       body: IndexedStack(
         index: _selectedIndex,
@@ -193,6 +210,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 _buildDrawerItem(7, 'Payouts', Icons.payments_rounded,
                   badgeCount: ref.watch(payoutsProvider).value?.payouts.length),
                 _buildDrawerItem(8, 'Zone Leaderboard', Icons.leaderboard_rounded),
+                _buildDrawerItem(15, 'Zone Reports', Icons.pie_chart_rounded),
                 _buildDrawerItem(9, 'CMS', Icons.article_rounded),
                 _buildDrawerItem(2, 'Support Tickets', Icons.support_agent_rounded,
                   badgeCount: ref.watch(supportProvider).value?.where((e) => e.status == 'Pending').length),

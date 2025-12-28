@@ -100,17 +100,23 @@ class ChatMessagesNotifier extends AsyncNotifier<List<ChatMessage>> {
 
     try {
       final response = await _apiService.client.get('chat/messages?sessionId=${session.id}');
-      final data = response.data as List;
+      List data = [];
+      if (response.data is List) {
+        data = response.data as List;
+      } else if (response.data is Map && response.data['messages'] != null) {
+        data = response.data['messages'] as List;
+      }
       return data.map((e) => ChatMessage.fromJson(e)).toList();
     } catch (e) {
       return [];
     }
   }
   
-  // Refresh messages manually
+// Refresh messages silently
   Future<void> refresh() async {
-      state = const AsyncValue.loading();
-      state = await AsyncValue.guard(() => _fetchMessages());
+      // Do not set state to loading to avoid flicker
+      final newMessages = await _fetchMessages();
+      state = AsyncValue.data(newMessages);
   }
 
   Future<bool> sendMessage(String? message, {String? attachmentUrl, String? attachmentType}) async {
@@ -131,7 +137,7 @@ class ChatMessagesNotifier extends AsyncNotifier<List<ChatMessage>> {
       });
 
       if (response.statusCode == 200) {
-        refresh();
+        await refresh(); // Silent refresh
         return true;
       }
       return false;
@@ -141,20 +147,8 @@ class ChatMessagesNotifier extends AsyncNotifier<List<ChatMessage>> {
   }
 
   Future<String?> uploadFile(File file) async {
-    try {
-      String fileName = file.path.split('/').last;
-      FormData formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(file.path, filename: fileName),
-      });
-
-      final response = await _apiService.client.post('chat/upload', data: formData);
-      if (response.statusCode == 200) {
-        return response.data['fileUrl'];
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
+      // Use the centralized upload method
+      return await _apiService.uploadFile(file, folder: 'chat');
   }
 }
 
@@ -163,7 +157,12 @@ final adminChatSessionsProvider = FutureProvider<List<ChatSession>>((ref) async 
   final api = ApiService();
   try {
     final response = await api.client.get('admin/chat/sessions');
-    final data = response.data as List;
+    List data = [];
+    if (response.data is List) {
+      data = response.data as List;
+    } else if (response.data is Map && response.data['sessions'] != null) {
+      data = response.data['sessions'] as List;
+    }
     return data.map((e) => ChatSession.fromJson(e)).toList();
   } catch (e) {
     return [];
@@ -175,7 +174,12 @@ final adminChatMessagesFamilyProvider = FutureProvider.family<List<ChatMessage>,
   final api = ApiService();
   try {
     final response = await api.client.get('chat/messages?sessionId=$sessionId');
-    final data = response.data as List;
+    List data = [];
+    if (response.data is List) {
+      data = response.data as List;
+    } else if (response.data is Map && response.data['messages'] != null) {
+      data = response.data['messages'] as List;
+    }
     return data.map((e) => ChatMessage.fromJson(e)).toList();
   } catch (e) {
     return [];
@@ -203,7 +207,7 @@ class AdminChatController {
       });
 
       if (response.statusCode == 200) {
-        // Invalidate provider to trigger refresh
+        // Refresh provider
         ref.invalidate(adminChatMessagesFamilyProvider(sessionId));
         return true;
       }
@@ -214,20 +218,7 @@ class AdminChatController {
   }
 
   Future<String?> uploadFile(File file) async {
-    try {
-      String fileName = file.path.split('/').last;
-      FormData formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(file.path, filename: fileName),
-      });
-
-      final response = await _apiService.client.post('chat/upload', data: formData);
-      if (response.statusCode == 200) {
-        return response.data['fileUrl'];
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
+      return await _apiService.uploadFile(file, folder: 'chat_admin');
   }
   Future<ChatSession?> startNewChat(int franchiseId) async {
     try {
