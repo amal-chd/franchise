@@ -145,11 +145,6 @@ class HomeTab extends ConsumerWidget {
               DateFormat('EEEE, d MMMM').format(DateTime.now()),
               style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[500], fontWeight: FontWeight.w500),
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Hello, Admin 👋',
-              style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
-            ),
           ],
         ),
         const SizedBox(),
@@ -253,9 +248,9 @@ class HomeTab extends ConsumerWidget {
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         children: [
+          _quickActionItem(context, 'Shop', Icons.shopping_bag_rounded, const Color(0xFF8B5CF6), 7),
           _quickActionItem(context, 'Merchandise', Icons.receipt_long_rounded, const Color(0xFFEC4899), 14),
           _quickActionItem(context, 'Partners', Icons.person_add_outlined, const Color(0xFF8B5CF6), 5),
-          _quickActionItem(context, 'Payouts', Icons.payments_rounded, const Color(0xFF10B981), 7),
           _quickActionItem(context, 'Leaderboard', Icons.leaderboard_rounded, const Color(0xFF3B82F6), 8),
         ],
       ),

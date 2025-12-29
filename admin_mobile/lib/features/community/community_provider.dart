@@ -65,13 +65,22 @@ class CommunityFeedNotifier extends AsyncNotifier<List<CommunityPost>> {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getInt('franchiseId');
       
+      print('Fetching feed for userId: $userId');
       final response = await _apiService.client.get('community/posts?userId=$userId');
+      print('Feed response status: ${response.statusCode}');
+      print('Feed response data type: ${response.data.runtimeType}');
+      print('Feed response data: ${response.data}');
+      
       if (response.data is List) {
-        return (response.data as List).map((e) => CommunityPost.fromJson(e)).toList();
+        final posts = (response.data as List).map((e) => CommunityPost.fromJson(e)).toList();
+        print('Successfully parsed ${posts.length} posts');
+        return posts;
       }
+      print('Response data is not a list');
       return [];
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Feed Error: $e');
+      print('Stack trace: $stackTrace');
       return [];
     }
   }
@@ -80,11 +89,25 @@ class CommunityFeedNotifier extends AsyncNotifier<List<CommunityPost>> {
     try {
       final prefs = await SharedPreferences.getInstance();
       debugPrint('SharedPrefs Keys: ${prefs.getKeys()}');
-      final userId = prefs.getInt('franchiseId');
-      final userName = prefs.getString('franchiseName') ?? 'Franchise Owner';
+      
+      // Get user ID - check both franchiseId and adminId
+      int? userId = prefs.getInt('franchiseId');
+      if (userId == null) {
+        userId = prefs.getInt('adminId');
+      }
+      
+      final userName = prefs.getString('franchiseName') ?? 
+                       prefs.getString('adminName') ?? 
+                       'Admin';
       final role = prefs.getString('userRole') ?? 'franchise';
 
       print('CreatePost: userId=$userId, userName=$userName, role=$role');
+
+      // For admin, use ID 1 if not found
+      if (userId == null && role == 'admin') {
+        userId = 1;
+        print('Using admin default userId=1');
+      }
 
       if (userId == null) return 'User ID not found. Please relogin.';
 
@@ -97,10 +120,47 @@ class CommunityFeedNotifier extends AsyncNotifier<List<CommunityPost>> {
         'role': role
       };
 
+      print('Sending post data: $data');
       final response = await _apiService.client.post('community/posts', data: data);
       
-      if (response.statusCode == 200) {
-        ref.invalidateSelf(); // Refresh feed
+      print('Post response status: ${response.statusCode}');
+      print('Post response data: ${response.data}');
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('Post created successfully!');
+        print('Response includes post ID: ${response.data['id']}');
+        
+        // Optimistically add the new post to the current state
+        final currentPosts = state.value ?? [];
+        final newPost = CommunityPost(
+          id: response.data['id'] ?? DateTime.now().millisecondsSinceEpoch,
+          userId: userId,
+          userName: userName,
+          userImage: '',
+          contentText: content,
+          imageUrl: imageUrl ?? '', // Ensure imageUrl is not null for the model
+          likesCount: 0,
+          isLikedByMe: false,
+          commentsCount: 0,
+          createdAt: DateTime.now(), // Use DateTime object
+        );
+        
+        // Update state with new post at the beginning
+        state = AsyncValue.data([newPost, ...currentPosts]);
+        
+        // After 2 seconds, refresh from backend to verify post was saved
+        Future.delayed(const Duration(seconds: 2), () async {
+          print('Refreshing feed from backend to verify post persistence...');
+          try {
+            final freshPosts = await _fetchFeed();
+            state = AsyncValue.data(freshPosts);
+            print('Feed refreshed with ${freshPosts.length} posts from backend');
+          } catch (e) {
+            print('Failed to refresh feed: $e');
+            // Keep optimistic update if refresh fails
+          }
+        });
+        
         return null; // Success
       }
       print('Post Failed: ${response.statusCode} - ${response.data}');
@@ -132,17 +192,15 @@ class CommunityFeedNotifier extends AsyncNotifier<List<CommunityPost>> {
       return post;
     }).toList());
 
+    // API Call
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getInt('franchiseId');
-      
       await _apiService.client.post('community/interactions', data: {
-        'userId': userId,
+        'userId': (await SharedPreferences.getInstance()).getInt('franchiseId'),
         'postId': postId,
         'type': 'like'
       });
     } catch (e) {
-      // Revert if failed (optional, but good practice)
+      // Rollback on error
       ref.invalidateSelf();
     }
   }
@@ -196,7 +254,9 @@ final userSearchProvider = FutureProvider.family.autoDispose<List<Friend>, Strin
             'user_id': 0, 
             'friend_id': e['id'], 
             'friend_name': (e['f_name'] ?? '') + ' ' + (e['l_name'] ?? ''),
-            'friend_image': e['image']
+            'friend_image': e['image'],
+            'friendship_status': e['friendship_status'],
+            'location': e['location']
         })).toList();
         print('Parsed ${users.length} users');
         return users;
@@ -204,6 +264,30 @@ final userSearchProvider = FutureProvider.family.autoDispose<List<Friend>, Strin
     return [];
   } catch (e) {
     print('Search Error: $e');
+    return [];
+  }
+});
+
+final userPostsProvider = FutureProvider.family.autoDispose<List<CommunityPost>, int>((ref, authorId) async {
+  final api = ApiService();
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getInt('franchiseId') ?? 1;
+  
+  try {
+    // Add timestamp to prevent caching issues
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final url = 'community/posts?userId=$userId&authorId=$authorId&t=$timestamp';
+    print('Fetching user posts from: $url');
+    final response = await api.client.get(url);
+    
+    if (response.data is List) {
+        final posts = (response.data as List).map((e) => CommunityPost.fromJson(e)).toList();
+        print('Fetched ${posts.length} posts for author $authorId');
+        return posts;
+    }
+    return [];
+  } catch (e) {
+    print('User Posts Error: $e');
     return [];
   }
 });
@@ -220,13 +304,18 @@ class CommunityActions {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getInt('franchiseId');
       
-      await api.client.post('community/friends', data: {
+      print('Sending friend request from $userId to $friendId');
+      
+      final response = await api.client.post('community/friends', data: {
         'userId': userId,
         'friendId': friendId,
         'action': 'request'
       });
+      
+      print('Friend Request Response: ${response.statusCode} - ${response.data}');
       return true;
     } catch (e) {
+      print('Friend Request Error: $e');
       return false;
     }
   }
@@ -259,16 +348,28 @@ class Friend {
   final int friendId;
   final String friendName;
   final String friendImage;
+  final String friendshipStatus; // none, sent, received, friend
+  final String location;
   
-  Friend({required this.id, required this.userId, required this.friendId, required this.friendName, required this.friendImage});
+  Friend({
+    required this.id, 
+    required this.userId, 
+    required this.friendId, 
+    required this.friendName, 
+    required this.friendImage,
+    this.friendshipStatus = 'none',
+    this.location = '',
+  });
 
   factory Friend.fromJson(Map<String, dynamic> json) {
     return Friend(
-      id: json['id'],
-      userId: json['user_id'],
-      friendId: json['friend_id'] ?? 0, // In requests, this might be the sender
+      id: json['id'] ?? 0,
+      userId: json['user_id'] ?? 0,
+      friendId: json['other_user_id'] ?? json['friend_id'] ?? 0, // Prioritize normalized ID
       friendName: (json['f_name'] != null ? json['f_name'] + ' ' + (json['l_name']??'') : json['friend_name']) ?? 'User',
       friendImage: json['image'] ?? json['friend_image'] ?? '',
+      friendshipStatus: json['friendship_status'] ?? 'none',
+      location: json['location'] ?? json['city'] ?? '',
     );
   }
 }

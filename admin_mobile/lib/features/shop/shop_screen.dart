@@ -20,15 +20,18 @@ class ShopScreen extends ConsumerWidget {
         title: '',
         leadingWidget: Padding(
           padding: const EdgeInsets.only(left: 8.0),
-          child: Hero(
-            tag: 'app_logo', 
-            child: Material(
-              color: Colors.transparent,
-              child: Image.asset(
-                'assets/images/logo_text.png', 
-                height: 24,
-                color: Colors.white,
-                errorBuilder: (context, error, stackTrace) => const Icon(Icons.store, color: Colors.white),
+          child: GestureDetector(
+            onTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
+            child: Hero(
+              tag: 'franchise_app_logo_shop', 
+              child: Material(
+                color: Colors.transparent,
+                child: Image.asset(
+                  'assets/images/header_logo_new.png', 
+                  height: 24,
+                  color: Colors.white,
+                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.store, color: Colors.white),
+                ),
               ),
             ),
           ),
@@ -400,11 +403,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               onPressed: () => Navigator.pop(context),
             ),
             Hero(
-              tag: 'app_logo', 
+              tag: 'franchise_app_logo_cart', 
               child: Material(
                 color: Colors.transparent,
                 child: Image.asset(
-                  'assets/images/logo_text.png', 
+                  'assets/images/header_logo_new.png', 
                   height: 24,
                   color: Colors.white,
                   errorBuilder: (context, error, stackTrace) => const SizedBox(),

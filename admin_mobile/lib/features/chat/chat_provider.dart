@@ -13,6 +13,7 @@ class ChatMessage {
 
   final String? attachmentUrl;
   final String? attachmentType; // 'image', 'audio', 'file'
+  final String status; // 'sent', 'delivered', 'read'
 
   ChatMessage({
     required this.id,
@@ -21,6 +22,7 @@ class ChatMessage {
     required this.createdAt,
     this.attachmentUrl,
     this.attachmentType,
+    this.status = 'sent',
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -31,6 +33,7 @@ class ChatMessage {
       createdAt: DateTime.parse(json['created_at']),
       attachmentUrl: json['attachment_url'],
       attachmentType: json['attachment_type'],
+      status: json['status'] ?? 'sent',
     );
   }
 }
@@ -42,6 +45,8 @@ class ChatSession {
   final String franchiseEmail;
   final String franchiseCity;
   final int franchiseId;
+  final String? lastMessage;
+  final DateTime? lastMessageTime;
 
   ChatSession({
     required this.id, 
@@ -50,6 +55,8 @@ class ChatSession {
     this.franchiseEmail = '',
     this.franchiseCity = '',
     this.franchiseId = 0,
+    this.lastMessage,
+    this.lastMessageTime,
   });
 
   factory ChatSession.fromJson(Map<String, dynamic> json) {
@@ -60,6 +67,10 @@ class ChatSession {
       franchiseEmail: json['franchise_email'] ?? '',
       franchiseCity: json['franchise_city'] ?? '',
       franchiseId: json['franchise_id'] ?? 0,
+      lastMessage: json['last_message'],
+      lastMessageTime: json['last_message_time'] != null 
+          ? DateTime.parse(json['last_message_time']) 
+          : null,
     );
   }
 }
@@ -218,7 +229,7 @@ class AdminChatController {
     }
   }
 
-  Future<String?> uploadFile(File file) async {
+  Future<String?> uploadFile(XFile file) async {
       return await _apiService.uploadFile(file, folder: 'chat_admin');
   }
   Future<ChatSession?> startNewChat(int franchiseId) async {

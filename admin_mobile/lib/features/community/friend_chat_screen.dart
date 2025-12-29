@@ -82,9 +82,37 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: ModernDashboardHeader(
-        title: widget.friendName,
+        title: '',
         isHome: false,
         showLeading: true,
+        leadingWidget: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            GestureDetector(
+              onTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
+              child: Hero(
+                tag: 'franchise_app_logo_friend_chat', 
+                child: Material(
+                  color: Colors.transparent,
+                  child: Image.asset(
+                    'assets/images/header_logo_new.png', 
+                    height: 24,
+                    color: Colors.white,
+                    errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
       body: Column(
         children: [

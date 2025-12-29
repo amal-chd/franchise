@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_html/flutter_html.dart';
@@ -514,9 +515,45 @@ class _FranchiseRegistrationScreenState extends ConsumerState<FranchiseRegistrat
   InputDecoration _inputDec(String label, IconData icon) => const InputDecoration(); // Dummy for replacement safety
 
   Future<void> _pickFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['jpg', 'pdf', 'png', 'jpeg']);
-    if (result != null) {
-      setState(() => _kycFile = File(result.files.single.path!));
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'pdf', 'png', 'jpeg'],
+        withData: false, // We only need the path for mobile
+      );
+      
+      if (result != null && result.files.single.path != null) {
+        final file = File(result.files.single.path!);
+        
+        // Verify file exists
+        if (await file.exists()) {
+          setState(() => _kycFile = file);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Document selected: ${result.files.single.name}'),
+                backgroundColor: const Color(0xFF10B981),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        } else {
+          throw 'Selected file does not exist';
+        }
+      } else {
+        // User cancelled the picker
+        print('User cancelled file picker');
+      }
+    } catch (e) {
+      print('File picker error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to select document: ${e.toString()}'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     }
   }
 
@@ -577,39 +614,49 @@ class _FranchiseRegistrationScreenState extends ConsumerState<FranchiseRegistrat
   Future<void> _submitKyc() async {
     setState(() => _isLoading = true);
     try {
+      print('Starting KYC upload for file: ${_kycFile!.path}');
       final api = ApiService();
-      String fileName = _kycFile!.path.split('/').last;
       
-      // Determine media type
-      MediaType? mediaType;
-      if (fileName.toLowerCase().endsWith('.pdf')) {
-        mediaType = MediaType('application', 'pdf');
-      } else if (fileName.toLowerCase().endsWith('.jpg') || fileName.toLowerCase().endsWith('.jpeg')) {
-        mediaType = MediaType('image', 'jpeg');
-      } else if (fileName.toLowerCase().endsWith('.png')) {
-        mediaType = MediaType('image', 'png');
+      // 1. Upload to Blob (using existing mobile/upload endpoint)
+      // We convert File to XFile for the API method
+      final xFile = XFile(_kycFile!.path);
+      
+      print('Uploading file to Blob storage...');
+      final blobUrl = await api.uploadFile(xFile, folder: 'kyc_docs');
+      
+      if (blobUrl == null || blobUrl.isEmpty) {
+        throw 'Document upload failed. Please check your internet connection and try again.';
       }
+      
+      print('Upload successful, blob URL: $blobUrl');
 
-      // Ensure requestId is sent as string for FormData
-      FormData formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(
-            _kycFile!.path, 
-            filename: fileName,
-            contentType: mediaType
-        ),
-        'requestId': _franchiseId.toString(), 
+      // 2. Update Franchise Record with URL
+      print('Updating franchise record with document URL...');
+      final res = await api.client.post('kyc', data: {
+        'requestId': _franchiseId,
+        'aadhar_url': blobUrl,
+        'document_type': 'aadhar',
       });
-
-      final res = await api.client.post('kyc', data: formData);
       
       if (res.statusCode == 200 || res.statusCode == 201) {
+        print('KYC submission successful');
         setState(() { _currentStep++; _isLoading = false; });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('KYC document uploaded successfully!'),
+              backgroundColor: Color(0xFF10B981),
+            ),
+          );
+        }
       } else {
+        print('KYC API error: ${res.statusCode} - ${res.data}');
         throw _parseError(res);
       }
     } catch (e) {
+      print('KYC upload exception: $e');
       setState(() => _isLoading = false);
-      _showError(e);
+      _showError('KYC Upload Failed: ${e.toString()}');
     }
   }
 

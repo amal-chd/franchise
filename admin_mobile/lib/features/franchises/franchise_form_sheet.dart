@@ -37,6 +37,7 @@ class _FranchiseFormSheetState extends State<FranchiseFormSheet> {
   String plan = 'free';
   int? selectedZoneId;
   String status = 'pending_verification';
+  String? kycUrl;
 
   @override
   void initState() {
@@ -55,6 +56,7 @@ class _FranchiseFormSheetState extends State<FranchiseFormSheet> {
     if (d['plan_selected'] != null) plan = d['plan_selected'];
     if (d['zone_id'] != null) selectedZoneId = d['zone_id'];
     if (d['status'] != null) status = d['status'];
+    if (d['aadhar_url'] != null) kycUrl = d['aadhar_url'];
   }
 
   @override
@@ -159,6 +161,36 @@ class _FranchiseFormSheetState extends State<FranchiseFormSheet> {
                     _buildSectionTitle('Security'),
                     _buildInput(passCtrl, 'New Password (Optional)', Icons.lock_outline,
                         obscureText: true, helperText: 'Leave empty to keep current'),
+                  ],
+
+                  if (kycUrl != null && kycUrl!.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('Documents'),
+                    InkWell(
+                      onTap: () => _showDocDialog(context, kycUrl!),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFCBD5E1)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.description, color: Color(0xFF64748B)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'View KYC Document', 
+                                style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF334155))
+                              ),
+                            ),
+                            const Icon(Icons.open_in_new, size: 16, color: Color(0xFF64748B)),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
 
                   const SizedBox(height: 100), // Bottom padding for FAB/Button
@@ -319,5 +351,25 @@ class _FranchiseFormSheetState extends State<FranchiseFormSheet> {
 
       widget.onSubmit(data);
     }
+  }
+
+  void _showDocDialog(BuildContext context, String url) {
+     showDialog(
+       context: context,
+       builder: (context) => AlertDialog(
+         title: const Text('Open Document'),
+         content: Column(
+           mainAxisSize: MainAxisSize.min,
+           children: [
+             const Text('Document URL:'),
+             const SizedBox(height: 10),
+             SelectableText(url, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+           ],
+         ),
+         actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+         ],
+       ),
+     );
   }
 }

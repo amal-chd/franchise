@@ -9,6 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'payouts_provider.dart';
 import '../../widgets/premium_widgets.dart';
+import '../notifications/badge_state_provider.dart';
 
 class PayoutsTab extends ConsumerStatefulWidget {
   const PayoutsTab({super.key});
@@ -18,7 +19,7 @@ class PayoutsTab extends ConsumerStatefulWidget {
 }
 
 class _PayoutsTabState extends ConsumerState<PayoutsTab> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+ late TabController _tabController;
   int _selectedMonth = DateTime.now().month;
   int _selectedYear = DateTime.now().year;
 
@@ -26,6 +27,9 @@ class _PayoutsTabState extends ConsumerState<PayoutsTab> with SingleTickerProvid
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    
+    // Mark payouts as viewed to clear badge
+    ref.read(badgeStateProvider).markSectionViewed('payouts');
   }
 
   @override
@@ -259,7 +263,7 @@ class _PayoutsTabState extends ConsumerState<PayoutsTab> with SingleTickerProvid
                                                   borderRadius: BorderRadius.circular(10),
                                                 ),
                                                 child: Text(
-                                                  '₹${double.parse(h.amount).toStringAsFixed(0)}',
+                                                  '₹${double.parse(h.amount).toStringAsFixed(2)}',
                                                   style: GoogleFonts.inter(fontWeight: FontWeight.w900, color: const Color(0xFF10B981), fontSize: 14),
                                                 ),
                                               ),
@@ -362,9 +366,9 @@ class _PayoutsTabState extends ConsumerState<PayoutsTab> with SingleTickerProvid
                 context: context,
                 headers: ['Description', 'Details', 'Amount'],
                 data: [
-                  ['Franchise Revenue Share', 'Based on Reported Revenue', 'Rs. ${revenue.toStringAsFixed(0)}'],
+                  ['Franchise Revenue Share', 'Based on Reported Revenue', 'Rs. ${revenue.toStringAsFixed(2)}'],
                   ['Total Orders Processed', '$orders Orders', '-'],
-                  ['Net Payout Amount', '', 'Rs. ${amount.toStringAsFixed(0)}'],
+                  ['Net Payout Amount', '', 'Rs. ${amount.toStringAsFixed(2)}'],
                 ],
               ),
               pw.SizedBox(height: 20),
@@ -373,7 +377,7 @@ class _PayoutsTabState extends ConsumerState<PayoutsTab> with SingleTickerProvid
                 mainAxisAlignment: pw.MainAxisAlignment.end,
                 children: [
                   pw.Text('Total Paid: ', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Rs. ${amount.toStringAsFixed(0)}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.green)),
+                  pw.Text('Rs. ${amount.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.green)),
                 ],
               ),
               pw.SizedBox(height: 40),

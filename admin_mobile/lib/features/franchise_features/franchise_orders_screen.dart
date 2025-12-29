@@ -26,7 +26,7 @@ class _FranchiseOrdersScreenState extends ConsumerState<FranchiseOrdersScreen> {
 
     return Scaffold(
       appBar: ModernDashboardHeader(
-        title: 'Order Lifecycle',
+        title: '',
         leadingWidget: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -38,15 +38,18 @@ class _FranchiseOrdersScreenState extends ConsumerState<FranchiseOrdersScreen> {
               ),
               onPressed: () => Navigator.of(context).maybePop(),
             ),
-            Hero(
-              tag: 'app_logo', 
-              child: Material(
-                color: Colors.transparent,
-                child: Image.asset(
-                  'assets/images/logo_text.png', 
-                  height: 24,
-                  color: Colors.white,
-                  errorBuilder: (context, error, stackTrace) => const SizedBox(),
+            GestureDetector(
+              onTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
+              child: Hero(
+                tag: 'franchise_app_logo_orders', 
+                child: Material(
+                  color: Colors.transparent,
+                  child: Image.asset(
+                    'assets/images/header_logo_new.png', 
+                    height: 24,
+                    color: Colors.white,
+                    errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                  ),
                 ),
               ),
             ),

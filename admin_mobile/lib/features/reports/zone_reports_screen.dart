@@ -56,7 +56,7 @@ class _ZoneReportsScreenState extends ConsumerState<ZoneReportsScreen> {
                           children: [
                             Expanded(child: _buildSummaryCard(
                               'Total Revenue', 
-                              '₹${_reportData!['total_revenue'] ?? 0}', 
+                              '₹${(double.tryParse('${_reportData!['total_revenue']}') ?? 0).toStringAsFixed(2)}', 
                               Icons.currency_rupee_rounded, 
                               const Color(0xFF10B981) // Emerald
                             )),
@@ -146,7 +146,7 @@ class _ZoneReportsScreenState extends ConsumerState<ZoneReportsScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildZoneStat('Orders', '${zone['orders_count'] ?? 0}'),
-                    _buildZoneStat('Revenue', '₹${zone['revenue'] ?? 0}'),
+                    _buildZoneStat('Revenue', '₹${(double.tryParse('${zone['revenue']}') ?? 0).toStringAsFixed(2)}'),
                     _buildZoneStat('Shops', '${zone['stores_count'] ?? 0}'),
                     _buildZoneStat('Del. Boys', '${zone['delivery_men_count'] ?? 0}'),
                   ],
@@ -262,7 +262,7 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> with Single
             physics: const NeverScrollableScrollPhysics(),
             childAspectRatio: 1.5,
             children: [
-              _buildDetailCard('Total Revenue', '₹${stats['total_revenue'] ?? 0}', Icons.currency_rupee, Colors.green),
+              _buildDetailCard('Total Revenue', '₹${(double.tryParse('${stats['total_revenue']}') ?? 0).toStringAsFixed(2)}', Icons.currency_rupee, Colors.green),
               _buildDetailCard('Total Orders', '${stats['total_orders'] ?? 0}', Icons.shopping_cart, Colors.blue),
               _buildDetailCard('Active Shops', '${stats['total_stores'] ?? 0}', Icons.store, Colors.orange),
               _buildDetailCard('Active Riders', '${stats['total_dm'] ?? 0}', Icons.directions_bike, Colors.purple),
@@ -375,7 +375,7 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> with Single
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('₹${order['order_amount'] ?? 0}', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text('₹${(double.tryParse('${order['order_amount']}') ?? 0).toStringAsFixed(2)}', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
                 Text(order['order_status']?.toString().toUpperCase() ?? 'UNKNOWN', style: GoogleFonts.inter(fontSize: 10, color: Colors.blue)),
               ],
             ),

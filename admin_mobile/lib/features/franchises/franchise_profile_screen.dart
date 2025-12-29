@@ -24,10 +24,37 @@ class FranchiseProfileScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9), // Light CRM Body
       appBar: ModernDashboardHeader(
-        title: 'Partner Profile',
-        subtitle: franchiseName,
-        leadingIcon: Icons.arrow_back_rounded,
-        onLeadingPressed: () => Navigator.pop(context),
+        title: '',
+        subtitle: null,
+        leadingWidget: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            GestureDetector(
+              onTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
+              child: Hero(
+                tag: 'franchise_app_logo_franchise_profile', 
+                child: Material(
+                  color: Colors.transparent,
+                  child: Image.asset(
+                    'assets/images/header_logo_new.png', 
+                    height: 24,
+                    color: Colors.white,
+                    errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        showLeading: true,
         trailingWidget: GestureDetector(
            onTap: () {
              // Handle Star/Favorite logic if needed

@@ -268,8 +268,8 @@ class _AdminLeaderboardScreenState extends ConsumerState<AdminLeaderboardScreen>
       physics: const NeverScrollableScrollPhysics(),
       children: [
         _buildMetricItem('Total Orders', '${entry.totalOrders}'),
-        _buildMetricItem('Revenue', '₹${entry.totalRevenue.toStringAsFixed(0)}'),
-        _buildMetricItem('Avg Order', '₹${entry.avgOrderValue.toStringAsFixed(0)}'),
+        _buildMetricItem('Revenue', '₹${entry.totalRevenue.toStringAsFixed(2)}'),
+        _buildMetricItem('Avg Order', '₹${entry.avgOrderValue.toStringAsFixed(2)}'),
         _buildMetricItem('Completed', '${entry.completedOrders}'),
       ],
     );

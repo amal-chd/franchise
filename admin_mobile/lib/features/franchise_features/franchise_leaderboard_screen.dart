@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../franchise_features/franchise_features_provider.dart';
 import '../../widgets/premium_widgets.dart';
+import '../../widgets/detail_modal.dart';
 
 import '../../widgets/modern_header.dart'; // Add import
 
@@ -23,7 +24,7 @@ class _FranchiseLeaderboardScreenState extends ConsumerState<FranchiseLeaderboar
 
     return Scaffold(
       appBar: ModernDashboardHeader(
-        title: 'Zone Excellence',
+        title: '',
         leadingWidget: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -35,15 +36,18 @@ class _FranchiseLeaderboardScreenState extends ConsumerState<FranchiseLeaderboar
               ),
               onPressed: () => Navigator.of(context).maybePop(),
             ),
-            Hero(
-              tag: 'app_logo', 
-              child: Material(
-                color: Colors.transparent,
-                child: Image.asset(
-                  'assets/images/logo_text.png', 
-                  height: 24,
-                  color: Colors.white,
-                  errorBuilder: (context, error, stackTrace) => const SizedBox(),
+            GestureDetector(
+              onTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
+              child: Hero(
+                tag: 'franchise_app_logo_leaderboard', 
+                child: Material(
+                  color: Colors.transparent,
+                  child: Image.asset(
+                    'assets/images/header_logo_new.png', 
+                    height: 24,
+                    color: Colors.white,
+                    errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                  ),
                 ),
               ),
             ),
@@ -351,30 +355,124 @@ class _FranchiseLeaderboardScreenState extends ConsumerState<FranchiseLeaderboar
   }
 
   void _showZoneDetails(BuildContext context, LeaderboardEntry entry) {
-    showDialog(
+    final completionRate = entry.totalOrders > 0 
+        ? ((entry.completedOrders / entry.totalOrders) * 100).toStringAsFixed(1)
+        : '0.0';
+    
+    DetailModal.show(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('${entry.zoneName} Details', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildDetailRow('Rank', '#${entry.rank}'),
-            _buildDetailRow('Franchise', entry.franchiseName),
-            _buildDetailRow('Total Orders', '${entry.totalOrders}'),
-            _buildDetailRow('Completed', '${entry.completedOrders}'),
-            _buildDetailRow('Completion Rate', '${((entry.completedOrders / entry.totalOrders) * 100).toStringAsFixed(1)}%'),
-            _buildDetailRow('Total Revenue', '₹${entry.totalRevenue.toStringAsFixed(2)}'),
-            _buildDetailRow('Avg Order Value', '₹${entry.avgOrderValue.toStringAsFixed(2)}'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+      title: entry.zoneName,
+      headerWidget: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: entry.rank <= 3 
+                    ? [Color(0xFFFBBF24), Color(0xFFF59E0B)]
+                    : [Color(0xFF2563EB), Color(0xFF1E40AF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '#${entry.rank}',
+                      style: GoogleFonts.outfit(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  entry.rank <= 3 ? '🏆 Top Performer' : 'Zone Performance',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            entry.zoneName,
+            style: GoogleFonts.outfit(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF0F172A),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            entry.franchiseName,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              color: const Color(0xFF64748B),
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
+      children: [
+        DetailModal.buildSection(
+          'Performance Metrics',
+          [
+            DetailModal.buildDetailRow(
+              Icons.shopping_cart_rounded,
+              'Total Orders',
+              '${entry.totalOrders}',
+              iconColor: const Color(0xFF2563EB),
+            ),
+            DetailModal.buildDetailRow(
+              Icons.check_circle_rounded,
+              'Completed Orders',
+              '${entry.completedOrders}',
+              iconColor: const Color(0xFF10B981),
+            ),
+            DetailModal.buildDetailRow(
+              Icons.percent_rounded,
+              'Completion Rate',
+              '$completionRate%',
+              iconColor: const Color(0xFF8B5CF6),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        DetailModal.buildSection(
+          'Revenue Details',
+          [
+            DetailModal.buildDetailRow(
+              Icons.currency_rupee_rounded,
+              'Total Revenue',
+              '₹${entry.totalRevenue.toStringAsFixed(2)}',
+              iconColor: const Color(0xFFF59E0B),
+            ),
+            DetailModal.buildDetailRow(
+              Icons.analytics_rounded,
+              'Average Order Value',
+              '₹${entry.avgOrderValue.toStringAsFixed(2)}',
+              iconColor: const Color(0xFF06B6D4),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

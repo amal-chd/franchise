@@ -105,14 +105,18 @@ class _FranchiseHomeTabState extends ConsumerState<FranchiseHomeTab> {
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: ModernDashboardHeader(
         title: '',
-        titleWidget: Hero(
-          tag: 'app_logo', 
-          child: Image.asset(
-            'assets/images/logo_text.png', 
-            height: 28,
-            color: Colors.white, // Adapting for blue background
-            errorBuilder: (context, error, stackTrace) => 
-               const Text('FRANCHISE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
+        titleWidget: GestureDetector(
+          onTap: () {
+            // Scroll to top or refresh
+          },
+          child: Hero(
+            tag: 'franchise_app_logo',
+            child: Image.asset(
+              'assets/images/header_logo_new.png',
+              height: 24,
+              color: Colors.white,
+              errorBuilder: (context, error, stackTrace) => const SizedBox(),
+            ),
           ),
         ),
         isHome: true,
@@ -271,8 +275,27 @@ class _FranchiseHomeTabState extends ConsumerState<FranchiseHomeTab> {
       crossAxisSpacing: 12,
       children: [
         _buildCompactAction(context, Icons.receipt_long_rounded, 'Orders', const Color(0xFF6366F1), () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FranchiseOrdersScreen())), count: franchiseAsync.value?.stats.deliveredOrders),
-        _buildCompactAction(context, Icons.storefront_rounded, 'Vendors', const Color(0xFF10B981), () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FranchiseVendorsScreen()))),
-        _buildCompactAction(context, Icons.local_shipping_rounded, 'Fleet', const Color(0xFFF59E0B), () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FranchiseDeliveryScreen()))),
+        
+        // Vendors Stat
+        _buildCompactAction(
+            context, 
+            Icons.storefront_rounded, 
+            'Vendors', 
+            const Color(0xFF10B981), 
+            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FranchiseVendorsScreen())),
+            badgeText: _formatStat(franchiseAsync.value?.vendors)
+        ),
+        
+        // Fleet Stat
+        _buildCompactAction(
+            context, 
+            Icons.local_shipping_rounded, 
+            'Fleet', 
+            const Color(0xFFF59E0B), 
+            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FranchiseDeliveryScreen())),
+            badgeText: _formatStat(franchiseAsync.value?.deliveryMen)
+        ),
+
         _buildCompactAction(context, Icons.payments_rounded, 'Payouts', const Color(0xFF8B5CF6), () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ImprovedPayoutsScreen()))),
         _buildCompactAction(context, Icons.troubleshoot_rounded, 'Insights', const Color(0xFFEC4899), () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FranchiseLeaderboardScreen()))),
         _buildCompactAction(context, Icons.contact_support_rounded, 'Support', const Color(0xFF22D3EE), () => widget.onTabChanged?.call(3)),
@@ -280,7 +303,14 @@ class _FranchiseHomeTabState extends ConsumerState<FranchiseHomeTab> {
     );
   }
 
-  Widget _buildCompactAction(BuildContext context, IconData icon, String label, Color color, VoidCallback onTap, {int? count}) {
+  String? _formatStat(List<dynamic>? list) {
+    if (list == null || list.isEmpty) return null;
+    final total = list.length;
+    final active = list.where((item) => (item['status'] == 1 || item['active'] == 1)).length;
+    return '$total ($active)';
+  }
+
+  Widget _buildCompactAction(BuildContext context, IconData icon, String label, Color color, VoidCallback onTap, {int? count, String? badgeText}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(24),
@@ -309,6 +339,24 @@ class _FranchiseHomeTabState extends ConsumerState<FranchiseHomeTab> {
                       padding: const EdgeInsets.all(4),
                       decoration: const BoxDecoration(color: Color(0xFFEF4444), shape: BoxShape.circle),
                       child: Text('$count', style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)),
+                    ),
+                  ),
+                if (badgeText != null)
+                   Positioned(
+                    top: -8,
+                    right: -12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))],
+                      ),
+                      child: Text(
+                        badgeText, 
+                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)
+                      ),
                     ),
                   ),
               ],

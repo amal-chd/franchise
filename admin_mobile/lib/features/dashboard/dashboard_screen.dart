@@ -43,14 +43,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   List<Widget> get _widgetOptions => [
     HomeTab(onNavigate: _onItemTapped),
-    const AdminShopTab(),
-    const SupportTab(),
+    const PayoutsTab(),
+    const ZoneReportsScreen(),
     const AdminChatTab(),
     const AdminProfileTab(),
     // Secondary screens (only accessible via sidebar)
     const RequestsTab(),
     const FranchisesTab(),
-    const PayoutsTab(),
+    const AdminShopTab(), // Moved from navbar to sidebar/quick actions
     const AdminLeaderboardScreen(),
     const CmsTab(),
     const CareersTab(),
@@ -58,18 +58,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     const NewsletterTab(),
     const PricingTab(),
     const AdminOrdersTab(), // Index 14
-    const ZoneReportsScreen(), // Index 15
+    const SupportTab(), // Index 15
   ];
 
   static const List<String> _titles = [
     'Dashboard',
-    'Shop Management',
+    'Payouts',
     'Customer Support',
     'Live Chat',
     'Administrator',
     'Partner Requests',
     'Franchises',
-    'Payouts',
+    'Shop Management', // Moved from navbar
     'Leaderboard',
     'CMS',
     'Careers',
@@ -117,7 +117,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     String? subtitle;
     
     if (_selectedIndex == 0) {
-      title = 'Welcome, Admin';
+      title = 'Welcome, Admin 👋';
       subtitle = 'Overview of your business';
     } else if (_selectedIndex == 4) {
       // Profile tab handled its own header in the original code, but we can unify or hide
@@ -130,10 +130,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       backgroundColor: const Color(0xFFF8FAFC),
       extendBodyBehindAppBar: _selectedIndex == 4, // Allow profile to go behind if needed
       appBar: (_selectedIndex == 4) 
-          ? null // Profile tab might have its own fancy header
+          ? null 
           : ModernDashboardHeader(
-              title: title,
-              subtitle: subtitle,
+              title: '',
+              subtitle: null,
+              titleWidget: GestureDetector(
+                onTap: () {
+                    // Navigate to dashboard home or scroll to top
+                    if (_selectedIndex != 0) _onItemTapped(0);
+                },
+                child: Hero(
+                  tag: 'admin_app_logo',
+                  child: Image.asset(
+                    'assets/images/logo_text.png',
+                    height: 24,
+                    color: Colors.white,
+                    errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                  ),
+                ),
+              ),
               isHome: _selectedIndex == 0,
               notificationCount: notificationCount,
               onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
@@ -151,8 +166,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         },
         items: [
           PremiumNavItem(icon: Icons.home_rounded, label: 'Home'),
-          PremiumNavItem(icon: Icons.shopping_bag_rounded, label: 'Shop'),
-          PremiumNavItem(icon: Icons.support_agent_rounded, label: 'Support'),
+          PremiumNavItem(icon: Icons.payments_rounded, label: 'Payouts'),
+          PremiumNavItem(icon: Icons.pie_chart_rounded, label: 'Reports'),
           PremiumNavItem(icon: Icons.chat_bubble_rounded, label: 'Chat'),
           PremiumNavItem(icon: Icons.person_rounded, label: 'Profile'),
         ],
@@ -193,81 +208,108 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Widget _buildDrawer(BuildContext context) {
     return Drawer(
+      elevation: 0,
       backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.horizontal(right: Radius.circular(0))), // Full height
       child: Column(
         children: [
+          // Modern Header
+          Container(
+            padding: const EdgeInsets.fromLTRB(24, 64, 24, 24),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
+                  child: Image.asset('assets/images/logo_text.png', height: 20, color: Colors.white, errorBuilder: (_,__,___) => const Icon(Icons.admin_panel_settings_rounded, color: Colors.white,),),
+                ),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Admin Panel', style: GoogleFonts.outfit(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text('Management', style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.only(top: 60),
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
               children: [
-                _buildDrawerItem(0, 'Home', Icons.home_rounded),
-                _buildDrawerItem(14, 'Merchandise Orders', Icons.receipt_long_rounded,
-                  badgeCount: ref.watch(adminOrdersProvider).value?.orders.where((o) => o.status == 'pending').length),
-                _buildDrawerItem(5, 'Partner Requests', Icons.person_add_rounded, 
-                  badgeCount: ref.watch(requestsProvider).value?.where((e) => e.status == 'pending').length),
-                _buildDrawerItem(6, 'Franchises', Icons.business_rounded),
-                _buildDrawerItem(1, 'Shop Management', Icons.shopping_bag_rounded),
-                _buildDrawerItem(7, 'Payouts', Icons.payments_rounded,
-                  badgeCount: ref.watch(payoutsProvider).value?.payouts.length),
-                _buildDrawerItem(8, 'Zone Leaderboard', Icons.leaderboard_rounded),
-                _buildDrawerItem(15, 'Zone Reports', Icons.pie_chart_rounded),
-                _buildDrawerItem(9, 'CMS', Icons.article_rounded),
-                _buildDrawerItem(2, 'Support Tickets', Icons.support_agent_rounded,
+                _buildSectionHeader('CORE MANAGEMENT'),
+                _buildDrawerItem(6, 'Franchises', Icons.business_rounded), // Unique
+                _buildDrawerItem(9, 'CMS', Icons.article_rounded), // Unique
+                _buildDrawerItem(15, 'Support Tickets', Icons.support_agent_rounded, isAlert: true,
                   badgeCount: ref.watch(supportProvider).value?.where((e) => e.status == 'Pending').length),
-                _buildDrawerItem(3, 'Admin Chat', Icons.chat_rounded,
-                  badgeCount: ref.watch(chatNotificationProvider).unreadCount > 0 ? ref.watch(chatNotificationProvider).unreadCount : null),
+
+                const SizedBox(height: 24),
+                _buildSectionHeader('GROWTH & TOOLS'),
                 _buildDrawerItem(10, 'Careers', Icons.work_rounded),
                 _buildDrawerItem(11, 'Training', Icons.school_rounded),
-                _buildDrawerItem(12, 'Newsletter', Icons.email_rounded),
-                _buildDrawerItem(13, 'Pricing', Icons.sell_rounded),
+                _buildDrawerItem(13, 'Pricing Models', Icons.sell_rounded), // "Pricing" -> "Pricing Models"
+                _buildDrawerItem(12, 'Email Marketing', Icons.email_rounded), // "Newsletter" -> "Email Marketing"
               ],
+            ),
           ),
-        ),
-        const SizedBox(height: 20),
-      ],
-    ),
-  );
-}
-
-
-  Widget _drawerSection(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 12, bottom: 12),
-      child: Text(title, style: GoogleFonts.inter(color: Colors.white24, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+          _buildLogoutFooter(),
+        ],
+      ),
     );
   }
 
-  Widget _buildDrawerItem(int index, String title, IconData icon, {int? badgeCount}) {
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, bottom: 8, top: 4),
+      child: Text(title, style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+    );
+  }
+
+  Widget _buildDrawerItem(int index, String title, IconData icon, {int? badgeCount, bool isAlert = false}) {
     final isSelected = _selectedIndex == index;
-    return ListTile(
-      selected: isSelected,
-      leading: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Icon(icon, color: isSelected ? const Color(0xFF2563EB) : Colors.grey[600]),
-          if (badgeCount != null && badgeCount > 0)
-            Positioned(
-              top: -6,
-              right: -6,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                decoration: BoxDecoration(color: const Color(0xFFEF4444), borderRadius: BorderRadius.circular(10)),
-                child: Text(badgeCount.toString(), style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
-              ),
-            ),
-        ],
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: isSelected ? const Color(0xFFEFF6FF) : Colors.transparent,
       ),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: isSelected ? const Color(0xFF2563EB) : Colors.black87,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      child: ListTile(
+        onTap: () {
+          Navigator.pop(context);
+          _onItemTapped(index);
+        },
+        dense: true,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        leading: Icon(icon, color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF64748B), size: 22),
+        title: Text(
+          title, 
+          style: GoogleFonts.outfit(
+            color: isSelected ? const Color(0xFF1E293B) : const Color(0xFF475569), 
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            fontSize: 14
+          )
         ),
+        trailing: (badgeCount != null && badgeCount > 0)
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: isAlert ? const Color(0xFFEF4444) : const Color(0xFF2563EB),
+                borderRadius: BorderRadius.circular(20)
+              ),
+              child: Text('$badgeCount', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+            )
+          : null,
       ),
-      onTap: () {
-        Navigator.pop(context);
-        _onItemTapped(index);
-      },
     );
   }
 

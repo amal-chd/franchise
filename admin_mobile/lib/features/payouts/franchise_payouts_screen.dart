@@ -24,7 +24,7 @@ class _ImprovedPayoutsScreenState extends ConsumerState<ImprovedPayoutsScreen> {
 
     return Scaffold(
       appBar: ModernDashboardHeader(
-        title: 'Financial Payouts',
+        title: '',
         leadingWidget: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -36,15 +36,18 @@ class _ImprovedPayoutsScreenState extends ConsumerState<ImprovedPayoutsScreen> {
               ),
               onPressed: () => Navigator.of(context).pop(),
             ),
-            Hero(
-              tag: 'app_logo', 
-              child: Material(
-                color: Colors.transparent,
-                child: Image.asset(
-                  'assets/images/logo_text.png', 
-                  height: 24,
-                  color: Colors.white,
-                  errorBuilder: (context, error, stackTrace) => const SizedBox(),
+            GestureDetector(
+              onTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
+              child: Hero(
+                tag: 'franchise_app_logo_payouts', 
+                child: Material(
+                  color: Colors.transparent,
+                  child: Image.asset(
+                    'assets/images/header_logo_new.png', 
+                    height: 24,
+                    color: Colors.white,
+                    errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                  ),
                 ),
               ),
             ),

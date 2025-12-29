@@ -6,6 +6,7 @@ import '../payouts/payouts_provider.dart';
 import '../common/zones_provider.dart';
 import '../../widgets/premium_widgets.dart';
 import 'franchise_form_sheet.dart';
+import '../community/franchise_profile_screen.dart';
 
 class FranchisesTab extends ConsumerStatefulWidget {
   const FranchisesTab({super.key});
@@ -28,29 +29,38 @@ class _FranchisesTabState extends ConsumerState<FranchisesTab> {
   Widget build(BuildContext context) {
     final requestsAsync = ref.watch(requestsProvider);
     final zonesAsync = ref.watch(zonesProvider);
-    final zones = zonesAsync.asData?.value ?? [];
+    final List<Zone> zones = (zonesAsync.asData?.value ?? []).cast<Zone>().toList();
     
     return Container(
-      color: const Color(0xFFF1F5F9), // Light background
+      color: const Color(0xFFF8FAFC),
       child: Column(
         children: [
-          // Search Bar
+          // Modern Search Bar
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            color: Colors.white,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Search partners...',
-                hintStyle: GoogleFonts.inter(color: const Color(0xFF94A3B8)),
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF94A3B8)),
+                hintText: 'Search franchise partners...',
+                hintStyle: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 14),
+                prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF64748B)),
                 filled: true,
-                fillColor: const Color(0xFFF8FAFC),
+                fillColor: const Color(0xFFF1F5F9),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               ),
               onChanged: (value) {
                 setState(() {
@@ -65,10 +75,7 @@ class _FranchisesTabState extends ConsumerState<FranchisesTab> {
               onRefresh: () => ref.read(requestsProvider.notifier).fetchRequests(),
               child: requestsAsync.when(
                 data: (requests) {
-                  // Filter for Approved/Active franchises only
                   final activeFranchises = requests.where((r) => r.status == 'approved').toList();
-
-                  // Apply search filter
                   final filteredFranchises = activeFranchises.where((f) {
                     final query = _searchQuery.toLowerCase();
                     return f.name.toLowerCase().contains(query) ||
@@ -78,11 +85,11 @@ class _FranchisesTabState extends ConsumerState<FranchisesTab> {
 
                   if (filteredFranchises.isEmpty) {
                     return IllustrativeState(
-                      icon: Icons.search_off_rounded,
-                      title: 'No Partners Found',
+                      icon: Icons.store_outlined,
+                      title: _searchQuery.isEmpty ? 'No Franchise Partners' : 'No Results Found',
                       subtitle: _searchQuery.isEmpty 
-                        ? 'Your franchise network is currently empty. Approved partners will appear here.'
-                        : 'No partners found matching "$_searchQuery".',
+                        ? 'Active franchise partners will appear here'
+                        : 'Try adjusting your search terms',
                     );
                   }
 
@@ -91,139 +98,169 @@ class _FranchisesTabState extends ConsumerState<FranchisesTab> {
                     itemCount: filteredFranchises.length,
                     itemBuilder: (context, index) {
                       final franchise = filteredFranchises[index];
-                      // Highlight the first card for visual variety as per CRM style
-                      final isFeatured = index == 0 && _searchQuery.isEmpty; 
-
+                      
                       return Container(
-                        margin: const EdgeInsets.only(bottom: 20),
+                        margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF64748B).withOpacity(0.05),
-                              blurRadius: 15,
+                              color: const Color(0xFF2563EB).withOpacity(0.08),
+                              blurRadius: 20,
                               offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                        child:Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => FranchiseProfileScreen(
+                                    userId: franchise.id,
+                                    userName: franchise.name,
+                                    userImage: '',
+                                  ),
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
                                     children: [
-                                      CircleAvatar(
-                                        radius: 20,
-                                        backgroundColor: isFeatured ? const Color(0xFFFCD34D) : const Color(0xFFF1F5F9),
-                                        child: Text(
-                                          franchise.name[0].toUpperCase(),
-                                          style: GoogleFonts.outfit(
-                                            color: const Color(0xFF1E293B), 
-                                            fontWeight: FontWeight.bold
+                                      // Avatar
+                                      Container(
+                                        width: 56,
+                                        height: 56,
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [Color(0xFF2563EB), Color(0xFF1E40AF)],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            franchise.name[0].toUpperCase(),
+                                            style: GoogleFonts.outfit(
+                                              color: Colors.white,
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: 12),
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            franchise.name,
-                                            style: GoogleFonts.outfit(
-                                              fontWeight: FontWeight.bold, 
-                                              fontSize: 16, 
-                                              color: const Color(0xFF1E293B)
-                                            ),
-                                          ),
-                                          if (franchise.planSelected != 'free')
+                                      const SizedBox(width: 16),
+                                      
+                                      // Info
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
                                             Text(
-                                              franchise.planSelected.toUpperCase(),
-                                              style: GoogleFonts.inter(
-                                                fontSize: 10, 
-                                                fontWeight: FontWeight.w600, 
-                                                color: const Color(0xFF64748B)
+                                              franchise.name,
+                                              style: GoogleFonts.outfit(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 17,
+                                                color: const Color(0xFF0F172A),
                                               ),
                                             ),
-                                        ],
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.location_on_rounded,
+                                                  size: 14,
+                                                  color: const Color(0xFF64748B),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  franchise.city,
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 13,
+                                                    color: const Color(0xFF64748B),
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      
+                                      // Edit Button
+                                      IconButton(
+                                        onPressed: () => _showEditDialog(
+                                          context,
+                                          ref,
+                                          franchise.id,
+                                          {
+                                            'name': franchise.name,
+                                            'email': franchise.email,
+                                            'phone': franchise.phone,
+                                            'city': franchise.city,
+                                            'plan_selected': franchise.planSelected,
+                                            'status': franchise.status,
+                                            'upi_id': franchise.upiId,
+                                            'bank_account_number': franchise.bankAccountNumber,
+                                            'ifsc_code': franchise.ifscCode,
+                                            'bank_name': franchise.bankName,
+                                            'zone_id': franchise.zoneId,
+                                            'aadhar_url': franchise.kycUrl,
+                                          },
+                                          zones,
+                                        ),
+                                        icon: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF2563EB).withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: const Icon(
+                                            Icons.edit_rounded,
+                                            color: Color(0xFF2563EB),
+                                            size: 18,
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFDCFCE7), // Light green
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: const Color(0xFF86EFAC)),
-                                    ),
-                                    child: Text(
-                                      'ACTIVE', 
-                                      style: GoogleFonts.inter(
-                                        color: const Color(0xFF166534), 
-                                        fontSize: 10, 
-                                        fontWeight: FontWeight.w800
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 20),
-                              
-                              Row(
-                                children: [
-                                  Expanded(child: _buildCRMInfoItem(Icons.location_on_rounded, franchise.city)),
-                                  const SizedBox(width: 12),
-                                  Expanded(child: _buildCRMInfoItem(Icons.phone_rounded, franchise.phone)),
-                                ],
-                              ),
-
-                              const SizedBox(height: 20),
-                              
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF1E293B), // Dark Slate
-                                    foregroundColor: Colors.white,
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                  ),
-                                  onPressed: () => _showEditDialog(
-                                    context, 
-                                    ref, 
-                                    franchise.id,
-                                    {
-                                      'name': franchise.name,
-                                      'email': franchise.email,
-                                      'phone': franchise.phone,
-                                      'city': franchise.city,
-                                      'plan_selected': franchise.planSelected,
-                                      'status': franchise.status,
-                                      'upi_id': franchise.upiId,
-                                      'bank_account_number': franchise.bankAccountNumber,
-                                      'ifsc_code': franchise.ifscCode,
-                                      'bank_name': franchise.bankName,
-                                      'zone_id': franchise.zoneId,
-                                    },
-                                    zones
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                  
+                                  const SizedBox(height: 16),
+                                  const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                                  const SizedBox(height: 16),
+                                  
+                                  // Details Row
+                                  Row(
                                     children: [
-                                      const Icon(Icons.settings_rounded, size: 18),
-                                      const SizedBox(width: 8),
-                                      Text('Manage Partner', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14)),
+                                      Expanded(
+                                        child: _buildDetailChip(
+                                          Icons.phone_rounded,
+                                          franchise.phone,
+                                          const Color(0xFF10B981),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: _buildDetailChip(
+                                          Icons.stars_rounded,
+                                          franchise.planSelected.toUpperCase(),
+                                          const Color(0xFFF59E0B),
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
                         ),
                       );
@@ -231,7 +268,13 @@ class _FranchisesTabState extends ConsumerState<FranchisesTab> {
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, stack) => Center(child: Text('Error: $err')),
+                error: (err, _) => IllustrativeState(
+                  icon: Icons.error_outline_rounded,
+                  title: 'Failed to load',
+                  subtitle: 'Unable to fetch franchise list',
+                  onRetry: () => ref.read(requestsProvider.notifier).fetchRequests(),
+                  retryLabel: 'Try Again',
+                ),
               ),
             ),
           ),
@@ -240,21 +283,26 @@ class _FranchisesTabState extends ConsumerState<FranchisesTab> {
     );
   }
 
-  Widget _buildCRMInfoItem(IconData icon, String text) {
+  Widget _buildDetailChip(IconData icon, String text, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: const Color(0xFF94A3B8)),
-          const SizedBox(width: 8),
-          Expanded(
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Flexible(
             child: Text(
-              text, 
-              style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF475569), fontWeight: FontWeight.w500),
+              text,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -263,29 +311,26 @@ class _FranchisesTabState extends ConsumerState<FranchisesTab> {
     );
   }
 
-  void _showEditDialog(BuildContext context, WidgetRef ref, int franchiseId, Map<String, dynamic> currentData, List<Zone> zones) {
+  void _showEditDialog(
+    BuildContext context,
+    WidgetRef ref,
+    int franchiseId,
+    Map<String, dynamic> initialData,
+    List<Zone> zones,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => FranchiseFormSheet(
-        initialData: currentData,
+        initialData: initialData,
         zones: zones,
         isEdit: true,
         onSubmit: (data) async {
-          Navigator.pop(context);
-          final success = await ref.read(requestsProvider.notifier).updateFranchise(franchiseId, data);
+          // Just refresh the list after form submission
           if (context.mounted) {
-            if (success) {
-              ref.read(payoutsProvider.notifier).loadData();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Franchise Updated Successfully')),
-              );
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Failed to update franchise')),
-              );
-            }
+            Navigator.pop(context);
+            ref.read(requestsProvider.notifier).fetchRequests();
           }
         },
       ),

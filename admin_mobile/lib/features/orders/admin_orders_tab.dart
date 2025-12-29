@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../shop/shop_provider.dart';
+import '../notifications/badge_state_provider.dart';
 
 class AdminOrdersTab extends ConsumerStatefulWidget {
   const AdminOrdersTab({super.key});
@@ -22,6 +23,9 @@ class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> with SingleTick
     super.initState();
     _tabController = TabController(length: _statusTabs.length, vsync: this);
     _tabController.addListener(_onTabChanged);
+    
+    // Mark orders as viewed to clear badge
+    ref.read(badgeStateProvider).markSectionViewed('orders');
   }
 
   @override

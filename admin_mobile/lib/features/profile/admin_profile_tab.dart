@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../widgets/modern_header.dart';
 import '../auth/auth_provider.dart';
 import 'profile_provider.dart';
 import 'personal_info_screen.dart';
@@ -18,6 +19,11 @@ class AdminProfileTab extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      appBar: ModernDashboardHeader(
+        title: 'Admin Profile',
+        isHome: false,
+        showLeading: false, 
+      ),
       body: RefreshIndicator(
         onRefresh: () => ref.read(profileProvider.notifier).refresh(),
         child: SingleChildScrollView(
@@ -25,7 +31,6 @@ class AdminProfileTab extends ConsumerWidget {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              const SizedBox(height: 48), // Top padding for no AppBar
               // Profile Header
               profileAsync.when(
                 data: (profile) => _buildProfileHeader(profile),
@@ -107,6 +112,12 @@ class AdminProfileTab extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  // Helper method needed for the new import
+  Widget _buildModernHeader(BuildContext context) {
+      // This might be redundant if using the widget class directly, assuming explicit usage of ModernDashboardHeader
+      return const SizedBox.shrink(); 
   }
 
   Widget _buildProfileHeader(FranchiseProfile? profile) {

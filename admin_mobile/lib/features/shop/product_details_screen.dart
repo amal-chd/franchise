@@ -33,15 +33,18 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
               ),
               onPressed: () => Navigator.pop(context),
             ),
-             Hero(
-              tag: 'app_logo', 
-              child: Material(
-                color: Colors.transparent,
-                child: Image.asset(
-                  'assets/images/logo_text.png', 
-                  height: 24,
-                  color: Colors.white,
-                  errorBuilder: (context, error, stackTrace) => const SizedBox(),
+            GestureDetector(
+              onTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
+              child: Hero(
+                tag: 'franchise_app_logo_product_details', 
+                child: Material(
+                  color: Colors.transparent,
+                  child: Image.asset(
+                    'assets/images/header_logo_new.png', 
+                    height: 24,
+                    color: Colors.white,
+                    errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                  ),
                 ),
               ),
             ),

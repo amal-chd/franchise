@@ -39,15 +39,18 @@ class _FranchiseProfileTabState extends ConsumerState<FranchiseProfileTab> {
         title: '',
         leadingWidget: Padding(
           padding: const EdgeInsets.only(left: 8.0),
-          child: Hero(
-            tag: 'app_logo', 
-            child: Material(
-              color: Colors.transparent,
-              child: Image.asset(
-                'assets/images/logo_text.png', 
-                height: 24,
-                color: Colors.white,
-                errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, color: Colors.white),
+          child: GestureDetector(
+            onTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
+            child: Hero(
+              tag: 'franchise_app_logo_profile', 
+              child: Material(
+                color: Colors.transparent,
+                child: Image.asset(
+                  'assets/images/header_logo_new.png', 
+                  height: 24,
+                  color: Colors.white,
+                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, color: Colors.white),
+                ),
               ),
             ),
           ),

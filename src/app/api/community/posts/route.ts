@@ -5,11 +5,11 @@ import executeQuery from '@/lib/db';
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
+    const authorId = searchParams.get('authorId');
 
     try {
-        // Fetch posts from self and friends (or all for public feed)
-        // For simplicity, we fetch all posts DESC for now.
-        // In a real app with many users, join with friendships table.
+        // Base query - Fetch posts
+        // We allow author filtering.
 
         let query = `
             SELECT p.*, 
@@ -17,16 +17,30 @@ export async function GET(request: Request) {
             (SELECT COUNT(*) FROM community_interactions WHERE post_id = p.id AND type = 'comment') as comments_count,
             (SELECT COUNT(*) FROM community_interactions WHERE post_id = p.id AND type = 'like' AND user_id = ?) as is_liked_by_me
             FROM community_posts p 
-            ORDER BY created_at DESC
         `;
+
+        const values: any[] = [userId || 0];
+
+
+        // Strict filtering if authorId matches a number
+        if (authorId && !isNaN(Number(authorId))) {
+            console.log(`Filtering posts for authorId: ${authorId}`);
+            query += ` WHERE p.user_id = ? `;
+            values.push(authorId);
+        } else {
+            console.log('No authorId provided or invalid, fetching all posts');
+        }
+
+        query += ` ORDER BY created_at DESC`;
 
         const result = await executeQuery({
             query,
-            values: [userId || 0]
+            values
         });
 
         return NextResponse.json(result);
     } catch (error: any) {
+        console.error('API Error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
