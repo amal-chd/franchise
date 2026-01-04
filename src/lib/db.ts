@@ -16,7 +16,7 @@ const db = mysql({
 export default async function executeQuery({ query, values }: { query: string; values?: any[] }) {
     try {
         const results = await db.query(query, values);
-        await db.end();
+        // await db.end();
         return results;
     } catch (error: any) {
         console.error('Database Error:', error);

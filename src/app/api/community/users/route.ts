@@ -1,46 +1,48 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
-    const userId = searchParams.get('userId'); // Exclude self
+    const userId = searchParams.get('userId'); // Legacy ID
 
     if (!query) {
         return NextResponse.json([]);
     }
 
     try {
-        // Search by name, exclude self
-        // Search by name, exclude self, include friendship status
-        const sql = `
-            SELECT 
-                u.id, 
-                u.name as f_name, 
-                '' as l_name, 
-                u.city as location,
-                NULL as image, 
-                'franchise' as role,
-                CASE 
-                    WHEN f1.status = 'accepted' OR f2.status = 'accepted' THEN 'friend'
-                    WHEN f1.status = 'pending' THEN 'sent'
-                    WHEN f2.status = 'pending' THEN 'received'
-                    ELSE 'none'
-                END as friendship_status
-            FROM franchise_requests u
-            LEFT JOIN friendships f1 ON f1.user_id = ? AND f1.friend_id = u.id
-            LEFT JOIN friendships f2 ON f2.user_id = u.id AND f2.friend_id = ?
-            WHERE u.name LIKE ? 
-            AND u.id != ?
-            LIMIT 20
-        `;
-        const searchPattern = `%${query}%`;
-        const currentUserId = userId || 0;
+        let currentUserId = null;
+        if (userId) {
+            const { data } = await supabase.from('profiles').select('id').eq('franchise_id', userId).single();
+            if (data) currentUserId = data.id;
+        }
 
-        const result = await executeQuery({
-            query: sql,
-            values: [currentUserId, currentUserId, searchPattern, currentUserId]
+        if (!currentUserId) {
+            // If user not found, maybe return simple search without status?
+            // Or just fail. Let's return error or empty.
+            // For guests, we can pass a dummy UUID? Or handle null in RPC?
+            // RPC expects uuid.
+            return NextResponse.json([], { status: 200 });
+        }
+
+        const { data, error } = await supabase.rpc('search_users', {
+            search_query: query,
+            current_user_id: currentUserId
         });
+
+        if (error) throw error;
+
+        // Transform to match frontend expectations
+        // Frontend expects: f_name, l_name, location, image, role, friendship_status
+        const result = data.map((u: any) => ({
+            id: u.legacy_id, // Frontend uses INT ID
+            f_name: u.user_name,
+            l_name: '',
+            location: u.location,
+            image: u.user_image,
+            role: 'franchise',
+            friendship_status: u.friendship_status
+        }));
 
         return NextResponse.json(result);
     } catch (error: any) {

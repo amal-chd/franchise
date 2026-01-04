@@ -2,26 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
-import '../../core/api_service.dart';
 import '../../widgets/modern_header.dart';
 
-// Provider for specific friend chat messages
-final friendChatMessagesProvider = FutureProvider.family.autoDispose<List<Map<String, dynamic>>, int>((ref, friendId) async {
-  final api = ApiService();
-  final prefs = await SharedPreferences.getInstance();
-  final userId = prefs.getInt('franchiseId');
-  if (userId == null) return [];
-
-  final response = await api.client.get('community/chat/messages?userId=$userId&friendId=$friendId');
-  if (response.data is List) {
-    return List<Map<String, dynamic>>.from(response.data);
-  }
-  return [];
-});
-
 class FriendChatScreen extends ConsumerStatefulWidget {
-  final int friendId;
+  final int friendId; // Legacy ID
   final String friendName;
   
   const FriendChatScreen({super.key, required this.friendId, required this.friendName});
@@ -33,56 +19,146 @@ class FriendChatScreen extends ConsumerStatefulWidget {
 class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
   final TextEditingController _msgCtrl = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();
-  Timer? _timer;
-  int? _currentUserId;
+  
+  List<Map<String, dynamic>> _messages = [];
+  bool _isLoading = true;
+  String? _myUuid;
+  String? _friendUuid;
+  
+  late RealtimeChannel _channel;
 
   @override
   void initState() {
     super.initState();
-    _loadUserId();
-    // Auto refresh
-    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      ref.refresh(friendChatMessagesProvider(widget.friendId));
-    });
+    _setupChat();
   }
+  
+  Future<void> _setupChat() async {
+      try {
+          final user = Supabase.instance.client.auth.currentUser;
+          if (user == null) return;
+          _myUuid = user.id;
 
-  Future<void> _loadUserId() async {
-      final prefs = await SharedPreferences.getInstance();
-      setState(() {
-          _currentUserId = prefs.getInt('franchiseId');
-      });
+          // Resolve Friend UUID
+          final friendProfile = await Supabase.instance.client
+              .from('profiles')
+              .select('id')
+              .eq('franchise_id', widget.friendId)
+              .maybeSingle();
+              
+          if (friendProfile == null) {
+              if (mounted) setState(() => _isLoading = false);
+              return;
+          }
+          _friendUuid = friendProfile['id'];
+          
+          // Load History
+          final history = await Supabase.instance.client.rpc('get_conversation_messages', params: {
+              'user1': _myUuid, 
+              'user2': _friendUuid
+          });
+          
+          if (mounted) {
+              setState(() {
+                  _messages = List<Map<String, dynamic>>.from(history);
+                  _isLoading = false;
+              });
+              _scrollToBottom();
+          }
+          
+          // Subscribe to Realtime
+          _channel = Supabase.instance.client.channel('public:messages');
+          _channel.onPostgresChanges(
+              event: PostgresChangeEvent.insert,
+              schema: 'public',
+              table: 'messages',
+              filter: PostgresChangeFilter(
+                  type: PostgresChangeFilterType.eq,
+                  column: 'receiver_id',
+                  value: _myUuid,
+              ),
+              callback: (payload) {
+                  final newMsg = payload.newRecord;
+                  if (newMsg['sender_id'] == _friendUuid) {
+                      if (mounted) {
+                          setState(() {
+                             _messages.add(newMsg); 
+                          });
+                          _scrollToBottom();
+                      }
+                  }
+              }
+          ).subscribe();
+          
+      } catch (e) {
+          print('Chat Setup Error: $e');
+          if (mounted) setState(() => _isLoading = false);
+      }
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _channel.unsubscribe();
     _msgCtrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
+  }
+  
+  void _scrollToBottom() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollCtrl.hasClients) {
+              _scrollCtrl.animateTo(
+                  _scrollCtrl.position.maxScrollExtent, 
+                  duration: const Duration(milliseconds: 300), 
+                  curve: Curves.easeOut
+              );
+          }
+      });
   }
 
   Future<void> _sendMessage() async {
-      if (_msgCtrl.text.trim().isEmpty) return;
+      if (_msgCtrl.text.trim().isEmpty || _friendUuid == null || _myUuid == null) return;
       final msg = _msgCtrl.text.trim();
       _msgCtrl.clear();
-
-      final api = ApiService();
-      await api.client.post('community/chat/messages', data: {
-          'senderId': _currentUserId,
-          'receiverId': widget.friendId,
-          'message': msg,
-          'attachmentUrl': null 
+      
+      // Optimistic update
+      final tempId = DateTime.now().millisecondsSinceEpoch;
+      final tempMsg = {
+          'id': tempId,
+          'sender_id': _myUuid,
+          'receiver_id': _friendUuid,
+          'content': msg,
+          'created_at': DateTime.now().toIso8601String(),
+          'status': 'sending' // internal status
+      };
+      
+      setState(() {
+          _messages.add(tempMsg);
       });
-      ref.refresh(friendChatMessagesProvider(widget.friendId));
+      _scrollToBottom();
+      
+      try {
+          final response = await Supabase.instance.client.from('messages').insert({
+              'sender_id': _myUuid,
+              'receiver_id': _friendUuid,
+              'content': msg,
+              'status': 'sent'
+          }).select().single();
+          
+          // Update temp message with real one? Or just let it be.
+          // Ideally verify.
+      } catch (e) {
+          // Mark failed?
+          print('Send failed: $e');
+      }
   }
 
   @override
   Widget build(BuildContext context) {
-    final messagesAsync = ref.watch(friendChatMessagesProvider(widget.friendId));
-
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: ModernDashboardHeader(
-        title: '',
+        title:  widget.friendName, // Show friend name
         isHome: false,
         showLeading: true,
         leadingWidget: Row(
@@ -96,61 +172,29 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
               ),
               onPressed: () => Navigator.of(context).pop(),
             ),
-            GestureDetector(
-              onTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
-              child: Hero(
-                tag: 'franchise_app_logo_friend_chat', 
-                child: Material(
-                  color: Colors.transparent,
-                  child: Image.asset(
-                    'assets/images/header_logo_new.png', 
-                    height: 24,
-                    color: Colors.white,
-                    errorBuilder: (context, error, stackTrace) => const SizedBox(),
-                  ),
-                ),
-              ),
-            ),
+            // Logo? Maybe simplify header for chat
+            const SizedBox(width: 8,),
+            Text(widget.friendName, style: GoogleFonts.outfit(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600))
           ],
         ),
       ),
       body: Column(
         children: [
           Expanded(
-            child: messagesAsync.when(
-              data: (messages) {
-                if (messages.isEmpty) return const Center(child: Text('Start a conversation!'));
-                return ListView.builder(
-                  reverse: false, // Messages come ASC from DB, so display normal with scroll to bottom or reverse? 
-                  // usually ASC means oldest top. So List needs to build normally but we prefer bottom.
-                  // For simplicity, let's just make it auto-scroll to bottom.
-                  controller: _scrollCtrl,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final m = messages[index];
-                    final isMe = m['sender_id'] == _currentUserId;
-                    return Align(
-                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isMe ? Colors.blue : Colors.grey[100],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          m['message'] ?? '',
-                          style: TextStyle(color: isMe ? Colors.white : Colors.black),
-                        ),
+            child: _isLoading 
+                ? const Center(child: CircularProgressIndicator())
+                : _messages.isEmpty 
+                    ? const Center(child: Text('Start a conversation!'))
+                    : ListView.builder(
+                        controller: _scrollCtrl,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _messages.length,
+                        itemBuilder: (context, index) {
+                          final m = _messages[index];
+                          final isMe = m['sender_id'] == _myUuid;
+                          return _buildMessageBubble(m, isMe);
+                        },
                       ),
-                    );
-                  },
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, s) => Center(child: Text('Error: $e')),
-            ),
           ),
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -175,9 +219,61 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                 )
               ],
             ),
-          )
+          ),
         ],
       ),
     );
+  }
+
+  Widget _buildMessageBubble(Map<String, dynamic> msg, bool isMe) {
+    return Align(
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        decoration: BoxDecoration(
+          color: isMe ? const Color(0xFF2563EB) : Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(isMe ? 16 : 4),
+            bottomRight: Radius.circular(isMe ? 4 : 16),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              msg['content'] ?? msg['message'] ?? '',
+              style: GoogleFonts.inter(
+                color: isMe ? Colors.white : const Color(0xFF1E293B),
+                fontSize: 15,
+              ),
+            ),
+            const SizedBox(height: 4),
+            if (msg['created_at'] != null)
+              Text(
+                _formatTime(DateTime.parse(msg['created_at'])),
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  color: isMe ? Colors.white70 : const Color(0xFF94A3B8),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatTime(DateTime time) {
+    return "${time.hour}:${time.minute.toString().padLeft(2, '0')}";
   }
 }

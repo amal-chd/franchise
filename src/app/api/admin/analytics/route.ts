@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db'; // Main database
+
+import { supabase } from '@/lib/supabaseClient';
+// import executeQuery from '@/lib/db'; // Removed Main DB dependency
 import executeFranchiseQuery from '@/lib/franchise_db'; // Franchise read-only database
 import { apiCache, CACHE_TTL } from '@/lib/cache';
 
@@ -47,28 +49,27 @@ export async function GET(request: Request) {
             statusDistResult,
             zonePerfResult
         ] = await Promise.all([
-            // 1. Franchise stats (main DB)
-            executeQuery({
-                query: `
-                    SELECT 
-                        COUNT(*) as totalRequests,
-                        SUM(CASE WHEN status = 'pending_verification' THEN 1 ELSE 0 END) as pendingVerification,
-                        SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as activeFranchises
-                    FROM franchise_requests
-                `,
-                values: [],
-            }),
+            // 1. Franchise stats (Supabase)
+            (async () => {
+                const { count: totalRequests } = await supabase.from('franchise_requests').select('*', { count: 'exact', head: true });
+                const { count: pendingVerification } = await supabase.from('franchise_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending_verification');
+                const { count: activeFranchises } = await supabase.from('franchise_requests').select('*', { count: 'exact', head: true }).eq('status', 'approved');
+                return [{ totalRequests, pendingVerification, activeFranchises }];
+            })(),
 
-            // 2. Support tickets stats (main DB)
-            executeQuery({
-                query: `
-                    SELECT 
-                        SUM(CASE WHEN status IS NULL OR status = 'open' THEN 1 ELSE 0 END) as pendingTickets,
-                        SUM(CASE WHEN status = 'replied' THEN 1 ELSE 0 END) as repliedTickets
-                    FROM support_tickets
-                `,
-                values: [],
-            }),
+            // 2. Support tickets stats (Supabase)
+            (async () => {
+                const { count: pendingTickets } = await supabase.from('support_tickets').select('*', { count: 'exact', head: true }).in('status', ['open', null]);
+                // Fix: Supabase .in_ doesn't handle null well usually. Filter separately or simplify. 
+                // Let's just count 'open'.
+                // const { count: pendingTickets } = await supabase.from('support_tickets').select('*', { count: 'exact', head: true }).eq('status', 'open');
+                // Actually let's assume default is open.
+                const { data: openTickets } = await supabase.from('support_tickets').select('status');
+                const pending = openTickets?.filter(t => t.status === 'open' || !t.status).length || 0;
+
+                const { count: repliedTickets } = await supabase.from('support_tickets').select('*', { count: 'exact', head: true }).eq('status', 'replied');
+                return [{ pendingTickets: pending, repliedTickets }];
+            })(),
 
             // 3. Orders by zone (franchise DB)
             executeFranchiseQuery({
@@ -85,11 +86,11 @@ export async function GET(request: Request) {
                 values: [],
             }),
 
-            // 4. Franchise plans (main DB)
-            executeQuery({
-                query: `SELECT zone_id, plan_selected FROM franchise_requests WHERE status = 'approved' AND zone_id IS NOT NULL`,
-                values: [],
-            }),
+            // 4. Franchise plans (Supabase)
+            (async () => {
+                const { data } = await supabase.from('franchise_requests').select('zone_id, plan_selected').eq('status', 'approved').not('zone_id', 'is', null);
+                return data || [];
+            })(),
 
             // 5. Revenue trends (franchise DB)
             executeFranchiseQuery({
@@ -137,6 +138,9 @@ export async function GET(request: Request) {
                 values: [],
             })
         ]);
+
+        // Process franchise stats
+
 
         // Process franchise stats
         const franchiseStats = franchiseStatsResult as any[];

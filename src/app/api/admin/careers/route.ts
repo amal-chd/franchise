@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 
 export async function GET() {
     try {
-        const careers = await executeQuery({
-            query: 'SELECT * FROM careers ORDER BY created_at DESC',
-            values: [],
-        });
-        return NextResponse.json(careers);
+        const { data, error } = await supabase
+            .from('careers')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        return NextResponse.json(data);
     } catch (error: any) {
         return NextResponse.json({ message: error.message }, { status: 500 });
     }
@@ -16,12 +19,21 @@ export async function GET() {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { title, department, location, type, description } = body;
+        const { title, department, location, type, description, requirements } = body;
 
-        await executeQuery({
-            query: 'INSERT INTO careers (title, department, location, type, description) VALUES (?, ?, ?, ?, ?)',
-            values: [title, department, location, type, description],
-        });
+        const { error } = await supabase
+            .from('careers')
+            .insert([{
+                title,
+                department,
+                location,
+                type,
+                description,
+                requirements: requirements || '',
+                is_active: true
+            }]);
+
+        if (error) throw error;
 
         return NextResponse.json({ message: 'Job posted successfully' });
     } catch (error: any) {
@@ -38,10 +50,12 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ message: 'ID is required' }, { status: 400 });
         }
 
-        await executeQuery({
-            query: 'DELETE FROM careers WHERE id = ?',
-            values: [id],
-        });
+        const { error } = await supabase
+            .from('careers')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
 
         return NextResponse.json({ message: 'Job deleted successfully' });
     } catch (error: any) {

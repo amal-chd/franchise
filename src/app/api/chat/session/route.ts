@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -10,32 +12,59 @@ export async function GET(request: Request) {
     }
 
     try {
-        // Check for active session
-        const sessions: any = await executeQuery({
-            query: `
-                SELECT cs.*,
-                    (SELECT message FROM chat_messages WHERE session_id = cs.id ORDER BY created_at DESC LIMIT 1) as last_message_preview,
-                    (SELECT sender_type FROM chat_messages WHERE session_id = cs.id ORDER BY created_at DESC LIMIT 1) as last_sender_type,
-                    (SELECT id FROM chat_messages WHERE session_id = cs.id ORDER BY created_at DESC LIMIT 1) as last_message_id
-                FROM chat_sessions cs 
-                WHERE franchise_id = ? AND status = "open" 
-                LIMIT 1
-            `,
-            values: [franchiseId]
-        });
+        // Check for active session using Supabase Admin
+        const { data: sessions, error } = await supabaseAdmin
+            .from('admin_chat_sessions')
+            .select(`
+                *,
+                admin_chats (
+                    id,
+                    message,
+                    sender_type,
+                    created_at
+                )
+            `)
+            .eq('franchise_id', parseInt(franchiseId)) // Ensure numeric type match
+            .eq('status', 'open')
+            .limit(1);
 
-        if (sessions.length > 0) {
-            return NextResponse.json(sessions[0]);
+        if (error) {
+            console.error('Supabase Session Fetch Error:', error);
+            throw error;
         }
 
-        // Create new session if none exists
-        const result: any = await executeQuery({
-            query: 'INSERT INTO chat_sessions (franchise_id) VALUES (?)',
-            values: [franchiseId]
-        });
+        if (sessions && sessions.length > 0) {
+            const session = sessions[0];
+            // Sort messages to get the last one if returned
+            const messages = session.admin_chats || [];
+            // Sort descending by created_at
+            messages.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-        return NextResponse.json({ id: result.insertId, franchise_id: franchiseId, status: 'open' });
+            const lastMsg = messages.length > 0 ? messages[0] : null;
+
+            return NextResponse.json({
+                ...session,
+                last_message_preview: lastMsg?.message || null,
+                last_sender_type: lastMsg?.sender_type || null,
+                last_message_id: lastMsg?.id || null
+            });
+        }
+
+        // Create new session if none exists using Admin client
+        const { data: newSession, error: createError } = await supabaseAdmin
+            .from('admin_chat_sessions')
+            .insert({ franchise_id: parseInt(franchiseId), status: 'open' })
+            .select()
+            .single();
+
+        if (createError) {
+            console.error('Supabase Session Create Error:', createError);
+            throw createError;
+        }
+
+        return NextResponse.json(newSession);
     } catch (error: any) {
+        console.error('Chat Session API Error:', error);
         return NextResponse.json({ error: 'Failed to get session' }, { status: 500 });
     }
 }

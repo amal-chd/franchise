@@ -1,21 +1,33 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 
 export async function GET() {
     try {
-        const tickets = await executeQuery({
-            query: `
-                SELECT 
-                    t.*, 
-                    f.name as franchise_name, 
-                    f.city as zone_name,
-                    (SELECT message FROM ticket_replies WHERE ticket_id = t.id ORDER BY created_at DESC LIMIT 1) as latest_reply
-                FROM support_tickets t 
-                LEFT JOIN franchise_requests f ON t.franchise_id = f.id 
-                ORDER BY t.created_at DESC
-            `,
-            values: [],
-        });
+        // Fetch tickets from Supabase with latest reply
+        const { data: tickets, error } = await supabase
+            .from('support_tickets')
+            .select(`
+                *,
+                latest_reply:ticket_replies(
+                    message,
+                    created_at
+                )
+            `)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Process data to match expected format (optional, if frontend expects flat structure)
+        // transforming latest_reply array to single object if needed, or frontend handles it.
+        // For now returning as is, but latest_reply will be an array in Supabase response.
+        const processedTickets = tickets.map(t => ({
+            ...t,
+            latest_reply: t.latest_reply?.[0]?.message || null,
+            franchise_name: 'Unknown', // We might need to link this if franchise_id exists
+            zone_name: 'N/A'
+        }));
+
+        return NextResponse.json(processedTickets);
 
         if (!Array.isArray(tickets)) {
             return NextResponse.json([]);

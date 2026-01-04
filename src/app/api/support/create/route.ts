@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 import { sendEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
@@ -10,13 +10,16 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'All fields are required' }, { status: 400 });
         }
 
-        // Save ticket to database
-        const result = await executeQuery({
-            query: 'INSERT INTO support_tickets (name, email, subject, message) VALUES (?, ?, ?, ?)',
-            values: [name, email, subject, message],
-        }) as any;
+        // Save ticket to Supabase
+        const { data, error } = await supabase
+            .from('support_tickets')
+            .insert([{ name, email, subject, message, status: 'pending' }])
+            .select()
+            .single();
 
-        const ticketId = result.insertId;
+        if (error) throw error;
+
+        const ticketId = data.id;
 
         // Send confirmation email to user
         await sendEmail({

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 // Bulk operations for orders
 export async function POST(request: Request) {
@@ -22,35 +23,36 @@ export async function POST(request: Request) {
 
                 for (const orderId of orderIds) {
                     try {
-                        // Get current status for history
-                        const currentOrder: any = await executeQuery({
-                            query: 'SELECT status FROM orders WHERE id = ?',
-                            values: [orderId]
+                        // Get current status (Read can be public/anon)
+                        const { data: currentOrder, error: fetchError } = await supabase
+                            .from('orders')
+                            .select('order_status')
+                            .eq('id', orderId)
+                            .single();
+
+                        if (fetchError || !currentOrder) {
+                            failedIds.push(orderId);
+                            continue;
+                        }
+
+                        // Update with Admin
+                        const { error: updateError } = await supabaseAdmin
+                            .from('orders')
+                            .update({ order_status: data.status })
+                            .eq('id', orderId);
+
+                        if (updateError) throw updateError;
+
+                        // History with Admin
+                        await supabaseAdmin.from('order_history').insert({
+                            order_id: orderId,
+                            status_from: currentOrder.order_status,
+                            status_to: data.status,
+                            changed_by: data.changedBy || null,
+                            notes: data.notes || `Bulk status update to ${data.status}`
                         });
 
-                        if (currentOrder.length > 0) {
-                            // Update status
-                            await executeQuery({
-                                query: 'UPDATE orders SET status = ? WHERE id = ?',
-                                values: [data.status, orderId]
-                            });
-
-                            // Record in history
-                            await executeQuery({
-                                query: 'INSERT INTO order_history (order_id, status_from, status_to, changed_by, notes) VALUES (?, ?, ?, ?, ?)',
-                                values: [
-                                    orderId,
-                                    currentOrder[0].status,
-                                    data.status,
-                                    data.changedBy || null,
-                                    data.notes || `Bulk status update to ${data.status}`
-                                ]
-                            });
-
-                            successCount++;
-                        } else {
-                            failedIds.push(orderId);
-                        }
+                        successCount++;
                     } catch (error: any) {
                         console.error(`Failed to update order ${orderId}:`, error);
                         failedIds.push(orderId);
@@ -63,16 +65,16 @@ export async function POST(request: Request) {
                     return NextResponse.json({ error: 'Payment status is required' }, { status: 400 });
                 }
 
-                for (const orderId of orderIds) {
-                    try {
-                        await executeQuery({
-                            query: 'UPDATE orders SET payment_status = ? WHERE id = ?',
-                            values: [data.paymentStatus, orderId]
-                        });
-                        successCount++;
-                    } catch (error: any) {
-                        failedIds.push(orderId);
-                    }
+                const { error: paymentError } = await supabaseAdmin
+                    .from('orders')
+                    .update({ payment_status: data.paymentStatus })
+                    .in('id', orderIds);
+
+                if (paymentError) {
+                    console.error('Bulk payment update error:', paymentError);
+                    failedIds = orderIds; // All failed
+                } else {
+                    successCount = orderIds.length;
                 }
                 break;
 
@@ -80,14 +82,17 @@ export async function POST(request: Request) {
                 // Soft delete by updating status to 'cancelled'
                 for (const orderId of orderIds) {
                     try {
-                        await executeQuery({
-                            query: 'UPDATE orders SET status = ? WHERE id = ?',
-                            values: ['cancelled', orderId]
-                        });
+                        const { error: updateError } = await supabaseAdmin
+                            .from('orders')
+                            .update({ order_status: 'cancelled' })
+                            .eq('id', orderId);
 
-                        await executeQuery({
-                            query: 'INSERT INTO order_history (order_id, status_to, notes) VALUES (?, ?, ?)',
-                            values: [orderId, 'cancelled', 'Bulk cancelled']
+                        if (updateError) throw updateError;
+
+                        await supabaseAdmin.from('order_history').insert({
+                            order_id: orderId,
+                            status_to: 'cancelled',
+                            notes: 'Bulk cancelled'
                         });
 
                         successCount++;
@@ -98,38 +103,25 @@ export async function POST(request: Request) {
                 break;
 
             case 'export':
-                // Export orders to CSV
+                // Export orders to CSV (Read is fine with anon if policies correct, else use Admin if admin dashboard)
                 try {
-                    const placeholders = orderIds.map(() => '?').join(',');
-                    const orders: any = await executeQuery({
-                        query: `
-                            SELECT 
-                                o.id,
-                                o.franchise_id,
-                                f.name as franchise_name,
-                                f.city as zone_name,
-                                o.total_amount,
-                                o.status,
-                                o.payment_status,
-                                o.razorpay_order_id,
-                                o.created_at
-                            FROM orders o
-                            LEFT JOIN franchise_requests f ON o.franchise_id = f.id
-                            WHERE o.id IN (${placeholders})
-                        `,
-                        values: orderIds
-                    });
+                    const { data: orders, error: exportError } = await supabaseAdmin
+                        .from('orders') // use Admin for export just to be safe they can see everything
+                        .select('*, franchise_requests(name, city)')
+                        .in('id', orderIds);
+
+                    if (exportError) throw exportError;
 
                     // Convert to CSV format
                     const headers = ['Order ID', 'Franchise', 'Zone', 'Amount', 'Status', 'Payment', 'Razorpay ID', 'Created'];
                     const csvData = [
                         headers.join(','),
-                        ...orders.map((order: any) => [
+                        ...(orders || []).map((order: any) => [
                             order.id,
-                            order.franchise_name || '',
-                            order.zone_name || '',
-                            order.total_amount,
-                            order.status,
+                            order.franchise_requests?.name || '',
+                            order.franchise_requests?.city || '',
+                            order.order_amount,
+                            order.order_status,
                             order.payment_status,
                             order.razorpay_order_id || '',
                             order.created_at

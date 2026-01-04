@@ -273,15 +273,24 @@ class AdminChatTab extends ConsumerWidget {
                         onTap: () async {
                            Navigator.pop(context); // Close dialog
                            
-                           final session = await ref.read(adminChatControllerProvider).startNewChat(f.id);
-                           if (session != null && context.mounted) {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => AdminChatScreen(
-                                 sessionId: session.id,
-                                 franchiseId: session.franchiseId,
-                                 franchiseName: session.franchiseName
-                              )));
-                           } else if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to start chat')));
+                           try {
+                             final session = await ref.read(adminChatControllerProvider).startNewChat(f.id, f.email);
+                             if (session != null && context.mounted) {
+                                await Navigator.push(context, MaterialPageRoute(builder: (_) => AdminChatScreen(
+                                   sessionId: session.id,
+                                   franchiseId: session.franchiseId,
+                                   franchiseName: session.franchiseName
+                                )));
+                                ref.refresh(adminChatSessionsProvider); // Refresh list on return
+                             }
+                           } catch (e) {
+                             if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                  content: Text(e.toString()),
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 4),
+                                ));
+                             }
                            }
                         },
                       );

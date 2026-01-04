@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'newsletter_provider.dart';
+import 'compose_email_screen.dart';
 
 class NewsletterTab extends ConsumerWidget {
   const NewsletterTab({super.key});
@@ -46,6 +47,17 @@ class NewsletterTab extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, stack) => Center(child: Text('Error: $err')),
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ComposeEmailScreen()),
+          );
+        },
+        label: const Text('Compose'),
+        icon: const Icon(Icons.edit_rounded),
+        backgroundColor: Colors.black,
       ),
     );
   }

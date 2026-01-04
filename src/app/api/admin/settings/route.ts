@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 
 export async function GET() {
     try {
-        const rows = await executeQuery({
-            query: 'SELECT * FROM site_settings',
-            values: []
-        });
+        const { data: rows, error } = await supabase
+            .from('site_settings')
+            .select('*');
+
+        if (error) throw error;
 
         const settings = (rows as any[]).reduce((acc, row) => {
             acc[row.setting_key] = row.setting_value;
@@ -30,14 +31,15 @@ export async function POST(request: Request) {
         }
 
         for (const [key, value] of Object.entries(settings)) {
-            await executeQuery({
-                query: `
-                    INSERT INTO site_settings (setting_key, setting_value, setting_group)
-                    VALUES (?, ?, 'general')
-                    ON DUPLICATE KEY UPDATE setting_value = ?
-                `,
-                values: [key, value, value]
-            });
+            const { error } = await supabase
+                .from('site_settings')
+                .upsert({
+                    setting_key: key,
+                    setting_value: value,
+                    setting_group: 'general'
+                }, { onConflict: 'setting_key' });
+
+            if (error) throw error;
         }
 
         return NextResponse.json({ success: true });

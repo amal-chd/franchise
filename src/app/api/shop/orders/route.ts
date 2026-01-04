@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendNotification } from '@/lib/notifications';
 
 // Advanced filtering, pagination, and search for orders
@@ -12,7 +13,7 @@ export async function GET(request: Request) {
     const isAdmin = searchParams.get('admin') === 'true';
     const statusFilter = searchParams.get('status')?.split(',') || [];
     const paymentStatusFilter = searchParams.get('paymentStatus')?.split(',') || [];
-    const zoneId = searchParams.get('zoneId');
+    let zoneIdParam = searchParams.get('zoneId');
     const search = searchParams.get('search');
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
@@ -24,105 +25,112 @@ export async function GET(request: Request) {
 
     // Sorting
     const sortBy = searchParams.get('sortBy') || 'created_at';
-    const sortOrder = searchParams.get('sortOrder')?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    const sortOrder = searchParams.get('sortOrder')?.toUpperCase() === 'ASC' ? false : true; // false = ASC, true = DESC in Supabase
 
-    // Validate sortBy to prevent SQL injection
-    const allowedSortFields = ['created_at', 'total_amount', 'status', 'payment_status', 'id'];
-    const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
+    // Map frontend sort fields to DB columns
+    const sortMapping: Record<string, string> = {
+        'created_at': 'created_at',
+        'total_amount': 'order_amount',
+        'status': 'order_status',
+        'payment_status': 'payment_status',
+        'id': 'id'
+    };
+
+    const dbSortBy = sortMapping[sortBy] || 'created_at';
 
     if (!franchiseId && !isAdmin) {
         return NextResponse.json({ error: 'Franchise ID required' }, { status: 400 });
     }
 
     try {
-        // Build dynamic WHERE clause
-        const conditions: string[] = [];
-        const values: any[] = [];
+        let query = supabase
+            .from('orders')
+            .select(`
+                *,
+                order_items (count)
+            `, { count: 'exact' });
 
         if (franchiseId) {
-            conditions.push('o.franchise_id = ?');
-            values.push(franchiseId);
+            query = query.eq('franchise_id', franchiseId);
         }
 
         if (statusFilter.length > 0) {
-            const placeholders = statusFilter.map(() => '?').join(',');
-            conditions.push(`o.status IN (${placeholders})`);
-            values.push(...statusFilter);
+            query = query.in('order_status', statusFilter);
         }
 
         if (paymentStatusFilter.length > 0) {
-            const placeholders = paymentStatusFilter.map(() => '?').join(',');
-            conditions.push(`o.payment_status IN (${placeholders})`);
-            values.push(...paymentStatusFilter);
+            query = query.in('payment_status', paymentStatusFilter);
         }
 
-        if (zoneId) {
-            conditions.push('f.zone_id = ?');
-            values.push(zoneId);
+        if (zoneIdParam) {
+            query = query.eq('zone_id', zoneIdParam);
         }
 
         if (search) {
-            conditions.push('(o.id LIKE ? OR f.name LIKE ?)');
-            const searchPattern = `%${search}%`;
-            values.push(searchPattern, searchPattern);
+            // Check if search is numeric (ID search) or string (maybe unrelated? but here mostly ID)
+            if (!isNaN(Number(search))) {
+                query = query.eq('id', search);
+            }
+            // If we had text search on other fields, we'd add it here.
         }
 
         if (dateFrom) {
-            conditions.push('o.created_at >= ?');
-            values.push(dateFrom);
+            query = query.gte('created_at', dateFrom);
         }
 
         if (dateTo) {
-            conditions.push('o.created_at <= ?');
-            values.push(dateTo + ' 23:59:59');
+            query = query.lte('created_at', dateTo + ' 23:59:59');
         }
 
-        const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+        // Apply Sorting and Pagination
+        query = query.order(dbSortBy, { ascending: !sortOrder }).range(offset, offset + limit - 1);
 
-        // Get total count for pagination
-        const countQuery = `
-            SELECT COUNT(*) as total 
-            FROM orders o
-            LEFT JOIN franchise_requests f ON o.franchise_id = f.id
-            ${whereClause}
-        `;
+        const { data: orders, count, error } = await query;
 
-        const countResult: any = await executeQuery({
-            query: countQuery,
-            values: values
-        });
+        if (error) throw error;
 
-        const totalOrders = countResult[0].total;
+        const totalOrders = count || 0;
         const totalPages = Math.ceil(totalOrders / limit);
 
-        // Get paginated orders
-        const ordersQuery = `
-            SELECT 
-                o.id,
-                o.franchise_id,
-                o.total_amount,
-                o.status,
-                o.payment_status,
-                o.created_at,
-                f.name as franchise_name,
-                f.city as zone_name,
-                f.zone_id,
-                (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as items_count
-            FROM orders o
-            LEFT JOIN franchise_requests f ON o.franchise_id = f.id
-            ${whereClause}
-            ORDER BY o.${safeSortBy} ${sortOrder}
-            LIMIT ? OFFSET ?
-        `;
+        const ordersList = orders || [];
 
-        const orders: any = await executeQuery({
-            query: ordersQuery,
-            values: [...values, limit, offset]
+        // Fetch Franchise Details manually since we don't have FK set up in Typescript definitions clearly or to be safe
+        const franchiseIds = [...new Set(ordersList.map((o: any) => o.franchise_id).filter((id: any) => id != null))];
+        let franchiseMap: Record<number, any> = {};
+
+        if (franchiseIds.length > 0) {
+            const { data: franchises } = await supabase
+                .from('franchise_requests')
+                .select('id, name, city, zone_id')
+                .in('id', franchiseIds);
+
+            if (franchises) {
+                franchises.forEach(f => {
+                    franchiseMap[f.id] = f;
+                });
+            }
+        }
+
+        const mergedOrders = ordersList.map((o: any) => {
+            const f = franchiseMap[o.franchise_id] || {};
+            return {
+                id: o.id,
+                total_amount: o.order_amount,
+                status: o.order_status,
+                payment_status: o.payment_status,
+                created_at: o.created_at,
+                zone_id: o.zone_id,
+                items_count: o.order_items?.[0]?.count || 0,
+                franchise_id: o.franchise_id,
+                franchise_name: f.name || 'Unknown',
+                zone_name: f.city || 'Unknown',
+                items: []
+            };
         });
 
-        // Return paginated response with metadata
+
         return NextResponse.json({
-            orders,
+            orders: mergedOrders,
             pagination: {
                 page,
                 limit,
@@ -140,7 +148,7 @@ export async function GET(request: Request) {
         });
     } catch (error: any) {
         console.error('Orders fetch error:', error);
-        return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to fetch orders', details: error.message }, { status: 500 });
     }
 }
 
@@ -155,26 +163,42 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid order data' }, { status: 400 });
         }
 
-        // 1. Create Order in DB (Initial)
-        const orderResult: any = await executeQuery({
-            query: 'INSERT INTO orders (franchise_id, total_amount, status, payment_status) VALUES (?, ?, ?, ?)',
-            values: [franchiseId, totalAmount, 'pending', 'pending']
-        });
+        // Fetch Zone ID for the franchise
+        const { data: franchise } = await supabase.from('franchise_requests').select('zone_id').eq('id', franchiseId).single();
+        const zoneId = franchise?.zone_id;
 
-        const orderId = orderResult.insertId;
+        // 1. Create Order in DB (Initial)
+        const { data: order, error: orderError } = await supabaseAdmin
+            .from('orders')
+            .insert({
+                franchise_id: franchiseId,
+                zone_id: zoneId,
+                order_amount: totalAmount,
+                order_status: 'pending',
+                payment_status: 'pending'
+            })
+            .select()
+            .single();
+
+        if (orderError) throw orderError;
+        const orderId = order.id;
 
         // 2. Insert Items
-        for (const item of items) {
-            await executeQuery({
-                query: 'INSERT INTO order_items (order_id, product_id, quantity, price_at_time) VALUES (?, ?, ?, ?)',
-                values: [orderId, item.productId, item.quantity, item.price]
-            });
-        }
+        const orderItems = items.map((item: any) => ({
+            order_id: orderId,
+            product_id: item.productId,
+            quantity: item.quantity,
+            price_at_time: item.price
+        }));
+
+        const { error: itemsError } = await supabaseAdmin.from('order_items').insert(orderItems);
+        if (itemsError) throw itemsError;
 
         // 3. Create order history entry
-        await executeQuery({
-            query: 'INSERT INTO order_history (order_id, status_to, notes) VALUES (?, ?, ?)',
-            values: [orderId, 'pending', 'Order created']
+        await supabaseAdmin.from('order_history').insert({
+            order_id: orderId,
+            status_to: 'pending',
+            notes: 'Order created'
         });
 
         // 4. Create Razorpay Order
@@ -193,10 +217,10 @@ export async function POST(request: Request) {
         });
 
         // 5. Update Order with Razorpay ID
-        await executeQuery({
-            query: 'UPDATE orders SET razorpay_order_id = ? WHERE id = ?',
-            values: [rzOrder.id, orderId]
-        });
+        await supabaseAdmin
+            .from('orders')
+            .update({ razorpay_order_id: rzOrder.id })
+            .eq('id', orderId);
 
         // 6. Trigger notifications
         // Notify Franchise
@@ -240,58 +264,51 @@ export async function PUT(request: Request) {
         }
 
         // Get current order details for history
-        const currentOrder: any = await executeQuery({
-            query: 'SELECT status, payment_status FROM orders WHERE id = ?',
-            values: [id]
-        });
+        const { data: currentOrder, error: fetchError } = await supabase
+            .from('orders')
+            .select('order_status, payment_status, franchise_id')
+            .eq('id', id)
+            .single();
 
-        if (currentOrder.length === 0) {
+        if (fetchError || !currentOrder) {
             return NextResponse.json({ error: 'Order not found' }, { status: 404 });
         }
 
-        const updates = [];
-        const values = [];
+        const updates: any = {};
 
         if (status) {
-            updates.push('status = ?');
-            values.push(status);
+            updates.order_status = status;
 
             // Record status change in history
-            await executeQuery({
-                query: 'INSERT INTO order_history (order_id, status_from, status_to, changed_by, notes) VALUES (?, ?, ?, ?, ?)',
-                values: [id, currentOrder[0].status, status, changedBy || null, notes || `Status changed to ${status}`]
+            await supabaseAdmin.from('order_history').insert({
+                order_id: id,
+                status_from: currentOrder.order_status,
+                status_to: status,
+                changed_by: changedBy || null,
+                notes: notes || `Status changed to ${status}`
             });
         }
 
         if (paymentStatus) {
-            updates.push('payment_status = ?');
-            values.push(paymentStatus);
+            updates.payment_status = paymentStatus;
         }
 
-        values.push(id);
+        const { error: updateError } = await supabaseAdmin
+            .from('orders')
+            .update(updates)
+            .eq('id', id);
 
-        await executeQuery({
-            query: `UPDATE orders SET ${updates.join(', ')} WHERE id = ?`,
-            values: values
-        });
+        if (updateError) throw updateError;
 
         // Trigger notification for status change
         if (status) {
-            // Get franchiseId for this order
-            const orderInfo: any = await executeQuery({
-                query: 'SELECT franchise_id FROM orders WHERE id = ?',
-                values: [id]
+            await sendNotification({
+                franchiseId: currentOrder.franchise_id,
+                title: 'Order Status Updated',
+                message: `Order #${id} status changed to ${status}`,
+                type: 'order',
+                data: { orderId: id, status }
             });
-
-            if (orderInfo.length > 0) {
-                await sendNotification({
-                    franchiseId: orderInfo[0].franchise_id,
-                    title: 'Order Status Updated',
-                    message: `Order #${id} status changed to ${status}`,
-                    type: 'order',
-                    data: { orderId: id, status }
-                });
-            }
         }
 
         return NextResponse.json({ success: true });

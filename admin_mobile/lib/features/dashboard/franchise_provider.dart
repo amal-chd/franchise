@@ -152,12 +152,14 @@ class FranchiseNotifier extends AsyncNotifier<FranchiseState> {
 
   Future<FranchiseState> _fetchAndCacheFranchiseData(int zoneId, SharedPreferences prefs) async {
     // Fetch all data in parallel
-    final responses = await Future.wait([
-      _apiService.client.get('franchise/stats?zoneId=$zoneId'),
-      _apiService.client.get('franchise/vendors?zoneId=$zoneId'),
-      _apiService.client.get('franchise/delivery?zoneId=$zoneId'),
-      _apiService.client.get('franchise/orders?zoneId=$zoneId'),
-    ]);
+      print('DEBUG: FranchiseNotifier fetching data for Zone: $zoneId');
+      final responses = await Future.wait([
+        _apiService.client.get('franchise/stats?zoneId=$zoneId'),
+        _apiService.client.get('franchise/vendors?zoneId=$zoneId'),
+        _apiService.client.get('franchise/delivery?zoneId=$zoneId'),
+        _apiService.client.get('franchise/orders?zoneId=$zoneId'),
+      ]);
+      print('DEBUG: All Franchise APIs responded successfully');
 
     final statsData = responses[0].data;
     final vendorsData = responses[1].data is List ? responses[1].data as List : [];

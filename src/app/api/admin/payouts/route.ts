@@ -1,43 +1,48 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
-        const results = await executeQuery({
-            query: `
-                SELECT 
-                    id, 
-                    name as full_name, 
-                    email, 
-                    phone,
-                    city, 
-                    upi_id,
-                    bank_account_number,
-                    ifsc_code,
-                    bank_name,
-                    plan_selected,
-                    status
-                FROM franchise_requests 
-                WHERE LOWER(TRIM(status)) = 'approved' 
-                ORDER BY full_name ASC
-            `,
-        });
+        const { data: franchises, error } = await supabase
+            .from('franchise_requests')
+            .select(`
+                id,
+                name,
+                email,
+                phone,
+                city,
+                upi_id,
+                bank_account_number,
+                ifsc_code,
+                bank_name,
+                pricing_plan,
+                status
+            `)
+            .eq('status', 'approved')
+            .order('name', { ascending: true });
 
-        if ((results as any).error) {
-            console.error('Payouts Query Error:', (results as any).error);
-            throw new Error((results as any).error);
-        }
+        if (error) throw error;
 
-        console.log('Payouts Query Results:', JSON.stringify(results)); // Debug logging
-
-        // We also need to fetch the plan details (share %) from site_settings to calculate payouts
-        // However, the frontend will likely have the latest settings loaded.
-        // For robustness, let's just return the franchise data here.
-        // The frontend can map plan_selected -> revenue share using its known settings.
+        // Map fields to match legacy response format if needed (e.g. name -> full_name)
+        const results = franchises.map(f => ({
+            id: f.id,
+            full_name: f.name,
+            email: f.email,
+            phone: f.phone,
+            city: f.city,
+            upi_id: f.upi_id,
+            bank_account_number: f.bank_account_number,
+            ifsc_code: f.ifsc_code,
+            bank_name: f.bank_name,
+            plan_selected: f.pricing_plan, // Mapped from pricing_plan to plan_selected
+            status: f.status
+        }));
 
         return NextResponse.json(results);
     } catch (error: any) {
-        console.error('Fetch Error:', error);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        console.error('Fetch Payouts Error:', error);
+        return NextResponse.json({ message: 'Internal Server Error', error: error.message }, { status: 500 });
     }
 }

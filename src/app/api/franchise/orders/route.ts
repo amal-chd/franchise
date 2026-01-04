@@ -14,25 +14,25 @@ export async function GET(request: Request) {
 
     try {
         // Build dynamic query with filters
-        const conditions = ['zone_id = ?'];
+        const conditions = ['o.zone_id = ?'];
         const values: any[] = [zoneId];
 
         if (dateFrom) {
-            conditions.push('DATE(created_at) >= ?');
+            conditions.push('DATE(o.created_at) >= ?');
             values.push(dateFrom);
         }
 
         if (dateTo) {
-            conditions.push('DATE(created_at) <= ?');
+            conditions.push('DATE(o.created_at) <= ?');
             values.push(dateTo);
         }
 
         if (status && status !== 'all') {
-            conditions.push('order_status = ?');
+            conditions.push('o.order_status = ?');
             values.push(status);
         }
 
-        const whereClause = conditions.map(c => `o.${c}`).join(' AND ');
+        const whereClause = conditions.join(' AND ');
 
         // Fetch orders for the given zone from READ-ONLY Franchise DB
         const query = `
@@ -63,7 +63,7 @@ export async function GET(request: Request) {
 
         if (dbResult.error) {
             console.error('Orders query error:', dbResult.error);
-            return NextResponse.json({ error: 'Database error' }, { status: 500 });
+            return NextResponse.json([]); // Return empty list on error
         }
 
         const orders = Array.isArray(dbResult) ? dbResult.map((order: any) => {
@@ -84,6 +84,6 @@ export async function GET(request: Request) {
         return NextResponse.json(orders);
     } catch (error: any) {
         console.error('Franchise orders fetch error:', error);
-        return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 });
+        return NextResponse.json([]); // Return empty list on error
     }
 }

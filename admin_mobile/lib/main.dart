@@ -8,7 +8,16 @@ import 'features/auth/login_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/dashboard/franchise_dashboard_screen.dart';
 
-void main() {
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: 'https://fycmxngjomyadzthuzpf.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5Y214bmdqb215YWR6dGh1enBmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwMjk2MTMsImV4cCI6MjA4MjYwNTYxM30.eDEoEdetWnSmqhE490SgJTr1B8-hOtjBeZe2tynbQ0k',
+  );
+
   runApp(const ProviderScope(child: AdminApp()));
 }
 

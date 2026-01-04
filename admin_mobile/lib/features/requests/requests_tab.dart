@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../common/zones_provider.dart';
 import '../../widgets/premium_widgets.dart';
 import 'requests_provider.dart';
-import '../franchises/franchise_form_sheet.dart';
+
 import '../notifications/badge_state_provider.dart';
 
 class RequestsTab extends ConsumerStatefulWidget {
@@ -142,15 +142,7 @@ class _RequestsTabState extends ConsumerState<RequestsTab> with SingleTickerProv
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddFranchiseDialog(context, ref, zones),
-        backgroundColor: const Color(0xFFFCD34D), // CRM Yellow
-        foregroundColor: Colors.black,
-        elevation: 4,
-        icon: const Icon(Icons.add_rounded),
-        label: Text('New Partner', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
+
     );
   }
 
@@ -610,27 +602,5 @@ class _RequestsTabState extends ConsumerState<RequestsTab> with SingleTickerProv
      );
   }
 
-  void _showAddFranchiseDialog(BuildContext context, WidgetRef ref, List<Zone> zones) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => FranchiseFormSheet(
-        zones: zones,
-        isEdit: false,
-        onSubmit: (data) async {
-           Navigator.pop(context);
-           // Handle adding franchise logic here
-           final success = await ref.read(requestsProvider.notifier).createFranchise(data);
-            if (context.mounted) {
-              if (success) {
-                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Franchise Added Successfully')));
-              } else {
-                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to add franchise')));
-              }
-            }
-        },
-      ),
-    );
-  }
+
 }

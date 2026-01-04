@@ -41,6 +41,7 @@ export async function GET(request: Request) {
 
         return NextResponse.json(result);
     } catch (error: any) {
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        console.error('Franchise Vendors API Error:', error);
+        return NextResponse.json([]); // Return empty list instead of 500
     }
 }

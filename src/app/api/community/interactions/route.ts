@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
+
+// Helper to resolve UUID
+async function getUuid(legacyId: string | number) {
+    const { data } = await supabase.from('profiles').select('id').eq('franchise_id', legacyId).single();
+    return data?.id || null;
+}
 
 export async function POST(request: Request) {
     try {
@@ -10,42 +16,48 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        if (type === 'like') {
-            // Toggle Like logic
-            const check = await executeQuery({
-                query: 'SELECT id FROM community_interactions WHERE user_id = ? AND post_id = ? AND type = "like"',
-                values: [userId, postId]
-            });
+        const userUuid = await getUuid(userId);
+        if (!userUuid) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-            if (Array.isArray(check) && check.length > 0) {
+        if (type === 'like') {
+            // Check if already liked
+            const { data: existing, error: checkError } = await supabase
+                .from('community_interactions')
+                .select('id')
+                .eq('user_id', userUuid)
+                .eq('post_id', postId)
+                .eq('type', 'like')
+                .maybeSingle(); // Use maybeSingle to avoid 406 error if not found
+
+            if (checkError) throw checkError;
+
+            if (existing) {
                 // Unlike
-                await executeQuery({
-                    query: 'DELETE FROM community_interactions WHERE id = ?',
-                    values: [check[0].id]
-                });
-                // Decrement count
-                await executeQuery({ query: 'UPDATE community_posts SET likes_count = likes_count - 1 WHERE id = ?', values: [postId] });
+                const { error } = await supabase.from('community_interactions').delete().eq('id', existing.id);
+                if (error) throw error;
                 return NextResponse.json({ success: true, action: 'unliked' });
             } else {
                 // Like
-                await executeQuery({
-                    query: 'INSERT INTO community_interactions (user_id, post_id, type) VALUES (?, ?, "like")',
-                    values: [userId, postId]
+                const { error } = await supabase.from('community_interactions').insert({
+                    user_id: userUuid,
+                    post_id: postId,
+                    type: 'like'
                 });
-                // Increment count
-                await executeQuery({ query: 'UPDATE community_posts SET likes_count = likes_count + 1 WHERE id = ?', values: [postId] });
+                if (error) throw error;
                 return NextResponse.json({ success: true, action: 'liked' });
             }
         }
         else if (type === 'comment') {
             if (!commentText) return NextResponse.json({ error: 'Comment text required' }, { status: 400 });
 
-            await executeQuery({
-                query: 'INSERT INTO community_interactions (user_id, post_id, type, comment_text) VALUES (?, ?, "comment", ?)',
-                values: [userId, postId, commentText]
+            const { error } = await supabase.from('community_interactions').insert({
+                user_id: userUuid,
+                post_id: postId,
+                type: 'comment',
+                comment_text: commentText
             });
-            // Increment count
-            await executeQuery({ query: 'UPDATE community_posts SET comments_count = comments_count + 1 WHERE id = ?', values: [postId] });
+
+            if (error) throw error;
             return NextResponse.json({ success: true, action: 'commented' });
         }
 
@@ -63,14 +75,26 @@ export async function GET(request: Request) {
     if (!postId) return NextResponse.json({ error: 'Post ID required' }, { status: 400 });
 
     try {
-        const result = await executeQuery({
-            query: `SELECT i.*, u.name as user_name, NULL as user_image 
-                    FROM community_interactions i
-                    LEFT JOIN franchise_requests u ON i.user_id = u.id 
-                    WHERE post_id = ? AND type = 'comment' 
-                    ORDER BY created_at ASC`,
-            values: [postId]
-        });
+        // Fetch comments with user details
+        const { data, error } = await supabase
+            .from('community_interactions')
+            .select(`
+                *,
+                user:profiles ( username, avatar_url )
+            `)
+            .eq('post_id', postId)
+            .eq('type', 'comment')
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        // Transform for frontend
+        const result = data.map((i: any) => ({
+            ...i,
+            user_name: i.user?.username || 'Unknown',
+            user_image: i.user?.avatar_url
+        }));
+
         return NextResponse.json(result);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });

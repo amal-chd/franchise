@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 
 export async function GET() {
     try {
-        const result = await executeQuery({
-            query: 'SELECT * FROM newsletter_subscribers ORDER BY subscribed_at DESC'
-        });
-        return NextResponse.json(result);
+        const { data, error } = await supabase
+            .from('newsletter_subscribers')
+            .select('*')
+            .order('subscribed_at', { ascending: false });
+
+        if (error) throw error;
+
+        return NextResponse.json(data);
     } catch (error: any) {
         console.error('Error fetching subscribers:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

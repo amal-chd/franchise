@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/api_service.dart';
 
 final authProvider = AsyncNotifierProvider<AuthNotifier, bool>(() {
@@ -18,8 +19,52 @@ class AuthNotifier extends AsyncNotifier<bool> {
   Future<bool> _checkLoginStatus() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      // Support legacy isAdmin or new isLoggedIn
-      return prefs.getBool('isLoggedIn') ?? prefs.getBool('isAdmin') ?? false;
+      
+      // Check if logged in
+      final isLoggedIn = prefs.getBool('isLoggedIn') ?? prefs.getBool('isAdmin') ?? false;
+      
+      if (isLoggedIn) {
+        // Robustness: Check if Zone ID is missing (common after update)
+        final zoneId = prefs.getInt('zoneId');
+        final isFranchise = prefs.getString('userRole') == 'franchise';
+        
+        if (isFranchise && (zoneId == null || zoneId == 0)) {
+           print('DEBUG: Logged in but Zone ID missing. Attempting restoration...');
+           try {
+             final user = Supabase.instance.client.auth.currentUser;
+             if (user != null && user.email != null) {
+                // Fetch Zone ID from API
+                final profileResponse = await _apiService.client.get('/franchise/profile?email=${user.email}');
+                if (profileResponse.statusCode == 200 && profileResponse.data != null) {
+                   var zIdVal = profileResponse.data['zone_id'];
+                   final zId = zIdVal is int ? zIdVal : int.tryParse(zIdVal.toString()) ?? 0;
+                   if (zId > 0) {
+                      await prefs.setInt('zoneId', zId);
+                      print('DEBUG: Zone ID $zId restored successfully');
+                      // Successfully restored
+                   } else {
+                      print('DEBUG: Zone ID is 0/Invalid from API. Force Logout.');
+                      await logout(); // Using internal/public logout method? No, need to clear prefs manually here or call method.
+                      await prefs.clear();
+                      return false;
+                   }
+                }
+             } else {
+                print('DEBUG: No active Supabase User found. Force Logout.');
+                await prefs.clear();
+                return false;
+             }
+           } catch (e) {
+             print('DEBUG: Failed to restore Zone ID: $e');
+             // If we really can't get it, maybe we should let them stay logged in but broken? 
+             // No, better to force re-login.
+             await prefs.clear();
+             return false;
+           }
+        }
+      }
+
+      return isLoggedIn;
     } catch (e) {
       return false;
     }
@@ -31,35 +76,88 @@ class AuthNotifier extends AsyncNotifier<bool> {
     // Instead we handle loading state inside LoginScreen.
     
     try {
-      final response = await _apiService.client.post('auth/login', data: {
-        'username': username,
-        'password': password,
-      });
+      if (username == 'admin') {
+         // Legacy Admin Login
+         final response = await _apiService.client.post('auth/login', data: {
+            'username': username,
+            'password': password,
+         });
 
-      if (response.data['success'] == true) {
-        final prefs = await SharedPreferences.getInstance();
-        final role = response.data['role'] ?? 'admin';
-        
-        await prefs.setBool('isLoggedIn', true);
-        await prefs.setString('userRole', role);
-        
-        if (role == 'franchise') {
-             final franchise = response.data['franchise'];
-             await prefs.setInt('franchiseId', franchise['id']);
-             await prefs.setString('franchiseName', franchise['name']);
-             if (franchise['zone_id'] != null) {
-               await prefs.setInt('zoneId', franchise['zone_id']);
-             }
-        }
-        
-        state = const AsyncValue.data(true);
+         if (response.data['success'] == true) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setBool('isLoggedIn', true);
+            await prefs.setString('userRole', 'admin');
+            state = const AsyncValue.data(true);
+         } else {
+            throw response.data['message'] ?? 'Login failed';
+         }
       } else {
-        // Don't update global state to error, just throw so UI can handle it
-        throw response.data['message'] ?? 'Login failed';
+         // Supabase Login for Franchise
+         // Note: username must be email
+         
+         // 1. Authenticate with Supabase
+         final response = await Supabase.instance.client.auth.signInWithPassword(
+             email: username,
+             password: password,
+         );
+         
+         if (response.user != null) {
+             final user = response.user!;
+             final prefs = await SharedPreferences.getInstance();
+             
+             // 2. Fetch Profile from Supabase standard table or metadata
+             // Metadata was populated during migration (legacy_id, username)
+             final meta = user.userMetadata ?? {};
+             
+             await prefs.setBool('isLoggedIn', true);
+             await prefs.setString('userRole', 'franchise'); // meta['role'] ??
+             await prefs.setString('franchiseUuid', user.id);
+             
+             // Legacy Compatibility
+             if (meta['legacy_id'] != null) {
+                 await prefs.setInt('franchiseId', meta['legacy_id'] is int ? meta['legacy_id'] : int.tryParse(meta['legacy_id'].toString()) ?? 0);
+             }
+             if (meta['username'] != null) {
+                 await prefs.setString('franchiseName', meta['username']);
+             }
+             
+             // FETCH ZONE ID (Required for Franchise Panel Data)
+             // FETCH ZONE ID from Franchise DB (via backend API)
+             try {
+               print('DEBUG: Fetching Zone ID from Franchise DB for ${user.email}');
+               
+               // Use the new API endpoint that queries MySQL directly
+               final profileResponse = await _apiService.client.get('/franchise/profile?email=${user.email}');
+               
+               if (profileResponse.statusCode == 200 && profileResponse.data != null) {
+                 var zoneIdVal = profileResponse.data['zone_id'];
+                 final zId = zoneIdVal is int ? zoneIdVal : int.tryParse(zoneIdVal.toString()) ?? 0;
+                 
+                 if (zId > 0) {
+                    await prefs.setInt('zoneId', zId);
+                    print('DEBUG: Zone ID $zId saved to preferences (Source: Franchise DB)');
+                 } else {
+                    print('DEBUG: Zone ID found but is 0 or invalid');
+                 }
+               } else {
+                 print('DEBUG: Failed to fetch profile from Franchise DB');
+               }
+
+             } catch (e) {
+               print('DEBUG: Error fetching Zone ID from API: $e');
+               // Fallback: If API fails, keep whatever was in profile/metadata (if we had that logic before, currently replaced)
+             }
+             
+             state = const AsyncValue.data(true);
+         } else {
+             throw 'Login failed';
+         }
       }
     } catch (e) {
       String errorMessage = 'An unexpected error occurred';
-      if (e is DioException) {
+      if (e is AuthException) {
+          errorMessage = e.message;
+      } else if (e is DioException) {
         if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
           errorMessage = 'Connection Timeout. Check your network.';
         } else if (e.type == DioExceptionType.connectionError) {

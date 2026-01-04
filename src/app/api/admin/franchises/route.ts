@@ -1,119 +1,105 @@
-
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
-import { sendEmail } from '@/lib/email';
-import { applicationApprovedEmail } from '@/lib/emailTemplates';
-import { sendNotification } from '@/lib/notifications';
+import executeFranchiseQuery from '@/lib/franchise_db';
 
-// POST: Create a new franchise
+// POST: Create a new franchise (admin with role_id=8)
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { name, email, phone, city, plan_selected, status, upi_id, bank_account_number, ifsc_code, bank_name } = body;
+        const {
+            name, email, phone, city,
+            plan_selected, status,
+            zone_id, password
+        } = body;
 
-        if (!name || !email || !phone || !city) {
-            return NextResponse.json({ message: 'Name, Email, Phone, and City are required' }, { status: 400 });
-        }
+        // Note: Name comes as "Firstname Lastname", need to split
+        const nameParts = (name || '').trim().split(' ');
+        const f_name = nameParts[0] || '';
+        const l_name = nameParts.slice(1).join(' ') || '';
+
+        // Default password hash (placeholder as we lack bcrypt, and login uses Supabase currently)
+        // This allows the row to be created if password is NOT NULL.
+        // If real auth is needed against this DB, bcrypt is required.
+        const passwordHash = '$2y$10$PlaceholderHashForCompability......................';
 
         const query = `
-            INSERT INTO franchise_requests 
-            (name, email, phone, city, plan_selected, status, upi_id, bank_account_number, ifsc_code, bank_name, agreement_accepted) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO admins (
+                f_name, l_name, email, phone, 
+                role_id, zone_id, status, 
+                password, is_logged_in,
+                created_at, updated_at
+            ) VALUES (
+                ?, ?, ?, ?, 
+                8, ?, ?, 
+                ?, 0,
+                NOW(), NOW()
+            )
         `;
 
-        // Default agreement_accepted to true if admin is creating verified account? Let's keep it false unless specified, or maybe admin creation implies manual override. 
-        // Let's assume admin created franchises are "approved" by default usually, but we respect the passed status.
-        // We'll set agreement_accepted to true usually for manual overrides, or maybe false depending on process. 
-        // Let's set it to false so they might still need to sign? Or if it's admin, maybe we assume it's done offline.
-        // Let's passed 'agreement_accepted' as true for now to avoid blocking them if they can't login without it.
-        // Actually, let's keep it simple.
+        // status: 'approved' -> 1, 'pending' -> 0? 
+        // Admin table status is tinyint. Assuming 1=Active
+        const dbStatus = status === 'approved' ? 1 : 0;
 
-        const values = [
-            name,
-            email,
-            phone,
-            city,
-            plan_selected || 'standard',
-            status || 'pending_verification',
-            upi_id || null,
-            bank_account_number || null,
-            ifsc_code || null,
-            bank_name || null,
-            true // agreement_accepted - assuming admin creation bypasses digital signature flow or is handled offline
-        ];
+        const results: any = await executeFranchiseQuery({
+            query,
+            values: [
+                f_name, l_name, email, phone,
+                zone_id || null, dbStatus,
+                passwordHash
+            ]
+        });
 
-        const result = await executeQuery({ query, values });
-
-        if ((result as any).error) {
-            throw new Error((result as any).error);
+        if (results.error) {
+            throw new Error(results.error.message);
         }
 
-        return NextResponse.json({ message: 'Franchise added successfully', id: (result as any).insertId }, { status: 201 });
+        return NextResponse.json({ success: true, id: results.insertId });
     } catch (error: any) {
         console.error('Create Franchise Error:', error);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ message: 'Internal Server Error', error: error.message }, { status: 500 });
     }
 }
 
-// PUT: Update an existing franchise
+// PUT: Update franchise details
 export async function PUT(request: Request) {
     try {
         const body = await request.json();
-        const { id, name, email, phone, city, plan_selected, status, upi_id, bank_account_number, ifsc_code, bank_name, password, zone_id } = body;
+        const {
+            id, name, email, phone,
+            zone_id, status
+        } = body;
 
-        if (!id) {
-            return NextResponse.json({ message: 'Franchise ID is required' }, { status: 400 });
-        }
+        const nameParts = (name || '').trim().split(' ');
+        const f_name = nameParts[0] || '';
+        const l_name = nameParts.slice(1).join(' ') || '';
 
-        let query = `
-            UPDATE franchise_requests 
-            SET name = ?, email = ?, phone = ?, city = ?, plan_selected = ?, status = ?, 
-                upi_id = ?, bank_account_number = ?, ifsc_code = ?, bank_name = ?, zone_id = ?
+        const dbStatus = status === 'approved' ? 1 : 0;
+
+        const query = `
+            UPDATE admins 
+            SET 
+                f_name = ?, 
+                l_name = ?, 
+                email = ?, 
+                phone = ?, 
+                zone_id = ?,
+                status = ?,
+                updated_at = NOW()
+            WHERE id = ? AND role_id = 8
         `;
 
-        const values = [
-            name,
-            email,
-            phone,
-            city,
-            plan_selected,
-            status,
-            upi_id || null,
-            bank_account_number || null,
-            ifsc_code || null,
-            bank_name || null,
-            zone_id || null
-        ];
+        const results: any = await executeFranchiseQuery({
+            query,
+            values: [f_name, l_name, email, phone, zone_id || null, dbStatus, id]
+        });
 
-        if (password && password.trim() !== '') {
-            query += `, password = ?`;
-            values.push(password);
+        if (results.error) {
+            throw new Error(results.error.message);
         }
 
-        query += ` WHERE id = ?`;
-        values.push(id);
-
-        const result = await executeQuery({ query, values });
-
-        if ((result as any).error) {
-            throw new Error((result as any).error);
-        }
-
-        // Trigger notification for status change
-        if (status) {
-            await sendNotification({
-                franchiseId: id,
-                title: 'Account Status Updated',
-                message: `Your account status has been updated to: ${status}`,
-                type: 'franchise',
-                data: { status }
-            });
-        }
-
-        return NextResponse.json({ message: 'Franchise updated successfully' });
+        return NextResponse.json({ success: true });
     } catch (error: any) {
         console.error('Update Franchise Error:', error);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ message: 'Internal Server Error', error: error.message }, { status: 500 });
     }
 }
 
@@ -124,19 +110,19 @@ export async function DELETE(request: Request) {
         const id = searchParams.get('id');
 
         if (!id) {
-            return NextResponse.json({ message: 'ID is required' }, { status: 400 });
+            return NextResponse.json({ message: 'ID required' }, { status: 400 });
         }
 
-        const query = 'DELETE FROM franchise_requests WHERE id = ?';
-        const result = await executeQuery({ query, values: [id] });
+        const query = `DELETE FROM admins WHERE id = ? AND role_id = 8`;
+        const results: any = await executeFranchiseQuery({ query, values: [id] });
 
-        if ((result as any).error) {
-            throw new Error((result as any).error);
+        if (results.error) {
+            throw new Error(results.error.message);
         }
 
-        return NextResponse.json({ message: 'Franchise deleted successfully' });
+        return NextResponse.json({ success: true });
     } catch (error: any) {
         console.error('Delete Franchise Error:', error);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ message: 'Internal Server Error', error: error.message }, { status: 500 });
     }
 }

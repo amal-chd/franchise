@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 
 export async function POST(request: Request) {
     try {
@@ -15,16 +15,19 @@ export async function POST(request: Request) {
 
         if (generated_signature === razorpay_signature) {
             // Update order status
-            await executeQuery({
-                query: 'UPDATE orders SET payment_status = ?, status = ? WHERE id = ?',
-                values: ['paid', 'processing', orderId]
-            });
+            const { error } = await supabase
+                .from('orders')
+                .update({ payment_status: 'paid', order_status: 'processing' })
+                .eq('id', orderId);
+
+            if (error) throw error;
 
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ success: false, message: 'Invalid signature' }, { status: 400 });
         }
     } catch (error: any) {
+        console.error('Verify error:', error);
         return NextResponse.json({ success: false, error: 'Verification failed' }, { status: 500 });
     }
 }

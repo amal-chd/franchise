@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -10,12 +10,17 @@ export async function GET(request: Request) {
     }
 
     try {
-        const messages = await executeQuery({
-            query: 'SELECT * FROM chat_messages WHERE session_id = ? ORDER BY created_at ASC',
-            values: [sessionId]
-        });
+        const { data: messages, error } = await supabase
+            .from('admin_chats')
+            .select('*')
+            .eq('session_id', sessionId)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
         return NextResponse.json(messages);
     } catch (error: any) {
+        console.error('Fetch Messages Error:', error);
         return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 });
     }
 }
@@ -29,19 +34,36 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        await executeQuery({
-            query: 'INSERT INTO chat_messages (session_id, sender_type, sender_id, message, attachment_url, attachment_type) VALUES (?, ?, ?, ?, ?, ?)',
-            values: [sessionId, senderType, senderId, message || '', attachmentUrl || null, attachmentType || null]
-        });
+        // Insert into admin_chats
+        const { error: insertError } = await supabase
+            .from('admin_chats')
+            .insert([{
+                session_id: sessionId,
+                sender_type: senderType,
+                // sender_id is not in admin_chats schema based on inspection, standardizing on sender_type
+                // If sender_id is needed, we should add it, but mobile app doesn't seem to use it for admin_chats
+                message: message || '',
+                attachment_url: attachmentUrl || null,
+                attachment_type: attachmentType || null
+            }]);
 
-        // Update session last_message_at
-        await executeQuery({
-            query: 'UPDATE chat_sessions SET last_message_at = CURRENT_TIMESTAMP WHERE id = ?',
-            values: [sessionId]
-        });
+        if (insertError) throw insertError;
+
+        // Update session last_message
+        const lastMsg = message || (attachmentType === 'image' ? 'Image' : 'File');
+        const { error: updateError } = await supabase
+            .from('admin_chat_sessions')
+            .update({
+                last_message: lastMsg,
+                last_message_time: new Date().toISOString()
+            })
+            .eq('id', sessionId);
+
+        if (updateError) throw updateError;
 
         return NextResponse.json({ success: true });
     } catch (error: any) {
+        console.error('Send Message Error:', error);
         return NextResponse.json({ error: 'Failed to send message' }, { status: 500 });
     }
 }

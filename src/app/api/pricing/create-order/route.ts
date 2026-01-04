@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 
 export async function POST(request: Request) {
     try {
@@ -11,14 +11,15 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Request ID and plan are required' }, { status: 400 });
         }
 
-        // Fetch pricing from database
-        const settingsRows = await executeQuery({
-            query: 'SELECT * FROM site_settings WHERE setting_key IN (?, ?, ?, ?)',
-            values: ['pricing_basic_price', 'pricing_premium_price', 'pricing_free_price', 'pricing_elite_price']
+        // Fetch pricing from Supabase site_settings
+        const { data: settingsRows, error: settingsError } = await supabase
+            .from('site_settings')
+            .select('setting_key, setting_value')
+            .in('setting_key', ['pricing_basic_price', 'pricing_premium_price', 'pricing_free_price', 'pricing_elite_price']);
 
-        });
+        if (settingsError) throw settingsError;
 
-        const settings = (settingsRows as any[]).reduce((acc, row) => {
+        const settings = (settingsRows || []).reduce((acc: any, row: any) => {
             acc[row.setting_key] = row.setting_value;
             return acc;
         }, {});
@@ -29,7 +30,6 @@ export async function POST(request: Request) {
             'basic': (parseInt(settings.pricing_basic_price) || 499) * 100,
             'premium': (parseInt(settings.pricing_premium_price) || 999) * 100,
             'elite': (parseInt(settings.pricing_elite_price) || 2499) * 100,
-
         };
 
         const amount = planPricing[plan];
@@ -40,10 +40,12 @@ export async function POST(request: Request) {
 
         // Check if amount is 0 (true free plan)
         if (amount === 0) {
-            await executeQuery({
-                query: 'UPDATE franchise_requests SET pricing_plan = ?, payment_status = ? WHERE id = ?',
-                values: [plan, 'completed', requestId],
-            });
+            const { error: updateError } = await supabase
+                .from('franchise_requests')
+                .update({ pricing_plan: plan, payment_status: 'completed' })
+                .eq('id', requestId);
+
+            if (updateError) throw updateError;
 
             return NextResponse.json({
                 message: 'Free plan selected',
@@ -68,11 +70,17 @@ export async function POST(request: Request) {
             receipt: receiptId,
         });
 
-        // Update database with order details
-        await executeQuery({
-            query: 'UPDATE franchise_requests SET pricing_plan = ?, razorpay_order_id = ?, payment_status = ? WHERE id = ?',
-            values: [plan, order.id, 'pending', requestId],
-        });
+        // Update Supabase with order details
+        const { error: updateOrderError } = await supabase
+            .from('franchise_requests')
+            .update({
+                pricing_plan: plan,
+                razorpay_order_id: order.id,
+                payment_status: 'pending'
+            })
+            .eq('id', requestId);
+
+        if (updateOrderError) throw updateOrderError;
 
         return NextResponse.json({
             orderId: order.id,
@@ -86,3 +94,4 @@ export async function POST(request: Request) {
         return NextResponse.json({ message: 'Failed to create order', error: error.message }, { status: 500 });
     }
 }
+

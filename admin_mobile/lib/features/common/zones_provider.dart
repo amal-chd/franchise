@@ -48,7 +48,7 @@ class ZonesNotifier extends AsyncNotifier<List<Zone>> {
       return response.data;
     } catch (e) {
       print('Error fetching zone reports: $e');
-      return {};
+      return {'error': e.toString()};
     }
   }
 

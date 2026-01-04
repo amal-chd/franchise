@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 
 export async function GET() {
     try {
-        const rows = await executeQuery({
-            query: 'SELECT * FROM site_content',
-            values: []
-        });
+        const { data: rows, error } = await supabase
+            .from('site_content')
+            .select('*');
+
+        if (error) throw error;
 
         // Group content by section
         const content = (rows as any[]).reduce((acc, row) => {
@@ -36,14 +37,16 @@ export async function POST(request: Request) {
         // Update or insert content
         for (const [key, value] of Object.entries(content)) {
             const valueToStore = typeof value === 'object' ? JSON.stringify(value) : value;
-            await executeQuery({
-                query: `
-                    INSERT INTO site_content (section, content_key, content_value)
-                    VALUES (?, ?, ?)
-                    ON DUPLICATE KEY UPDATE content_value = ?
-                `,
-                values: [section, key, valueToStore, valueToStore]
-            });
+
+            const { error } = await supabase
+                .from('site_content')
+                .upsert({
+                    section,
+                    content_key: key,
+                    content_value: valueToStore
+                }, { onConflict: 'section, content_key' });
+
+            if (error) throw error;
         }
 
         return NextResponse.json({ success: true });

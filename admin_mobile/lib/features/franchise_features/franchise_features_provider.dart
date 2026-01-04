@@ -72,7 +72,9 @@ class FranchiseOrdersNotifier extends AsyncNotifier<List<Map<String, dynamic>>> 
       final prefs = await ref.read(sharedPreferencesProvider.future);
       final zoneId = prefs.getInt('zoneId');
       
-      if (zoneId == null) throw Exception('Zone ID not found');
+      if (zoneId == null) {
+        return [];
+      }
       
       final filter = ref.read(franchiseOrdersFilterProvider);
       final params = filter.toQueryParams(zoneId);
@@ -207,7 +209,9 @@ class PayoutsNotifier extends AsyncNotifier<PayoutsData> {
       final prefs = await ref.read(sharedPreferencesProvider.future);
       final zoneId = prefs.getInt('zoneId');
       
-      if (zoneId == null) throw Exception('Zone ID not found');
+      if (zoneId == null) {
+         return PayoutsData(summary: PayoutSummary(totalOrders: 0, totalEarnings: 0, restaurantEarnings: 0, deliveryEarnings: 0, totalTax: 0, todaysPendingOrders: 0, todaysPendingAmount: 0), payouts: []);
+      }
       
       var url = '/franchise/payouts?zoneId=$zoneId';
       if (dateFrom != null) url += '&dateFrom=$dateFrom';

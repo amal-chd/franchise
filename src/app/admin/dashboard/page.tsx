@@ -11,6 +11,8 @@ import 'react-quill-new/dist/quill.snow.css';
 import ShopTab from '@/components/admin/ShopTab';
 import ChatTab from '@/components/admin/ChatTab';
 import PlanRequestsTab from '@/components/admin/PlanRequestsTab';
+import PlanUpgradesLog from '@/components/admin/PlanUpgradesLog';
+import PricingTab from '@/components/admin/PricingTab';
 
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
@@ -86,6 +88,7 @@ export default function AdminDashboard() {
         { id: 'payouts', label: 'Payouts', icon: 'fa-money-bill-wave' },
         { id: 'shop', label: 'Shop', icon: 'fa-shopping-bag' },
         { id: 'plan-requests', label: 'Plan Requests', icon: 'fa-exchange-alt' },
+        { id: 'upgrades', label: 'Plan Upgrades', icon: 'fa-arrow-circle-up' },
         { id: 'chat', label: 'Support Chat', icon: 'fa-comments' },
         { id: 'settings', label: 'Settings', icon: 'fa-cog' }
     ];
@@ -1302,155 +1305,14 @@ export default function AdminDashboard() {
 
                 {
                     activeTab === 'pricing' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                            {/* Pricing Plans */}
-                            <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', padding: '24px', border: '1px solid #dadce0' }}>
-                                <h3 style={{ fontSize: '1.1rem', marginBottom: '20px', fontWeight: '600' }}>Pricing Plans</h3>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px' }}>
-                                    {/* Free Plan */}
-                                    <div style={{ padding: '20px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#f8fafc' }}>
-                                        <h4 style={{ color: 'var(--primary-color)', marginBottom: '16px', fontWeight: '600' }}>Starter (Free)</h4>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Revenue Share (%)</label>
-                                                <input
-                                                    type="number"
-                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
-
-                                                    value={siteSettings.pricing_free_share || ''}
-                                                    onChange={(e) => setSiteSettings({ ...siteSettings, pricing_free_share: e.target.value })}
-                                                    placeholder="e.g. 50"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Doc Fee (₹)</label>
-                                                <input
-                                                    type="number"
-                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
-
-                                                    value={siteSettings.pricing_free_price || ''}
-                                                    onChange={(e) => setSiteSettings({ ...siteSettings, pricing_free_price: e.target.value })}
-                                                    placeholder="e.g. 1500"
-                                                />
-                                            </div >
-                                        </div >
-                                    </div >
-
-                                    {/* Basic Plan */}
-                                    <div style={{ padding: '20px', border: '1px solid #e2e8f0', borderRadius: '12px', background: 'white' }}>
-                                        <h4 style={{ color: '#2563eb', marginBottom: '16px', fontWeight: '600' }}>Standard</h4>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Yearly Price (₹)</label>
-                                                <input
-                                                    type="number"
-                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
-
-                                                    value={siteSettings.pricing_basic_price || ''}
-                                                    onChange={(e) => setSiteSettings({ ...siteSettings, pricing_basic_price: e.target.value })}
-                                                    placeholder="e.g. 499"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Revenue Share (%)</label>
-                                                <input
-                                                    type="number"
-                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
-
-                                                    value={siteSettings.pricing_basic_share || ''}
-                                                    onChange={(e) => setSiteSettings({ ...siteSettings, pricing_basic_share: e.target.value })}
-                                                    placeholder="e.g. 60"
-                                                />
-                                            </div >
-                                        </div >
-                                    </div >
-
-                                    {/* Premium Plan */}
-                                    <div style={{ padding: '20px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#eff6ff' }}>
-                                        <h4 style={{ color: '#7c3aed', marginBottom: '16px', fontWeight: '600' }}>Premium</h4>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Yearly Price (₹)</label>
-                                                <input
-                                                    type="number"
-                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
-
-                                                    value={siteSettings.pricing_premium_price || ''}
-                                                    onChange={(e) => setSiteSettings({ ...siteSettings, pricing_premium_price: e.target.value })}
-                                                    placeholder="e.g. 999"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Revenue Share (%)</label>
-                                                <input
-                                                    type="number"
-                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
-
-                                                    value={siteSettings.pricing_premium_share || ''}
-                                                    onChange={(e) => setSiteSettings({ ...siteSettings, pricing_premium_share: e.target.value })}
-                                                    placeholder="e.g. 70"
-                                                />
-                                            </div >
-                                        </div >
-                                    </div >
-
-                                    {/* Elite Plan */}
-                                    <div style={{ padding: '20px', border: '1px solid #e2e8f0', borderRadius: '12px', background: 'linear-gradient(135deg, #fefce8 0%, #fff7ed 100%)' }}>
-                                        <h4 style={{ color: '#b45309', marginBottom: '16px', fontWeight: '600' }}>Elite (Exclusive)</h4>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Yearly Price (₹)</label>
-                                                <input
-                                                    type="number"
-                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
-                                                    value={siteSettings.pricing_elite_price || ''}
-                                                    onChange={(e) => setSiteSettings({ ...siteSettings, pricing_elite_price: e.target.value })}
-                                                    placeholder="e.g. 2499"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: '0.9rem', color: '#64748b', marginBottom: '6px' }}>Revenue Share (%)</label>
-                                                <input
-                                                    type="number"
-                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
-                                                    value={siteSettings.pricing_elite_share || ''}
-                                                    onChange={(e) => setSiteSettings({ ...siteSettings, pricing_elite_share: e.target.value })}
-                                                    placeholder="e.g. 80"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                </div >
-                            </div >
-
-                            {/* Agreement Editor */}
-                            <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', padding: '24px', border: '1px solid #dadce0' }}>
-                                <h3 style={{ fontSize: '1.1rem', marginBottom: '20px', fontWeight: '600' }}>Franchise Agreement</h3>
-                                <div style={{ marginBottom: '16px' }}>
-
-                                    <ReactQuill
-                                        theme="snow"
-                                        value={siteSettings.agreement_text || ''}
-                                        onChange={(content: string) => setSiteSettings({ ...siteSettings, agreement_text: content })}
-                                        style={{ height: '300px', marginBottom: '50px' }}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Save Button */}
-                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                <button
-                                    onClick={handleSaveSettings}
-                                    disabled={savingCms}
-                                    className="btn btn-primary"
-                                    style={{ padding: '10px 24px', fontSize: '1rem' }}
-
-                                >
-                                    {savingCms ? 'Saving...' : 'Save Changes'}
-                                </button>
-                            </div>
-                        </div >
+                        <div className="p-8 bg-slate-50/50 min-h-screen">
+                            <PricingTab
+                                siteSettings={siteSettings}
+                                setSiteSettings={setSiteSettings}
+                                handleSaveSettings={handleSaveSettings}
+                                savingCms={savingCms}
+                            />
+                        </div>
                     )
                 }
 
@@ -3185,6 +3047,14 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
+                    )
+                }
+
+                {
+                    activeTab === 'upgrades' && (
+                        <div style={{ padding: '24px' }}>
+                            <PlanUpgradesLog />
+                        </div>
                     )
                 }
 

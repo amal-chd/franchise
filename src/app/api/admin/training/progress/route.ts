@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 
 export async function POST(request: Request) {
     try {
@@ -10,22 +10,18 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'UserId and ModuleId required' }, { status: 400 });
         }
 
-        const materialIdsJson = JSON.stringify(materialIds || []);
+        const { error } = await supabase
+            .from('training_progress')
+            .upsert({
+                user_id: userId,
+                module_id: moduleId,
+                material_ids_json: materialIds || [],
+                progress: progress || 0,
+                is_completed: isCompleted ? true : false,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id, module_id' });
 
-        const query = `
-            INSERT INTO training_progress (user_id, module_id, material_ids_json, progress, is_completed)
-            VALUES (?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-            material_ids_json = VALUES(material_ids_json),
-            progress = VALUES(progress),
-            is_completed = VALUES(is_completed),
-            updated_at = CURRENT_TIMESTAMP
-        `;
-
-        await executeQuery({
-            query,
-            values: [userId, moduleId, materialIdsJson, progress || 0, isCompleted ? 1 : 0]
-        });
+        if (error) throw error;
 
         return NextResponse.json({ success: true });
     } catch (e: any) {
@@ -43,11 +39,14 @@ export async function GET(request: Request) {
     }
 
     try {
-        const result = await executeQuery({
-            query: 'SELECT * FROM training_progress WHERE user_id = ?',
-            values: [userId]
-        });
-        return NextResponse.json(result);
+        const { data, error } = await supabase
+            .from('training_progress')
+            .select('*')
+            .eq('user_id', userId);
+
+        if (error) throw error;
+
+        return NextResponse.json(data);
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }

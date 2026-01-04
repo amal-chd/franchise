@@ -1,97 +1,132 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
+
+// Helper to resolve UUID
+async function getUuid(legacyId: string | number) {
+    const { data } = await supabase.from('profiles').select('id').eq('franchise_id', legacyId).single();
+    return data?.id || null;
+}
 
 // GET: List friends or pending requests
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const userId = searchParams.get('userId'); // Legacy INT
     const status = searchParams.get('status'); // 'accepted' or 'pending'
 
     if (!userId) return NextResponse.json({ error: 'User ID required' }, { status: 400 });
 
     try {
-        let query = '';
-        const values: any[] = [];
+        const myUuid = await getUuid(userId);
+        if (!myUuid) return NextResponse.json([], { status: 200 }); // User not migrated yet?
+
+        let data = [];
 
         if (status === 'pending') {
-            // Get requests received BY me
-            // The sender is user_id. We want their details.
-            // We alias user_id as other_user_id so frontend knows this is the person to respond to
-            query = `SELECT f.*, u.name as f_name, '' as l_name, NULL as image,
-                     f.user_id as other_user_id
-                     FROM friendships f
-                     JOIN franchise_requests u ON f.user_id = u.id 
-                     WHERE f.friend_id = ? AND f.status = 'pending'`;
-            values.push(userId);
+            // Requests received BY me (I am friend_id)
+            const { data: requests, error } = await supabase
+                .from('friendships')
+                .select(`
+                    id,
+                    created_at,
+                    status,
+                    sender:user_id ( id, username, franchise_id, avatar_url )
+                `)
+                .eq('friend_id', myUuid)
+                .eq('status', 'pending');
+
+            if (error) throw error;
+
+            // Transform to legacy structure
+            data = requests.map((r: any) => ({
+                id: r.id,
+                user_id: r.sender.franchise_id, // Legacy ID expects INT
+                friend_id: userId,
+                status: r.status,
+                f_name: r.sender.username,
+                other_user_id: r.sender.franchise_id
+            }));
+
         } else {
-            // Accepted friends (Bi-directional check)
-            // Determine who the "friend" is relative to the "userId" param
-            query = `SELECT f.*, 
-                     CASE 
-                        WHEN f.user_id = ? THEN u2.name 
-                        ELSE u1.name 
-                     END as friend_name,
-                     NULL as friend_image,
-                     CASE 
-                        WHEN f.user_id = ? THEN f.friend_id
-                        ELSE f.user_id
-                     END as other_user_id
-                     FROM friendships f
-                     JOIN franchise_requests u1 ON f.user_id = u1.id
-                     JOIN franchise_requests u2 ON f.friend_id = u2.id
-                     WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'accepted'`;
-            values.push(userId, userId, userId, userId);
+            // Accepted friends (Bi-directional)
+            const { data: friends, error } = await supabase
+                .from('friendships')
+                .select(`
+                    id,
+                    status,
+                    user_id,
+                    friend_id,
+                    user:user_id ( id, username, franchise_id, avatar_url ),
+                    friend:friend_id ( id, username, franchise_id, avatar_url )
+                `)
+                .or(`user_id.eq.${myUuid},friend_id.eq.${myUuid}`)
+                .eq('status', 'accepted');
+
+            if (error) throw error;
+
+            data = friends.map((f: any) => {
+                const isMyRequest = f.user_id === myUuid;
+                const other = isMyRequest ? f.friend : f.user;
+                return {
+                    id: f.id,
+                    status: f.status,
+                    friend_name: other.username,
+                    friend_image: other.avatar_url,
+                    other_user_id: other.franchise_id
+                };
+            });
         }
 
-        const result = await executeQuery({ query, values });
-        return NextResponse.json(result);
+        return NextResponse.json(data);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
 
-// POST: Send Friend Request or Accept/Reject
+// POST: Actions
 export async function POST(request: Request) {
     try {
         const body = await request.json();
         const { userId, friendId, action } = body; // action: 'request', 'accept', 'reject'
 
-        console.log('FRIEND REQUEST API:', { userId, friendId, action });
-
         if (!userId || !friendId || !action) {
-            console.error('Missing fields in friend request:', { userId, friendId, action });
             return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
         }
 
-        if (action === 'request') {
-            const query = 'INSERT INTO friendships (user_id, friend_id, status) VALUES (?, ?, "pending")';
-            const values = [userId, friendId];
-            console.log('Executing Friend Request Query:', query, values);
+        const myUuid = await getUuid(userId);
+        const targetUuid = await getUuid(friendId);
 
-            await executeQuery({ query, values });
+        if (!myUuid || !targetUuid) {
+            return NextResponse.json({ error: 'User(s) not found in new system' }, { status: 400 });
+        }
+
+        if (action === 'request') {
+            const { error } = await supabase.from('friendships').insert({
+                user_id: myUuid,
+                friend_id: targetUuid,
+                status: 'pending'
+            });
+            if (error) throw error;
             return NextResponse.json({ success: true, message: 'Request sent' });
         }
         else if (action === 'accept') {
-            // friendId here is the one who SENT the request originally
-            const query = 'UPDATE friendships SET status = "accepted" WHERE user_id = ? AND friend_id = ?';
-            const values = [friendId, userId];
-            console.log('Executing Friend Accept Query:', query, values);
-
-            await executeQuery({ query, values });
+            // targetId (friend) SENT the request to ME (userId)
+            const { error } = await supabase.from('friendships').update({ status: 'accepted' })
+                .eq('user_id', targetUuid) // Sender
+                .eq('friend_id', myUuid); // Receiver
+            if (error) throw error;
             return NextResponse.json({ success: true, message: 'Request accepted' });
         }
         else if (action === 'reject') {
-            const query = 'DELETE FROM friendships WHERE user_id = ? AND friend_id = ?';
-            const values = [friendId, userId];
-            console.log('Executing Friend Reject Query:', query, values);
-
-            await executeQuery({ query, values });
+            const { error } = await supabase.from('friendships').delete()
+                .eq('user_id', targetUuid)
+                .eq('friend_id', myUuid);
+            if (error) throw error;
             return NextResponse.json({ success: true, message: 'Request rejected' });
         }
 
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     } catch (error: any) {
-        console.error('Friend Request API Error:', error);
+        console.error('API Error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

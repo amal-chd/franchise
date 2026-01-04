@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -10,11 +10,16 @@ export async function GET(request: Request) {
     }
 
     try {
-        const result = await executeQuery({
-            query: 'SELECT * FROM training_materials WHERE module_id = ? ORDER BY order_index ASC, created_at ASC',
-            values: [moduleId]
-        });
-        return NextResponse.json(result);
+        const { data, error } = await supabase
+            .from('training_materials')
+            .select('*')
+            .eq('module_id', moduleId)
+            .order('order_index', { ascending: true })
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        return NextResponse.json(data);
     } catch (error: any) {
         console.error('Error fetching training materials:', error);
         return NextResponse.json({ error: 'Failed to fetch materials' }, { status: 500 });
@@ -30,14 +35,25 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Module ID, title, and type are required' }, { status: 400 });
         }
 
-        const result = await executeQuery({
-            query: 'INSERT INTO training_materials (module_id, title, type, content_url, content_text, order_index) VALUES (?, ?, ?, ?, ?, ?)',
-            values: [module_id, title, type, content_url, content_text, order_index || 0]
-        });
+        const { data, error } = await supabase
+            .from('training_materials')
+            .insert([{
+                module_id,
+                title,
+                type,
+                content_url,
+                content_text,
+                order_index: order_index || 0
+            }])
+            .select()
+            .single();
 
-        return NextResponse.json({ success: true, result });
+        if (error) throw error;
+
+        return NextResponse.json({ success: true, result: { insertId: data.id, ...data } });
     } catch (error: any) {
         console.error('Error adding training material:', error);
+        return NextResponse.json({ error: 'Failed to add material' }, { status: 500 });
     }
 }
 
@@ -50,12 +66,21 @@ export async function PUT(request: Request) {
             return NextResponse.json({ error: 'ID, title, and type are required' }, { status: 400 });
         }
 
-        const result = await executeQuery({
-            query: 'UPDATE training_materials SET title = ?, type = ?, content_url = ?, content_text = ?, order_index = ? WHERE id = ?',
-            values: [title, type, content_url, content_text, order_index || 0, id]
-        });
+        const { error } = await supabase
+            .from('training_materials')
+            .update({
+                title,
+                type,
+                content_url,
+                content_text,
+                order_index: order_index || 0,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id);
 
-        return NextResponse.json({ success: true, result });
+        if (error) throw error;
+
+        return NextResponse.json({ success: true });
     } catch (error: any) {
         console.error('Error updating training material:', error);
         return NextResponse.json({ error: 'Failed to update material' }, { status: 500 });
@@ -71,12 +96,16 @@ export async function DELETE(request: Request) {
     }
 
     try {
-        await executeQuery({
-            query: 'DELETE FROM training_materials WHERE id = ?',
-            values: [id]
-        });
+        const { error } = await supabase
+            .from('training_materials')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
         return NextResponse.json({ success: true });
     } catch (error: any) {
         return NextResponse.json({ error: 'Failed to delete material' }, { status: 500 });
     }
 }
+

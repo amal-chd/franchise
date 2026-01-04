@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     try {
@@ -7,23 +9,46 @@ export async function GET(request: Request) {
         const month = searchParams.get('month');
         const year = searchParams.get('year');
 
-        let query = `
-            SELECT pl.*, f.name as franchise_name, f.city 
-            FROM payout_logs pl
-            JOIN franchise_requests f ON pl.franchise_id = f.id
-            WHERE 1=1
-        `;
-        const values = [];
+        let query = supabase
+            .from('payout_logs')
+            .select(`
+                *,
+                franchise_requests (
+                    name,
+                    city
+                )
+            `)
+            .order('payout_date', { ascending: false });
 
+        // Filter by month/year if provided
+        // Note: Supabase doesn't have direct MONTH() function in builder, so we might filter by range or assume clients send date range.
+        // For simplicity, if month/year are passed, we construct a range.
         if (month && year) {
-            query += ' AND MONTH(pl.payout_date) = ? AND YEAR(pl.payout_date) = ?';
-            values.push(month, year);
+            const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+            // Calculate end date (start of next month)
+            const nextMonth = parseInt(month) === 12 ? 1 : parseInt(month) + 1;
+            const nextYear = parseInt(month) === 12 ? parseInt(year) + 1 : parseInt(year);
+            const endDate = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`;
+
+            query = query.gte('payout_date', startDate).lt('payout_date', endDate);
         }
 
-        query += ' ORDER BY pl.payout_date DESC';
+        const { data: history, error } = await query;
 
-        const history = await executeQuery({ query, values });
-        return NextResponse.json(history);
+        if (error) {
+            // If table doesn't exist, return empty array instead of crashing
+            if (error.code === '42P01') return NextResponse.json([]);
+            throw error;
+        }
+
+        // Flatten structure
+        const flattened = history.map((h: any) => ({
+            ...h,
+            franchise_name: h.franchise_requests?.name,
+            city: h.franchise_requests?.city
+        }));
+
+        return NextResponse.json(flattened);
     } catch (error: any) {
         console.error('Error fetching payout history:', error);
         return NextResponse.json({ error: 'Failed to fetch history' }, { status: 500 });

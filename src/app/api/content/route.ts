@@ -9,6 +9,10 @@ export async function GET() {
             values: []
         });
 
+        if ((contentRows as any).error) {
+            throw new Error((contentRows as any).error);
+        }
+
         // Group content by section and parse JSON
         const content = (contentRows as any[]).reduce((acc, row) => {
             if (!acc[row.section]) {
@@ -34,6 +38,10 @@ export async function GET() {
             query: 'SELECT * FROM site_settings',
             values: []
         });
+
+        if ((settingsRows as any).error) {
+            throw new Error((settingsRows as any).error);
+        }
 
         const settings = (settingsRows as any[]).reduce((acc, row) => {
             acc[row.setting_key] = row.setting_value;

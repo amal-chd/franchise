@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import executeFranchiseQuery from '@/lib/franchise_db';
-import executeQuery from '@/lib/db';
+
 
 // Get franchise leaderboard with monthly rankings
 export async function GET(request: Request) {
@@ -42,9 +42,16 @@ export async function GET(request: Request) {
             throw new Error('Database Error');
         }
 
-        // 2. Get franchise names from Main DB
-        const franchises: any = await executeQuery({
-            query: "SELECT name, city FROM franchise_requests WHERE status = 'approved'",
+        // 2. Get franchise names from Franchise DB (admins table)
+        const franchises: any = await executeFranchiseQuery({
+            query: `
+                SELECT 
+                    CONCAT(a.f_name, ' ', a.l_name) as name, 
+                    z.name as city 
+                FROM admins a 
+                JOIN zones z ON a.zone_id = z.id 
+                WHERE a.role_id = 8
+            `,
             values: []
         });
 

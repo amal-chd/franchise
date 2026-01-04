@@ -10,7 +10,8 @@ import 'chat_provider.dart';
 import '../../widgets/modern_header.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
-  const ChatScreen({super.key});
+  final bool isEmbedded;
+  const ChatScreen({super.key, this.isEmbedded = false});
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -19,23 +20,13 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _messageCtrl = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();
-  Timer? _timer;
   bool _showScrollButton = false;
   int _previousMessageCount = 0;
 
   @override
   void initState() {
     super.initState();
-    
-    //Listen to scroll position
     _scrollCtrl.addListener(_onScroll);
-    
-    // Polling for new messages
-    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      ref.read(chatMessagesProvider.notifier).refresh();
-    });
-    
-    // Initial scroll to bottom after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom(animated: false);
     });
@@ -52,7 +43,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
-    _timer?.cancel();
     _messageCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
@@ -60,15 +50,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _scrollToBottom({bool animated = true}) {
     if (_scrollCtrl.hasClients) {
-      if (animated) {
-        _scrollCtrl.animateTo(
-          _scrollCtrl.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      } else {
-        _scrollCtrl.jumpTo(_scrollCtrl.position.maxScrollExtent);
-      }
+      Future.delayed(const Duration(milliseconds: 100), () {
+          if (_scrollCtrl.hasClients) {
+              if (animated) {
+                _scrollCtrl.animateTo(
+                  _scrollCtrl.position.maxScrollExtent,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
+                );
+              } else {
+                _scrollCtrl.jumpTo(_scrollCtrl.position.maxScrollExtent);
+              }
+          }
+      });
     }
   }
 
@@ -77,7 +71,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final sessionAsync = ref.watch(chatSessionProvider);
     final messagesAsync = ref.watch(chatMessagesProvider);
 
-    // Auto-scroll when new messages arrive
     messagesAsync.whenData((messages) {
       if (messages.length > _previousMessageCount) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -87,43 +80,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _previousMessageCount = messages.length;
     });
 
-    return Scaffold(
-      appBar: ModernDashboardHeader(
-        title: '',
-        leadingWidget: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (Navigator.of(context).canPop())
-               IconButton(
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
-                  child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
-                ),
-                onPressed: () => Navigator.of(context).pop(),
-              )
-            else
-               const SizedBox(width: 8),
-            
-            Hero(
-              tag: 'franchise_app_logo_chat', 
-              child: Material(
-                color: Colors.transparent,
-                child: Image.asset(
-                  'assets/images/header_logo_new.png', 
-                  height: 24,
-                  color: Colors.white,
-                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.support_agent, color: Colors.white),
-                ),
-              ),
-            ),
-          ],
-        ),
-        isHome: false,
-        showLeading: false, 
-      ),
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: Stack(
+    final bodyContent = Stack(
         children: [
           Column(
             children: [
@@ -201,7 +158,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ],
           ),
           
-          // Scroll to bottom button
           if (_showScrollButton)
             Positioned(
               bottom: 90,
@@ -213,15 +169,64 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             ),
         ],
+      );
+
+    if (widget.isEmbedded) {
+        return Container(
+            color: const Color(0xFFF8FAFC),
+            child: bodyContent
+        );
+    }
+
+    return Scaffold(
+      appBar: ModernDashboardHeader(
+        title: '',
+        leadingWidget: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (Navigator.of(context).canPop())
+               IconButton(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+              )
+            else
+               const SizedBox(width: 8),
+            
+            Hero(
+              tag: 'franchise_app_logo_chat', 
+              child: Material(
+                color: Colors.transparent,
+                child: Image.asset(
+                  'assets/images/header_logo_new.png', 
+                  height: 24,
+                  color: Colors.white,
+                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.support_agent, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
+        isHome: false,
+        showLeading: false, 
       ),
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: bodyContent,
     );
+  }
+
+  DateTime _toIST(DateTime date) {
+    return date.toUtc().add(const Duration(hours: 5, minutes: 30));
   }
 
   bool _shouldShowDateSeparator(List<ChatMessage> messages, int index) {
     if (index == 0) return true;
     
-    final currentDate = messages[index].createdAt;
-    final previousDate = messages[index - 1].createdAt;
+    final currentDate = _toIST(messages[index].createdAt);
+    final previousDate = _toIST(messages[index - 1].createdAt);
     
     return currentDate.day != previousDate.day ||
            currentDate.month != previousDate.month ||
@@ -229,15 +234,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildDateSeparator(DateTime date) {
-    final now = DateTime.now();
+    final dateInIst = _toIST(date);
+    final nowInIst = _toIST(DateTime.now());
     String label;
     
-    if (date.year == now.year && date.month == now.month && date.day == now.day) {
+    if (dateInIst.year == nowInIst.year && dateInIst.month == nowInIst.month && dateInIst.day == nowInIst.day) {
       label = 'Today';
-    } else if (date.year == now.year && date.month == now.month && date.day == now.day - 1) {
+    } else if (dateInIst.year == nowInIst.year && dateInIst.month == nowInIst.month && dateInIst.day == nowInIst.day - 1) {
       label = 'Yesterday';
     } else {
-      label = DateFormat('MMM d, y').format(date);
+      label = DateFormat('MMM d, y').format(dateInIst);
     }
     
     return Padding(
@@ -268,6 +274,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
     );
   }
+
+  // ... (keeping _buildMessageBubble roughly same place, or just edit formatTime separately if easier)
+  
+  // NOTE: replace_file_content replaces a contiguous block. 
+  // I must include _buildMessageBubble and others if they are in between.
+  // The block in the file is: _shouldShowDateSeparator -> _buildDateSeparator -> _buildMessageBubble -> _buildMessageInput -> ... -> _formatTime
+  // That's too large. I should do multiple edits.
+  
+  // Edit 1: Helpers and Separators
+
 
   Widget _buildMessageBubble(ChatMessage msg, bool isMe) {
     return Align(
@@ -364,7 +380,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   final msg = _messageCtrl.text;
                   _messageCtrl.clear();
                   
-                  final success = await ref.read(chatMessagesProvider.notifier).sendMessage(msg);
+                  // Use updated controller
+                  final success = await ref.read(chatControllerProvider).sendMessage(msg);
                   if (success) {
                      _scrollToBottom();
                   } else {
@@ -399,7 +416,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                    color: const Color(0xFF8B5CF6).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.photo_library_rounded, color: Color(0xFF8B5CF6)),
@@ -461,9 +478,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Uploading...')));
     }
-    final url = await ref.read(chatMessagesProvider.notifier).uploadFile(file);
+    // Use updated controller
+    final url = await ref.read(chatControllerProvider).uploadFile(file);
     if (url != null) {
-      final success = await ref.read(chatMessagesProvider.notifier).sendMessage(null, attachmentUrl: url, attachmentType: type);
+      final success = await ref.read(chatControllerProvider).sendMessage(null, attachmentUrl: url, attachmentType: type);
       if (success) {
         _scrollToBottom();
       } else if (mounted) {
@@ -530,7 +548,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     Uri uri = Uri.parse(url);
     if (!uri.hasScheme) {
        if (url.startsWith('/')) {
-          uri = Uri.parse('https://franchise.thekada.in$url');
+          uri = Uri.parse('https://franchise.thekada.in$url'); // Ideally use config
        }
     }
     if (await canLaunchUrl(uri)) {
@@ -539,6 +557,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   String _formatTime(DateTime dateTime) {
-    return DateFormat('h:mm a').format(dateTime);
+    return DateFormat('h:mm a').format(_toIST(dateTime));
   }
 }

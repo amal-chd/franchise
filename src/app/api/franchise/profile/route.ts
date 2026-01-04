@@ -4,15 +4,27 @@ import executeQuery from '@/lib/db';
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    const email = searchParams.get('email');
 
-    if (!id) {
-        return NextResponse.json({ error: 'Franchise ID is required' }, { status: 400 });
+    if (!id && !email) {
+        return NextResponse.json({ error: 'Franchise ID or Email is required' }, { status: 400 });
     }
 
     try {
+        let query = 'SELECT id, name, email, phone, city, plan_selected, status, zone_id, upi_id, bank_account_number, ifsc_code, bank_name, created_at FROM franchise_requests WHERE ';
+        let values: any[] = [];
+
+        if (id) {
+            query += 'id = ?';
+            values.push(id);
+        } else {
+            query += 'email = ?';
+            values.push(email);
+        }
+
         const result: any = await executeQuery({
-            query: 'SELECT id, name, email, phone, city, plan_selected, status, zone_id, upi_id, bank_account_number, ifsc_code, bank_name, created_at FROM franchise_requests WHERE id = ?',
-            values: [id]
+            query: query,
+            values: values
         });
 
         if (Array.isArray(result) && result.length > 0) {

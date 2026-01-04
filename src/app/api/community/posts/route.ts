@@ -1,44 +1,44 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 
 // GET: Fetch community feed
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const authorId = searchParams.get('authorId');
+    const userId = searchParams.get('userId'); // Legacy INT
+    const authorId = searchParams.get('authorId'); // Legacy INT
 
     try {
-        // Base query - Fetch posts
-        // We allow author filtering.
+        // Resolve UUIDs from Legacy IDs
+        let userUuid = null;
+        let authorUuid = null;
 
-        let query = `
-            SELECT p.*, 
-            (SELECT COUNT(*) FROM community_interactions WHERE post_id = p.id AND type = 'like') as likes_count,
-            (SELECT COUNT(*) FROM community_interactions WHERE post_id = p.id AND type = 'comment') as comments_count,
-            (SELECT COUNT(*) FROM community_interactions WHERE post_id = p.id AND type = 'like' AND user_id = ?) as is_liked_by_me
-            FROM community_posts p 
-        `;
-
-        const values: any[] = [userId || 0];
-
-
-        // Strict filtering if authorId matches a number
-        if (authorId && !isNaN(Number(authorId))) {
-            console.log(`Filtering posts for authorId: ${authorId}`);
-            query += ` WHERE p.user_id = ? `;
-            values.push(authorId);
-        } else {
-            console.log('No authorId provided or invalid, fetching all posts');
+        if (userId) {
+            const { data } = await supabase.from('profiles').select('id').eq('franchise_id', userId).single();
+            if (data) userUuid = data.id;
         }
 
-        query += ` ORDER BY created_at DESC`;
+        if (authorId) {
+            const { data } = await supabase.from('profiles').select('id').eq('franchise_id', authorId).single();
+            if (data) authorUuid = data.id;
+        }
 
-        const result = await executeQuery({
-            query,
-            values
+        if (!userUuid) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+
+        const page = parseInt(searchParams.get('page') || '1');
+        const limit = parseInt(searchParams.get('limit') || '10');
+
+        const { data, error } = await supabase.rpc('get_community_feed', {
+            current_user_id: userUuid,
+            filter_author_id: authorUuid,
+            page_number: page,
+            page_size: limit
         });
 
-        return NextResponse.json(result);
+        if (error) throw error;
+
+        return NextResponse.json(data);
     } catch (error: any) {
         console.error('API Error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -49,18 +49,22 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { userId, userName, userImage, contentText, imageUrl, role } = body;
+        const { userId, contentText, imageUrl } = body; // userId is legacy INT
 
-        if (!userId || !contentText) {
-            return NextResponse.json({ error: 'User ID and Content are required' }, { status: 400 });
-        }
+        // Resolve UUID
+        const { data: profile } = await supabase.from('profiles').select('id').eq('franchise_id', userId).single();
+        if (!profile) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-        const result = await executeQuery({
-            query: `INSERT INTO community_posts (user_id, user_name, user_image, content_text, image_url, role) VALUES (?, ?, ?, ?, ?, ?)`,
-            values: [userId, userName, userImage, contentText, imageUrl, role || 'franchise']
-        });
+        const { data, error } = await supabase.from('community_posts').insert({
+            user_id: profile.id,
+            content_text: contentText,
+            image_url: imageUrl
+        }).select().single();
 
-        return NextResponse.json({ success: true, result });
+        if (error) throw error;
+
+        // Return simpler format or full object
+        return NextResponse.json({ success: true, result: { insertId: data.id, ...data } });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

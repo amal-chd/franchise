@@ -19,6 +19,20 @@ class _FranchiseLeaderboardScreenState extends ConsumerState<FranchiseLeaderboar
   String? _selectedMonth;
 
   @override
+  void initState() {
+    super.initState();
+    // Auto-select December 2025 if we are in Jan 2026 (for demo data continuity)
+    final now = DateTime.now();
+    if (now.year == 2026 && now.month == 1) {
+       _selectedMonth = '2025-12';
+       // Refresh with this month
+       WidgetsBinding.instance.addPostFrameCallback((_) {
+         ref.read(leaderboardProvider.notifier).refreshWithMonth(_selectedMonth!);
+       });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final leaderboardAsync = ref.watch(leaderboardProvider);
 

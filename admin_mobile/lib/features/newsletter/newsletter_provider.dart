@@ -50,4 +50,26 @@ class NewsletterNotifier extends AsyncNotifier<List<Subscriber>> {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() => _fetchSubscribers());
   }
+
+  Future<bool> sendBulkEmail({
+    required String subject,
+    required String html,
+    required String recipientType,
+    List<String>? customRecipients,
+  }) async {
+    try {
+      final response = await _apiService.client.post(
+        '/admin/newsletter/send-bulk',
+        data: {
+          'subject': subject,
+          'html': html,
+          'recipientType': recipientType,
+          'customRecipients': customRecipients,
+        },
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
 }

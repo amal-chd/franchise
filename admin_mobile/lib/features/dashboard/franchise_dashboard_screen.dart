@@ -298,7 +298,7 @@ class _FranchiseHomeTabState extends ConsumerState<FranchiseHomeTab> {
 
         _buildCompactAction(context, Icons.payments_rounded, 'Payouts', const Color(0xFF8B5CF6), () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ImprovedPayoutsScreen()))),
         _buildCompactAction(context, Icons.troubleshoot_rounded, 'Insights', const Color(0xFFEC4899), () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FranchiseLeaderboardScreen()))),
-        _buildCompactAction(context, Icons.contact_support_rounded, 'Support', const Color(0xFF22D3EE), () => widget.onTabChanged?.call(3)),
+        _buildCompactAction(context, Icons.contact_support_rounded, 'Support', const Color(0xFF22D3EE), () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatScreen()))),
       ],
     );
   }

@@ -40,8 +40,8 @@ class _ZoneReportsScreenState extends ConsumerState<ZoneReportsScreen> {
       body: SafeArea(
         child: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _reportData == null || _reportData!.isEmpty
-              ? const Center(child: Text('Failed to load reports'))
+          : _reportData == null || (_reportData!.isEmpty || _reportData!.containsKey('error'))
+              ? Center(child: Text(_reportData?['error']?.toString() ?? 'Failed to load reports'))
               : RefreshIndicator(
                   onRefresh: _loadData,
                   child: SingleChildScrollView(

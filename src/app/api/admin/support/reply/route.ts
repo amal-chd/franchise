@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 import { sendEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
@@ -10,17 +10,24 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
         }
 
-        // Save reply to database
-        await executeQuery({
-            query: 'INSERT INTO ticket_replies (ticket_id, sender_type, message) VALUES (?, ?, ?)',
-            values: [ticketId, 'admin', message],
-        });
+        // Save reply to Supabase
+        const { error: replyError } = await supabase
+            .from('ticket_replies')
+            .insert([{
+                ticket_id: ticketId,
+                sender_type: 'admin',
+                message: message
+            }]);
+
+        if (replyError) throw replyError;
 
         // Update ticket status to replied
-        await executeQuery({
-            query: 'UPDATE support_tickets SET status = ? WHERE id = ?',
-            values: ['replied', ticketId],
-        });
+        const { error: updateError } = await supabase
+            .from('support_tickets')
+            .update({ status: 'replied' })
+            .eq('id', ticketId);
+
+        if (updateError) throw updateError;
 
         // Send email asynchronously (don't wait for it)
         sendEmail({

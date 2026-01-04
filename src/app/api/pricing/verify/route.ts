@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 
 export async function POST(request: Request) {
     try {
@@ -21,11 +21,16 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Payment verification failed' }, { status: 400 });
         }
 
-        // Update database with payment details
-        await executeQuery({
-            query: 'UPDATE franchise_requests SET razorpay_payment_id = ?, payment_status = ? WHERE id = ?',
-            values: [razorpay_payment_id, 'completed', requestId],
-        });
+        // Update Supabase with payment details
+        const { error } = await supabase
+            .from('franchise_requests')
+            .update({
+                razorpay_payment_id: razorpay_payment_id,
+                payment_status: 'completed'
+            })
+            .eq('id', requestId);
+
+        if (error) throw error;
 
         return NextResponse.json({ message: 'Payment verified successfully' }, { status: 200 });
 

@@ -1,23 +1,25 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const role = searchParams.get('role');
 
-    let query = 'SELECT * FROM training_modules';
-    const values = [];
-
-    if (role) {
-        query += ' WHERE role = ?';
-        values.push(role);
-    }
-
-    query += ' ORDER BY created_at DESC';
-
     try {
-        const result = await executeQuery({ query, values });
-        return NextResponse.json(result);
+        let query = supabase
+            .from('training_modules')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (role) {
+            query = query.eq('role', role);
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+
+        return NextResponse.json(data);
     } catch (error: any) {
         console.error('Error fetching training modules:', error);
         return NextResponse.json({ error: 'Failed to fetch modules' }, { status: 500 });
@@ -33,12 +35,22 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Title and role are required' }, { status: 400 });
         }
 
-        const result = await executeQuery({
-            query: 'INSERT INTO training_modules (title, description, role, thumbnail_url, category) VALUES (?, ?, ?, ?, ?)',
-            values: [title, description, role, thumbnail_url, category || 'General']
-        });
+        const { data, error } = await supabase
+            .from('training_modules')
+            .insert([{
+                title,
+                description,
+                role,
+                thumbnail_url,
+                category: category || 'General'
+            }])
+            .select()
+            .single();
 
-        return NextResponse.json({ success: true, result });
+        if (error) throw error;
+
+        // Return format matching old API expectation roughly, or just the data
+        return NextResponse.json({ success: true, result: { insertId: data.id, ...data } });
     } catch (error: any) {
         console.error('Error creating training module:', error);
         return NextResponse.json({ error: 'Failed to create module' }, { status: 500 });
@@ -54,12 +66,21 @@ export async function PUT(request: Request) {
             return NextResponse.json({ error: 'ID, Title and role are required' }, { status: 400 });
         }
 
-        const result = await executeQuery({
-            query: 'UPDATE training_modules SET title = ?, description = ?, role = ?, thumbnail_url = ?, category = ? WHERE id = ?',
-            values: [title, description, role, thumbnail_url, category || 'General', id]
-        });
+        const { error } = await supabase
+            .from('training_modules')
+            .update({
+                title,
+                description,
+                role,
+                thumbnail_url,
+                category: category || 'General',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id);
 
-        return NextResponse.json({ success: true, result });
+        if (error) throw error;
+
+        return NextResponse.json({ success: true });
     } catch (error: any) {
         console.error('Error updating training module:', error);
         return NextResponse.json({ error: 'Failed to update module' }, { status: 500 });
@@ -75,12 +96,16 @@ export async function DELETE(request: Request) {
     }
 
     try {
-        await executeQuery({
-            query: 'DELETE FROM training_modules WHERE id = ?',
-            values: [id]
-        });
+        const { error } = await supabase
+            .from('training_modules')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
         return NextResponse.json({ success: true });
     } catch (error: any) {
         return NextResponse.json({ error: 'Failed to delete module' }, { status: 500 });
     }
 }
+
