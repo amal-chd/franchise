@@ -31,4 +31,5 @@ const nextConfig: NextConfig = {
   }
 };
 
+// Trigger Redployment for CORS
 export default nextConfig;
