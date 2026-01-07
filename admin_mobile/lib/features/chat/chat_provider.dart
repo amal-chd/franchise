@@ -174,6 +174,14 @@ class ChatController {
           'attachment_type': attachmentType,
           'status': 'sent'
       });
+      
+      // Update session last message for preview
+      await Supabase.instance.client.from('admin_chat_sessions').update({
+         'last_message_preview': message ?? (attachmentType == 'image' ? 'Image' : 'File'),
+         'last_message_at': DateTime.now().toUtc().toIso8601String(),
+         'last_sender_type': 'franchise'
+      }).eq('id', session.id);
+
       return true;
     } catch (e) {
       print('Send Error: $e');
