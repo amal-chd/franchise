@@ -30,6 +30,7 @@ import '../notifications/notification_provider.dart';
 import '../profile/admin_profile_tab.dart';
 import '../../widgets/premium_widgets.dart';
 import '../reports/zone_reports_screen.dart';
+import '../activity_logs/activity_logs_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -59,6 +60,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     const PricingTab(),
     const AdminOrdersTab(), // Index 14
     const SupportTab(), // Index 15
+    const ActivityLogsScreen(), // Index 16
   ];
 
   static const List<String> _titles = [
@@ -78,6 +80,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     'Pricing',
     'Merchandise Orders',
     'Zone Reports',
+    'Activity Logs',
   ];
 
   void _onItemTapped(int index) {
@@ -248,6 +251,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               children: [
                 _buildSectionHeader('CORE MANAGEMENT'),
                 _buildDrawerItem(6, 'Franchises', Icons.business_rounded), // Unique
+                _buildDrawerItem(16, 'Activity Logs', Icons.history_rounded),
                 _buildDrawerItem(9, 'CMS', Icons.article_rounded), // Unique
                 _buildDrawerItem(15, 'Support Tickets', Icons.support_agent_rounded, isAlert: true,
                   badgeCount: ref.watch(supportProvider).value?.where((e) => e.status == 'Pending').length),

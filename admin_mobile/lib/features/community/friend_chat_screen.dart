@@ -80,6 +80,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
               callback: (payload) {
                   final newMsg = payload.newRecord;
                   if (newMsg['sender_id'] == _friendUuid) {
+                      _markAsRead(newMsg['id']); // Mark new message as read immediately
                       if (mounted) {
                           setState(() {
                              _messages.add(newMsg); 
@@ -89,6 +90,32 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                   }
               }
           ).subscribe();
+          
+          // Updated Listener for Status Changes (for my sent messages)
+          _channel.onPostgresChanges(
+              event: PostgresChangeEvent.update,
+              schema: 'public',
+              table: 'messages',
+              filter: PostgresChangeFilter(
+                  type: PostgresChangeFilterType.eq,
+                  column: 'sender_id',
+                  value: _myUuid,
+              ),
+              callback: (payload) {
+                 final updatedRec = payload.newRecord;
+                 if (mounted) {
+                     setState(() {
+                         final index = _messages.indexWhere((m) => m['id'] == updatedRec['id']);
+                         if (index != -1) {
+                             _messages[index] = updatedRec;
+                         }
+                     });
+                 }
+              }
+          ).subscribe();
+          
+          // Initial Mark as Read for loaded messages
+          _markAllAsRead();
           
       } catch (e) {
           print('Chat Setup Error: $e');
@@ -116,6 +143,31 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
       });
   }
 
+  Future<void> _markAllAsRead() async {
+      if (_friendUuid == null || _myUuid == null) return;
+      try {
+          await Supabase.instance.client
+              .from('messages')
+              .update({'status': 'read'})
+              .eq('sender_id', _friendUuid!)
+              .eq('receiver_id', _myUuid!)
+              .neq('status', 'read'); 
+      } catch (e) {
+          print('Mark Read Error: $e');
+      }
+  }
+
+  Future<void> _markAsRead(int msgId) async {
+       try {
+          await Supabase.instance.client
+              .from('messages')
+              .update({'status': 'read'})
+              .eq('id', msgId);
+      } catch (e) {
+          print('Mark Single Read Error: $e');
+      } 
+  }
+
   Future<void> _sendMessage() async {
       if (_msgCtrl.text.trim().isEmpty || _friendUuid == null || _myUuid == null) return;
       final msg = _msgCtrl.text.trim();
@@ -129,7 +181,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
           'receiver_id': _friendUuid,
           'content': msg,
           'created_at': DateTime.now().toIso8601String(),
-          'status': 'sending' // internal status
+          'status': 'sent' // Default to sent
       };
       
       setState(() {
@@ -145,8 +197,14 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
               'status': 'sent'
           }).select().single();
           
-          // Update temp message with real one? Or just let it be.
-          // Ideally verify.
+          if (mounted) {
+             setState(() {
+                 final index = _messages.indexWhere((m) => m['id'] == tempId);
+                 if (index != -1) {
+                     _messages[index] = response;
+                 }
+             });
+          }
       } catch (e) {
           // Mark failed?
           print('Send failed: $e');
@@ -259,14 +317,28 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
               ),
             ),
             const SizedBox(height: 4),
-            if (msg['created_at'] != null)
-              Text(
-                _formatTime(DateTime.parse(msg['created_at'])),
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  color: isMe ? Colors.white70 : const Color(0xFF94A3B8),
-                ),
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (msg['created_at'] != null)
+                  Text(
+                    _formatTime(DateTime.parse(msg['created_at'])),
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: isMe ? Colors.white70 : const Color(0xFF94A3B8),
+                    ),
+                  ),
+                if (isMe) ...[
+                   const SizedBox(width: 4),
+                   if (msg['status'] == 'read')
+                      const Icon(Icons.done_all, size: 14, color: Color(0xFF67E8F9))
+                   else if (msg['status'] == 'delivered')
+                      Icon(Icons.done_all, size: 14, color: Colors.white.withOpacity(0.7))
+                   else
+                      Icon(Icons.done, size: 14, color: Colors.white.withOpacity(0.7))
+                ]
+              ],
+            )
           ],
         ),
       ),

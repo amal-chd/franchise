@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import executeQuery from '@/lib/db';
 import { sendEmail } from '@/lib/email';
+import { logActivity } from '@/lib/activityLogger';
 
 export async function POST(request: Request) {
     try {
@@ -76,6 +77,17 @@ export async function POST(request: Request) {
                 });
             }
         }
+
+        // Log Activity
+        await logActivity({
+            actor_id: 1, // Assuming Admin ID is 1 for now, or fetch from auth
+            actor_type: 'admin',
+            action: 'PAYOUT_PROCESSED',
+            entity_type: 'payout',
+            entity_id: franchise_id,
+            details: { amount, revenue_reported, orders_count },
+            // req: request as any // Cast or pass if `logActivity` expects NextRequest
+        });
 
         return NextResponse.json({ success: true, message: 'Payout processed and invoice sent successfully' });
     } catch (error: any) {

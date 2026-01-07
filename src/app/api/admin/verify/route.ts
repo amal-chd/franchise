@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import executeQuery from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 import { applicationApprovedEmail, applicationRejectedEmail, applicationUnderReviewEmail } from '@/lib/emailTemplates';
+import { logActivity } from '@/lib/activityLogger';
 
 export async function POST(request: Request) {
     try {
@@ -78,6 +79,16 @@ export async function POST(request: Request) {
                 // Don't fail the request if email fails
             });
         }
+
+        // Log Activity
+        await logActivity({
+            actor_id: 1,
+            actor_type: 'admin',
+            action: status === 'approved' ? 'FRANCHISE_APPROVED' : (status === 'rejected' ? 'FRANCHISE_REJECTED' : 'FRANCHISE_UPDATED'),
+            entity_type: 'franchise_request',
+            entity_id: id,
+            details: { name: applicant.name, status, rejectionReason }
+        });
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

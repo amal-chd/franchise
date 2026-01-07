@@ -368,6 +368,22 @@ class AdminChatController {
     }
   }
 
+  Future<void> markMessagesAsRead(int sessionId) async {
+    try {
+      await Supabase.instance.client
+          .from('admin_chats')
+          .update({
+            'read_at': DateTime.now().toUtc().toIso8601String(),
+            'status': 'read'
+          })
+          .eq('session_id', sessionId)
+          .eq('sender_type', 'franchise')
+          .isFilter('read_at', null); // Only unread messages
+    } catch (e) {
+      print('Admin Mark Read Error: $e');
+    }
+  }
+
   Future<bool> sendMessage(int sessionId, String? message, {String? attachmentUrl, String? attachmentType}) async {
       try {
         await Supabase.instance.client.from('admin_chats').insert({

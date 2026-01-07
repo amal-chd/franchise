@@ -6,7 +6,7 @@ import '../payouts/payouts_provider.dart';
 import '../common/zones_provider.dart';
 import '../../widgets/premium_widgets.dart';
 import 'franchise_form_sheet.dart';
-import '../community/franchise_profile_screen.dart';
+import 'franchise_profile_screen.dart'; // Changed import to local file
 
 class FranchisesTab extends ConsumerStatefulWidget {
   const FranchisesTab({super.key});
@@ -120,9 +120,8 @@ class _FranchisesTabState extends ConsumerState<FranchisesTab> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => FranchiseProfileScreen(
-                                    userId: franchise.id,
-                                    userName: franchise.name,
-                                    userImage: '',
+                                    franchiseId: franchise.id,
+                                    franchiseName: franchise.name,
                                   ),
                                 ),
                               );

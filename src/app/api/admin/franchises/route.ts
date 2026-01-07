@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import executeFranchiseQuery from '@/lib/franchise_db';
+import { logActivity } from '@/lib/activityLogger';
 
 // POST: Create a new franchise (admin with role_id=8)
 export async function POST(request: Request) {
@@ -52,6 +53,16 @@ export async function POST(request: Request) {
             throw new Error(results.error.message);
         }
 
+        // Log Activity
+        await logActivity({
+            actor_id: 1,
+            actor_type: 'admin',
+            action: 'FRANCHISE_CREATED',
+            entity_type: 'franchise',
+            entity_id: results.insertId,
+            details: { name: `${f_name} ${l_name}`, email, zone_id }
+        });
+
         return NextResponse.json({ success: true, id: results.insertId });
     } catch (error: any) {
         console.error('Create Franchise Error:', error);
@@ -96,6 +107,16 @@ export async function PUT(request: Request) {
             throw new Error(results.error.message);
         }
 
+        // Log Activity
+        await logActivity({
+            actor_id: 1,
+            actor_type: 'admin',
+            action: 'FRANCHISE_UPDATED',
+            entity_type: 'franchise',
+            entity_id: id,
+            details: { name: `${f_name} ${l_name}`, status: status }
+        });
+
         return NextResponse.json({ success: true });
     } catch (error: any) {
         console.error('Update Franchise Error:', error);
@@ -119,6 +140,15 @@ export async function DELETE(request: Request) {
         if (results.error) {
             throw new Error(results.error.message);
         }
+
+        // Log Activity
+        await logActivity({
+            actor_id: 1,
+            actor_type: 'admin',
+            action: 'FRANCHISE_DELETED',
+            entity_type: 'franchise',
+            entity_id: parseInt(id),
+        });
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

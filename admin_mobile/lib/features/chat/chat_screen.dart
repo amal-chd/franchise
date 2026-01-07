@@ -104,6 +104,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       );
                     }
                     
+                    if (session != null) {
+                       // Mark messages as read when entering/viewing
+                       WidgetsBinding.instance.addPostFrameCallback((_) {
+                           ref.read(chatControllerProvider).markMessagesAsRead(session.id);
+                       });
+                    }
+                    
                     return messagesAsync.when(
                       data: (messages) {
                         if (messages.isEmpty) {
@@ -313,12 +320,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           children: [
             _buildMessageContent(msg, isMe),
             const SizedBox(height: 4),
-            Text(
-              _formatTime(msg.createdAt),
-              style: GoogleFonts.inter(
-                fontSize: 10,
-                color: isMe ? Colors.white.withOpacity(0.7) : const Color(0xFF94A3B8),
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _formatTime(msg.createdAt),
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    color: isMe ? Colors.white.withOpacity(0.7) : const Color(0xFF94A3B8),
+                  ),
+                ),
+                if (isMe) ...[
+                   const SizedBox(width: 4),
+                   if (msg.status == 'read')
+                      const Icon(Icons.done_all, size: 14, color: Color(0xFF67E8F9))
+                   else if (msg.status == 'delivered')
+                      Icon(Icons.done_all, size: 14, color: Colors.white.withOpacity(0.7))
+                   else
+                      Icon(Icons.done, size: 14, color: Colors.white.withOpacity(0.7))
+                ]
+              ],
             ),
           ],
         ),

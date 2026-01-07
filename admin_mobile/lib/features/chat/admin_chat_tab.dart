@@ -14,7 +14,7 @@ import '../notifications/badge_state_provider.dart';
 import '../community/community_tab.dart';
 import '../franchises/franchises_tab.dart';
 
-import '../franchises/franchise_profile_screen.dart' hide Center;
+import '../community/franchise_profile_screen.dart' hide Center; // Changed to Community version
 import '../requests/requests_provider.dart';
 
 class AdminChatTab extends ConsumerWidget {
@@ -347,7 +347,12 @@ class _AdminChatScreenState extends ConsumerState<AdminChatScreen> {
     // Listen to scroll position
     _scrollCtrl.addListener(_onScroll);
     
+    // Initial mark as read
+    ref.read(adminChatControllerProvider).markMessagesAsRead(widget.sessionId);
+
     _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      // Periodic check to ensure latest status
+      ref.read(adminChatControllerProvider).markMessagesAsRead(widget.sessionId);
       ref.invalidate(adminChatMessagesFamilyProvider(widget.sessionId));
     });
   }
@@ -519,8 +524,9 @@ class _AdminChatScreenState extends ConsumerState<AdminChatScreen> {
               icon: const Icon(Icons.info_outline_rounded, color: Color(0xFF0F172A)),
               onPressed: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => FranchiseProfileScreen(
-                  franchiseId: widget.franchiseId,
-                  franchiseName: widget.franchiseName
+                  userId: widget.franchiseId,
+                  userName: widget.franchiseName,
+                  userImage: '',
                 )));
               },
             )
@@ -754,16 +760,13 @@ class _AdminChatScreenState extends ConsumerState<AdminChatScreen> {
                 ),
                 if (isMe) ...[
                   const SizedBox(width: 4),
-                  // Read receipt ticks - always visible with proper contrast
-                  Icon(
-                    msg.status == 'read' ? Icons.done_all : Icons.done,
-                    size: 16,
-                    color: msg.status == 'read' 
-                        ? const Color(0xFF06B6D4) // Bright cyan for read
-                        : isMe 
-                            ? Colors.white.withOpacity(0.7) // White for blue bubble
-                            : const Color(0xFF94A3B8), // Gray for white bubble
-                  ),
+                  // Read receipt ticks
+                  if (msg.status == 'read')
+                    const Icon(Icons.done_all, size: 16, color: Color(0xFF67E8F9)) // Cyan/Blueish for read
+                  else if (msg.status == 'delivered')
+                     Icon(Icons.done_all, size: 16, color: Colors.white.withOpacity(0.7))
+                  else
+                     Icon(Icons.done, size: 16, color: Colors.white.withOpacity(0.7)) // Single tick for sent
                 ],
               ],
             ),
