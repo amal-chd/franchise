@@ -91,7 +91,7 @@ class FranchiseDeliveryScreen extends ConsumerWidget {
                 child: ListTile(
                   onTap: () => _showDeliveryDetails(context, dm),
                   leading: CircleAvatar(
-                    backgroundImage: dm['image'] != null ? NetworkImage('http://192.168.31.247:3002/storage/app/public/delivery-man/${dm['image']}') : null,
+                    backgroundImage: dm['image'] != null ? NetworkImage('https://thekada.in/storage/app/public/delivery-man/${dm['image']}') : null,
                     backgroundColor: Colors.grey[200],
                     child: dm['image'] == null ? const Icon(Icons.person, color: Colors.grey) : null,
                   ),
@@ -173,7 +173,7 @@ class FranchiseDeliveryScreen extends ConsumerWidget {
                           CircleAvatar(
                             radius: 50,
                             backgroundImage: dm['image'] != null
-                                ? NetworkImage('http://192.168.31.247:3002/storage/app/public/delivery-man/${dm['image']}')
+                                ? NetworkImage('https://thekada.in/storage/app/public/delivery-man/${dm['image']}')
                                 : null,
                             backgroundColor: const Color(0xFFF1F5F9),
                             child: dm['image'] == null

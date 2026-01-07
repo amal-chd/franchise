@@ -24,7 +24,7 @@ class AuthNotifier extends AsyncNotifier<bool> {
       final isLoggedIn = prefs.getBool('isLoggedIn') ?? prefs.getBool('isAdmin') ?? false;
       
       if (isLoggedIn) {
-      if (isLoggedIn) {
+        final isFranchise = prefs.getString('userRole') == 'franchise';
         // Always sync latest profile data (Zone ID, Franchise ID) to handle backend changes
         if (isFranchise) {
            print('DEBUG: Syncing latest Franchise Profile...');
@@ -58,7 +58,6 @@ class AuthNotifier extends AsyncNotifier<bool> {
              // Swallowing error to allow offline login with cached data
            }
         }
-      }
       }
 
       return isLoggedIn;

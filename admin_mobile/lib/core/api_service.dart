@@ -11,9 +11,9 @@ class ApiService {
   
   // Production base URL
   static String get baseUrl {
-    // return 'https://franchise.thekada.in/api/';
+    return 'https://franchise.thekada.in/api/';
     // return 'http://localhost:3001/api/';
-    return 'http://192.168.31.247:3001/api/';
+    // return 'http://192.168.31.247:3001/api/';
   }
 
   ApiService() {

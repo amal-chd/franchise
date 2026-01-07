@@ -100,7 +100,7 @@ class FranchiseVendorsScreen extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(14),
                         image: vendor['logo'] != null 
                             ? DecorationImage(
-                                image: NetworkImage('http://192.168.31.247:3002/storage/app/public/store/${vendor['logo']}'),
+                                image: NetworkImage('https://thekada.in/storage/app/public/store/${vendor['logo']}'),
                                 fit: BoxFit.cover,
                               )
                             : null,
@@ -184,7 +184,7 @@ class FranchiseVendorsScreen extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(20),
                               image: vendor['logo'] != null
                                   ? DecorationImage(
-                                      image: NetworkImage('http://192.168.31.247:3002/storage/app/public/store/${vendor['logo']}'),
+                                      image: NetworkImage('https://thekada.in/storage/app/public/store/${vendor['logo']}'),
                                       fit: BoxFit.cover,
                                     )
                                   : null,
