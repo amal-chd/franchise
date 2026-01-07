@@ -1,0 +1,3 @@
+[submodule "franchiseflutterwebapp"]
+	path = franchiseflutterwebapp
+	url = https://github.com/amal-chd/franchiseflutterwebapp.git
