@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/api_service.dart';
+import '../auth/auth_provider.dart';
 
 // Franchise-specific Orders Provider with date filtering
 class FranchiseOrdersFilter {
@@ -64,6 +65,7 @@ class FranchiseOrdersNotifier extends AsyncNotifier<List<Map<String, dynamic>>> 
   
   @override
   Future<List<Map<String, dynamic>>> build() async {
+    ref.watch(authProvider);
     return _fetchOrders();
   }
   
@@ -82,6 +84,8 @@ class FranchiseOrdersNotifier extends AsyncNotifier<List<Map<String, dynamic>>> 
       final queryString = params.entries
           .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
           .join('&');
+      
+      print('DEBUG: Fetching orders for Zone ID: $zoneId with params: $queryString');
       
       final response = await _apiService.client.get('/franchise/orders?$queryString');
       
@@ -109,6 +113,8 @@ class FranchiseOrdersNotifier extends AsyncNotifier<List<Map<String, dynamic>>> 
       } else {
         throw Exception('Invalid response format: Expected List or Map with data/orders');
       }
+      
+      print('DEBUG: Fetched ${ordersList.length} orders for Zone $zoneId');
       
       return ordersList;
     } catch (e) {
@@ -201,6 +207,7 @@ class PayoutsNotifier extends AsyncNotifier<PayoutsData> {
   
   @override
   Future<PayoutsData> build() async {
+    ref.watch(authProvider);
     return _fetchPayouts();
   }
   
@@ -307,6 +314,7 @@ class LeaderboardNotifier extends AsyncNotifier<LeaderboardData> {
   
   @override
   Future<LeaderboardData> build() async {
+    ref.watch(authProvider);
     return _fetchLeaderboard();
   }
   

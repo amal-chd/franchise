@@ -24,12 +24,10 @@ class AuthNotifier extends AsyncNotifier<bool> {
       final isLoggedIn = prefs.getBool('isLoggedIn') ?? prefs.getBool('isAdmin') ?? false;
       
       if (isLoggedIn) {
-        // Robustness: Check if Zone ID is missing (common after update)
-        final zoneId = prefs.getInt('zoneId');
-        final isFranchise = prefs.getString('userRole') == 'franchise';
-        
-        if (isFranchise && (zoneId == null || zoneId == 0)) {
-           print('DEBUG: Logged in but Zone ID missing. Attempting restoration...');
+      if (isLoggedIn) {
+        // Always sync latest profile data (Zone ID, Franchise ID) to handle backend changes
+        if (isFranchise) {
+           print('DEBUG: Syncing latest Franchise Profile...');
            try {
              final user = Supabase.instance.client.auth.currentUser;
              if (user != null && user.email != null) {
@@ -38,30 +36,29 @@ class AuthNotifier extends AsyncNotifier<bool> {
                 if (profileResponse.statusCode == 200 && profileResponse.data != null) {
                    var zIdVal = profileResponse.data['zone_id'];
                    final zId = zIdVal is int ? zIdVal : int.tryParse(zIdVal.toString()) ?? 0;
+                   
                    if (zId > 0) {
                       await prefs.setInt('zoneId', zId);
-                      print('DEBUG: Zone ID $zId restored successfully');
-                      // Successfully restored
+                      
+                      // Also save Franchise ID
+                      var fIdVal = profileResponse.data['id'];
+                      final fId = fIdVal is int ? fIdVal : int.tryParse(fIdVal.toString()) ?? 0;
+                      if (fId > 0) {
+                        await prefs.setInt('franchiseId', fId);
+                      }
+                      
+                      print('DEBUG: Zone ID $zId synced from backend');
                    } else {
-                      print('DEBUG: Zone ID is 0/Invalid from API. Force Logout.');
-                      await logout(); // Using internal/public logout method? No, need to clear prefs manually here or call method.
-                      await prefs.clear();
-                      return false;
+                      print('DEBUG: Zone ID from backend is 0/Invalid. Keeping local if exists.');
                    }
                 }
-             } else {
-                print('DEBUG: No active Supabase User found. Force Logout.');
-                await prefs.clear();
-                return false;
              }
            } catch (e) {
-             print('DEBUG: Failed to restore Zone ID: $e');
-             // If we really can't get it, maybe we should let them stay logged in but broken? 
-             // No, better to force re-login.
-             await prefs.clear();
-             return false;
+             print('DEBUG: Failed to sync profile (using cached): $e');
+             // Swallowing error to allow offline login with cached data
            }
         }
+      }
       }
 
       return isLoggedIn;
@@ -135,6 +132,14 @@ class AuthNotifier extends AsyncNotifier<bool> {
                  
                  if (zId > 0) {
                     await prefs.setInt('zoneId', zId);
+                    
+                    // Also save Franchise ID
+                    var fIdVal = profileResponse.data['id'];
+                    final fId = fIdVal is int ? fIdVal : int.tryParse(fIdVal.toString()) ?? 0;
+                    if (fId > 0) {
+                      await prefs.setInt('franchiseId', fId);
+                    }
+
                     print('DEBUG: Zone ID $zId saved to preferences (Source: Franchise DB)');
                  } else {
                     print('DEBUG: Zone ID found but is 0 or invalid');

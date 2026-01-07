@@ -7,13 +7,16 @@ export async function GET(
 ) {
     const { id: orderId } = await params;
 
+    const { searchParams } = new URL(request.url);
+    const zoneId = searchParams.get('zoneId');
+
     if (!orderId || orderId === 'undefined' || orderId === 'null') {
         return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
     }
 
     try {
         // Fetch order details
-        const orderQuery = `
+        let orderQuery = `
             SELECT 
                 o.id, 
                 o.user_id,
@@ -32,9 +35,16 @@ export async function GET(
             WHERE o.id = ?
         `;
 
+        const queryValues = [orderId];
+
+        if (zoneId) {
+            orderQuery += ` AND o.zone_id = ?`;
+            queryValues.push(zoneId);
+        }
+
         const result: any = await executeFranchiseQuery({
             query: orderQuery,
-            values: [orderId],
+            values: queryValues,
         });
 
         if (result.error) {

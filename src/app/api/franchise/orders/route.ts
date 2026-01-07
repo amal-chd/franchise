@@ -63,7 +63,7 @@ export async function GET(request: Request) {
 
         if (dbResult.error) {
             console.error('Orders query error:', dbResult.error);
-            return NextResponse.json([]); // Return empty list on error
+            return NextResponse.json({ error: 'Database Error: ' + dbResult.error.message }, { status: 500 });
         }
 
         const orders = Array.isArray(dbResult) ? dbResult.map((order: any) => {
@@ -84,6 +84,6 @@ export async function GET(request: Request) {
         return NextResponse.json(orders);
     } catch (error: any) {
         console.error('Franchise orders fetch error:', error);
-        return NextResponse.json([]); // Return empty list on error
+        return NextResponse.json({ error: 'Server Error: ' + error.message }, { status: 500 });
     }
 }

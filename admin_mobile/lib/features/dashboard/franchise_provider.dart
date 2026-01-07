@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../core/api_service.dart';
+import '../auth/auth_provider.dart';
 
 // Cache configuration
 const String FRANCHISE_CACHE_KEY = 'franchise_data_cache';
@@ -87,6 +88,8 @@ class FranchiseState {
   }
 }
 
+
+
 final franchiseProvider = AsyncNotifierProvider<FranchiseNotifier, FranchiseState>(() {
   return FranchiseNotifier();
 });
@@ -96,6 +99,8 @@ class FranchiseNotifier extends AsyncNotifier<FranchiseState> {
 
   @override
   Future<FranchiseState> build() async {
+    // Watch authProvider to force refresh when login state changes
+    ref.watch(authProvider);
     return _loadData(useCache: true);
   }
 

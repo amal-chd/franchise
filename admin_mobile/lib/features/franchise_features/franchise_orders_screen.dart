@@ -381,7 +381,10 @@ value: s == 'All' ? null : s,
     try {
       // Fetch full order details with items
       final apiService = ref.read(franchiseOrdersProvider.notifier).apiService;
-      final response = await apiService.client.get('/franchise/orders/${order['id']}');
+      final prefs = await ref.read(sharedPreferencesProvider.future);
+      final zoneId = prefs.getInt('zoneId');
+      
+      final response = await apiService.client.get('/franchise/orders/${order['id']}?zoneId=$zoneId');
       
       // Close loading dialog
       Navigator.pop(context);
