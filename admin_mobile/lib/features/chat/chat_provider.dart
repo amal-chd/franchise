@@ -266,11 +266,14 @@ final adminChatSessionsProvider = FutureProvider<List<AdminChatSession>>((ref) a
   ref.watch(adminSessionsRealtimeProvider); 
 
   try {
-      final response = await ApiService().client.get('/admin/chat/sessions');
-      // The API returns a list of sessions
-      final List<dynamic> data = response.data;
-      
-      return data.map<AdminChatSession>((s) {
+      // Direct DB query to ensure consistency with Realtime/Writes
+      // Bypasses potentially misconfigured Vercel API
+      final data = await Supabase.instance.client
+          .from('admin_chat_sessions')
+          .select()
+          .order('last_message_at', ascending: false); // Show recent first
+          
+      return (data as List).map<AdminChatSession>((s) {
         return AdminChatSession(
           id: s['id'],
           franchiseId: s['franchise_id'] ?? 0,
