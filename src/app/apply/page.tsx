@@ -22,6 +22,7 @@ function ApplyContent() {
     const [selectedPlan, setSelectedPlan] = useState('');
     const [agreementAccepted, setAgreementAccepted] = useState(false);
     const [content, setContent] = useState<Record<string, string>>({});
+    const [errorMessage, setErrorMessage] = useState('');
 
     useEffect(() => {
         const id = searchParams.get('id');
@@ -58,13 +59,16 @@ function ApplyContent() {
             if (res.ok) {
                 setRequestId(data.requestId);
                 setStatus('');
+                setErrorMessage('');
                 setStep(2);
                 router.push(`/apply?id=${data.requestId}`, { scroll: false });
             } else {
                 setStatus('error');
+                setErrorMessage(data.message || 'Failed to submit application.');
             }
-        } catch (error) {
+        } catch (error: any) {
             setStatus('error');
+            setErrorMessage(error.message || 'An unexpected error occurred.');
         }
     };
 
@@ -84,12 +88,16 @@ function ApplyContent() {
 
             if (res.ok) {
                 setStatus('');
+                setErrorMessage('');
                 setStep(3);
             } else {
+                const data = await res.json();
                 setStatus('error');
+                setErrorMessage(data.message || 'Failed to upload document.');
             }
-        } catch (error) {
+        } catch (error: any) {
             setStatus('error');
+            setErrorMessage(error.message || 'Upload failed.');
         }
     };
 
@@ -136,14 +144,17 @@ function ApplyContent() {
                             if (verifyRes.ok) {
                                 console.log('Payment verified successfully. Moving to next step.');
                                 setStatus('');
+                                setErrorMessage('');
                                 setStep(4);
                             } else {
                                 console.error('Payment verification failed:', verifyData);
                                 setStatus('error');
+                                setErrorMessage(verifyData.message || 'Payment verification failed.');
                             }
-                        } catch (err) {
+                        } catch (err: any) {
                             console.error('Error during payment verification:', err);
                             setStatus('error');
+                            setErrorMessage(err.message || 'Error verifying payment.');
                         }
                     },
                     prefill: {
@@ -156,24 +167,27 @@ function ApplyContent() {
                     },
                 };
 
-
-
                 if (!(window as any).Razorpay) {
                     console.error('Razorpay SDK not loaded');
                     setStatus('error');
+                    setErrorMessage('Razorpay SDK failed to load. Please refresh.');
                     return;
                 }
 
                 const rzp = new (window as any).Razorpay(options);
                 rzp.open();
                 setStatus('');
+                setErrorMessage('');
             } else {
+                const data = await res.json();
                 console.error('Order creation failed:', data);
                 setStatus('error');
+                setErrorMessage(data.message || 'Failed to initialize payment.');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Payment initialization error:', error);
             setStatus('error');
+            setErrorMessage(error.message || 'Payment service unavailable.');
         }
     };
 
@@ -190,12 +204,16 @@ function ApplyContent() {
 
             if (res.ok) {
                 setStatus('success');
+                setErrorMessage('');
                 setStep(5);
             } else {
+                const data = await res.json();
                 setStatus('error');
+                setErrorMessage(data.message || 'Failed to complete signing.');
             }
-        } catch (error) {
+        } catch (error: any) {
             setStatus('error');
+            setErrorMessage(error.message || 'Signing failed.');
         }
     };
 
@@ -331,7 +349,12 @@ function ApplyContent() {
                         <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem', width: '100%' }} disabled={status === 'sending'}>
                             {status === 'sending' ? 'Processing...' : 'Next: Upload KYC'} <i className="fas fa-arrow-right"></i>
                         </button>
-                        {status === 'error' && <p style={{ color: 'var(--accent-color)', marginTop: '1rem', textAlign: 'center' }}>Something went wrong. Please try again.</p>}
+                        {status === 'error' && (
+                            <div className="error-box" style={{ color: '#ef4444', background: '#fee2e2', padding: '1rem', borderRadius: '0.75rem', marginTop: '1rem', textAlign: 'center', fontSize: '0.9rem' }}>
+                                <i className="fas fa-exclamation-circle" style={{ marginRight: '0.5rem' }}></i>
+                                {errorMessage || 'Something went wrong. Please try again.'}
+                            </div>
+                        )}
                     </form>
                 )}
 
@@ -370,7 +393,12 @@ function ApplyContent() {
                         >
                             {status === 'sending' ? 'Uploading...' : 'Next: Select Plan'} <i className="fas fa-arrow-right"></i>
                         </button>
-                        {status === 'error' && <p style={{ color: 'var(--accent-color)', marginTop: '1rem' }}>Upload failed. Please try again.</p>}
+                        {status === 'error' && (
+                            <div className="error-box" style={{ color: '#ef4444', background: '#fee2e2', padding: '1rem', borderRadius: '0.75rem', marginTop: '1rem', textAlign: 'center', fontSize: '0.9rem' }}>
+                                <i className="fas fa-exclamation-circle" style={{ marginRight: '0.5rem' }}></i>
+                                {errorMessage || 'Upload failed. Please try again.'}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -574,7 +602,12 @@ function ApplyContent() {
                         >
                             {status === 'sending' ? 'Signing...' : 'Digitally Sign & Complete'}
                         </button>
-                        {status === 'error' && <p style={{ color: 'var(--accent-color)', marginTop: '1rem', textAlign: 'center' }}>Failed to sign agreement.</p>}
+                        {status === 'error' && (
+                            <div className="error-box" style={{ color: '#ef4444', background: '#fee2e2', padding: '1rem', borderRadius: '0.75rem', marginTop: '1rem', textAlign: 'center', fontSize: '0.9rem' }}>
+                                <i className="fas fa-exclamation-circle" style={{ marginRight: '0.5rem' }}></i>
+                                {errorMessage || 'Failed to sign agreement.'}
+                            </div>
+                        )}
                     </div>
                 )}
 
