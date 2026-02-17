@@ -9,10 +9,14 @@ function initAdmin() {
     if (admin.apps.length > 0) return admin.apps[0];
 
     // Check for required environment variables
-    if (!process.env.FIREBASE_PROJECT_ID) {
-        // This is expected during Vercel's static build phase
+    const missing = [];
+    if (!process.env.FIREBASE_PROJECT_ID) missing.push('FIREBASE_PROJECT_ID');
+    if (!process.env.FIREBASE_CLIENT_EMAIL) missing.push('FIREBASE_CLIENT_EMAIL');
+    if (!process.env.FIREBASE_PRIVATE_KEY) missing.push('FIREBASE_PRIVATE_KEY');
+
+    if (missing.length > 0) {
         if (process.env.NODE_ENV === 'production') {
-            console.warn('FIREBASE_PROJECT_ID is missing in production environment');
+            console.warn(`Firebase Admin initialization skipped: Missing ${missing.join(', ')}`);
         }
         return null;
     }
