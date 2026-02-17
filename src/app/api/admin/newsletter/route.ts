@@ -1,14 +1,17 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { firestore } from '@/lib/firebase';
+
 
 export async function GET() {
     try {
-        const { data, error } = await supabase
-            .from('newsletter_subscribers')
-            .select('*')
-            .order('subscribed_at', { ascending: false });
+        const snapshot = await firestore.collection('newsletter_subscribers')
+            .orderBy('subscribed_at', 'desc')
+            .get();
 
-        if (error) throw error;
+        const data = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
 
         return NextResponse.json(data);
     } catch (error: any) {

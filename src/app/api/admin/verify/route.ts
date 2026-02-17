@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { firestore } from '@/lib/firebase';
 import { sendEmail } from '@/lib/email';
 import { applicationApprovedEmail, applicationRejectedEmail, applicationUnderReviewEmail } from '@/lib/emailTemplates';
 import { logActivity } from '@/lib/activityLogger';
@@ -8,42 +8,34 @@ export async function POST(request: Request) {
     try {
         const { id, status, rejectionReason } = await request.json();
 
-        // First, get the applicant's details
-        const applicantResult = await executeQuery({
-            query: 'SELECT name, email, phone, city FROM franchise_requests WHERE id = ?',
-            values: [id],
-        });
+        if (!id || !status) {
+            return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
+        }
 
-        if (!applicantResult || (applicantResult as any[]).length === 0) {
+        // First, get the applicant's details from Firestore
+        const docRef = firestore.collection('franchise_requests').doc(String(id));
+        const docSnap = await docRef.get();
+
+        if (!docSnap.exists) {
             return NextResponse.json({ message: 'Application not found' }, { status: 404 });
         }
 
-        const applicant = (applicantResult as any[])[0];
+        const applicant = docSnap.data();
 
         // Update the status and rejection reason if provided
-        let query = 'UPDATE franchise_requests SET status = ? WHERE id = ?';
-        let values = [status, id];
-
+        const updateData: any = { status };
         if (status === 'rejected' && rejectionReason) {
-            query = 'UPDATE franchise_requests SET status = ?, rejection_reason = ? WHERE id = ?';
-            values = [status, rejectionReason, id];
+            updateData.rejection_reason = rejectionReason;
         }
 
-        const result = await executeQuery({
-            query: query,
-            values: values,
-        });
-
-        if ((result as any).error) {
-            throw new Error((result as any).error);
-        }
+        await docRef.update(updateData);
 
         // Send appropriate email based on status
         const applicationData = {
-            name: applicant.name,
-            email: applicant.email,
-            phone: applicant.phone,
-            city: applicant.city,
+            name: applicant?.name,
+            email: applicant?.email,
+            phone: applicant?.phone,
+            city: applicant?.city,
             rejectionReason: rejectionReason,
         };
 
@@ -69,7 +61,7 @@ export async function POST(request: Request) {
         }
 
         // Send email if we have content (don't block response)
-        if (emailHtml) {
+        if (emailHtml && applicant?.email) {
             sendEmail({
                 to: applicant.email,
                 subject: emailSubject,
@@ -87,7 +79,7 @@ export async function POST(request: Request) {
             action: status === 'approved' ? 'FRANCHISE_APPROVED' : (status === 'rejected' ? 'FRANCHISE_REJECTED' : 'FRANCHISE_UPDATED'),
             entity_type: 'franchise_request',
             entity_id: id,
-            details: { name: applicant.name, status, rejectionReason }
+            details: { name: applicant?.name, status, rejectionReason }
         });
 
         return NextResponse.json({ success: true });

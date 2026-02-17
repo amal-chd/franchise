@@ -9,9 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.89.0",
     "@vercel/blob": "^2.0.0",
     "dotenv": "^17.2.3",
+    "firebase": "^12.9.0",
+    "firebase-admin": "^13.6.1",
     "mysql2": "^3.15.3",
     "next": "^16.0.10",
     "node-fetch": "^3.3.2",
@@ -20,6 +21,7 @@
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-quill-new": "^3.6.0",
+    "recharts": "^3.7.0",
     "serverless-mysql": "^2.1.0"
   },
   "devDependencies": {

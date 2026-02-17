@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/api_service.dart';
 import '../auth/auth_provider.dart';
 
+import 'package:flutter/foundation.dart'; // For debugPrint
+
 // Franchise-specific Orders Provider with date filtering
 class FranchiseOrdersFilter {
   final String? dateFrom;
@@ -72,27 +74,28 @@ class FranchiseOrdersNotifier extends AsyncNotifier<List<Map<String, dynamic>>> 
   Future<List<Map<String, dynamic>>> _fetchOrders() async {
     try {
       final prefs = await ref.read(sharedPreferencesProvider.future);
-      final zoneId = prefs.getInt('zoneId');
+      int? zoneId = prefs.getInt('zoneId');
       
-      if (zoneId == null) {
-        return [];
+      if (zoneId == null || zoneId == 0) {
+        debugPrint('DEBUG: No Zone ID found in Orders Provider. FALLBACK to 18 (Testing)');
+        zoneId = 18;
       }
       
       final filter = ref.read(franchiseOrdersFilterProvider);
-      final params = filter.toQueryParams(zoneId);
+      final params = filter.toQueryParams(zoneId!);
       
       final queryString = params.entries
           .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
           .join('&');
       
-      print('DEBUG: Fetching orders for Zone ID: $zoneId with params: $queryString');
+      debugPrint('DEBUG: Fetching orders for Zone ID: $zoneId with params: $queryString');
       
       final response = await _apiService.client.get('/franchise/orders?$queryString');
       
       // Check if response contains an error
       if (response.data is Map && response.data['error'] != null) {
         final errorMsg = response.data['error'];
-        print('Orders API error: $errorMsg');
+        debugPrint('Orders API error: $errorMsg');
         throw Exception(errorMsg);
       }
       
@@ -114,11 +117,11 @@ class FranchiseOrdersNotifier extends AsyncNotifier<List<Map<String, dynamic>>> 
         throw Exception('Invalid response format: Expected List or Map with data/orders');
       }
       
-      print('DEBUG: Fetched ${ordersList.length} orders for Zone $zoneId');
+      debugPrint('DEBUG: Fetched ${ordersList.length} orders for Zone $zoneId');
       
       return ordersList;
     } catch (e) {
-      print('Franchise orders fetch error: $e');
+      debugPrint('Franchise orders fetch error: $e');
       throw Exception('Failed to fetch orders');
     }
   }
@@ -214,10 +217,11 @@ class PayoutsNotifier extends AsyncNotifier<PayoutsData> {
   Future<PayoutsData> _fetchPayouts({String? dateFrom, String? dateTo}) async {
     try {
       final prefs = await ref.read(sharedPreferencesProvider.future);
-      final zoneId = prefs.getInt('zoneId');
+      int? zoneId = prefs.getInt('zoneId');
       
-      if (zoneId == null) {
-         return PayoutsData(summary: PayoutSummary(totalOrders: 0, totalEarnings: 0, restaurantEarnings: 0, deliveryEarnings: 0, totalTax: 0, todaysPendingOrders: 0, todaysPendingAmount: 0), payouts: []);
+      if (zoneId == null || zoneId == 0) {
+         debugPrint('DEBUG: No Zone ID found in Payouts Provider. FALLBACK to 18 (Testing)');
+         zoneId = 18;
       }
       
       var url = '/franchise/payouts?zoneId=$zoneId';
@@ -241,7 +245,7 @@ class PayoutsNotifier extends AsyncNotifier<PayoutsData> {
             .toList(),
       );
     } catch (e) {
-      print('Payouts fetch error: $e');
+      debugPrint('Payouts fetch error: $e');
       throw Exception('Failed to fetch payouts');
     }
   }

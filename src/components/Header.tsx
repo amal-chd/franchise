@@ -1,30 +1,32 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
 export default function Header() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const pathname = usePathname();
 
-    // Close menu when route changes
+    // Close mobile menu on route change
     useEffect(() => {
-        // eslint-disable-next-line
         setMobileMenuOpen(false);
     }, [pathname]);
 
-    // Prevent body scroll when menu is open
+    // Prevent body scroll when mobile menu is open
     useEffect(() => {
-        if (mobileMenuOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
+        document.body.style.overflow = mobileMenuOpen ? 'hidden' : '';
+        return () => { document.body.style.overflow = ''; };
     }, [mobileMenuOpen]);
+
+    const navLinks = [
+        { href: '/#home', label: 'Overview' },
+        { href: '/about', label: 'About' },
+        { href: '/benefits', label: 'Benefits' },
+        { href: '/support', label: 'Support' },
+        { href: '/careers', label: 'Careers' },
+        { href: '/training', label: 'Training' },
+    ];
 
     return (
         <header className="site-header">
@@ -36,13 +38,12 @@ export default function Header() {
 
                 {/* Desktop Navigation */}
                 <nav className="desktop-nav">
-                    <Link href="/#home" className="nav-link">Overview</Link>
-                    <Link href="/about" className="nav-link">About</Link>
-                    <Link href="/benefits" className="nav-link">Benefits</Link>
-                    <Link href="/support" className="nav-link">Support</Link>
-                    <Link href="/careers" className="nav-link">Careers</Link>
-                    <Link href="/training" className="nav-link">Training</Link>
-                    {/*<Link href="/admin" className="nav-link text-primary">Admin</Link> */}
+                    {navLinks.map((link) => (
+                        <Link key={link.href} href={link.href} className="nav-link">{link.label}</Link>
+                    ))}
+                    <Link href="/apply" className="nav-cta">
+                        Apply Now
+                    </Link>
                 </nav>
 
                 {/* Mobile Menu Toggle */}
@@ -58,12 +59,12 @@ export default function Header() {
             {/* Mobile Menu Overlay */}
             <div className={`mobile-menu-overlay ${mobileMenuOpen ? 'open' : ''}`}>
                 <div className="mobile-menu-content">
-                    <Link href="/#home" className="mobile-nav-link">Overview</Link>
-                    <Link href="/about" className="mobile-nav-link">About</Link>
-                    <Link href="/benefits" className="mobile-nav-link">Benefits</Link>
-                    <Link href="/support" className="mobile-nav-link">Support</Link>
-                    <Link href="/careers" className="mobile-nav-link">Careers</Link>
-                    <Link href="/training" className="mobile-nav-link">Training</Link>
+                    {navLinks.map((link) => (
+                        <Link key={link.href} href={link.href} className="mobile-nav-link">{link.label}</Link>
+                    ))}
+                    <Link href="/apply" className="btn btn-primary" style={{ marginTop: '16px', maxWidth: '280px', width: '100%' }}>
+                        Apply Now
+                    </Link>
                 </div>
             </div>
         </header>

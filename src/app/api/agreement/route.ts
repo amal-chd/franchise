@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { firestore } from '@/lib/firebase';
+// import executeQuery from '@/lib/db';
+import { sendEmail } from '@/lib/email';
+import { newApplicationEmail, applicationSubmittedEmail } from '@/lib/emailTemplates';
 
 export async function POST(request: Request) {
     try {
@@ -10,26 +13,24 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Request ID is required' }, { status: 400 });
         }
 
-        await executeQuery({
-            query: 'UPDATE franchise_requests SET agreement_accepted = TRUE, status = ? WHERE id = ?',
-            values: ['pending_verification', requestId],
+        const docRef = firestore.collection('franchise_requests').doc(String(requestId));
+        const docSnap = await docRef.get();
+
+        if (!docSnap.exists) {
+            return NextResponse.json({ message: 'Application not found' }, { status: 404 });
+        }
+
+        // Update agreement and status
+        await docRef.update({
+            agreement_accepted: true,
+            status: 'pending_verification'
         });
 
-        // Fetch user details for email
-        const userResult = await executeQuery({
-            query: 'SELECT * FROM franchise_requests WHERE id = ?',
-            values: [requestId],
-        });
-
-        const user = (userResult as any)[0];
+        const user = docSnap.data();
 
         if (user) {
             const { name, email, phone, city } = user;
             const applicationData = { name, email, phone, city, requestId };
-
-            // Send email notifications
-            const { sendEmail } = await import('@/lib/email');
-            const { newApplicationEmail, applicationSubmittedEmail } = await import('@/lib/emailTemplates');
 
             Promise.all([
                 // Send confirmation email to applicant

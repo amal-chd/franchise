@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { firestore } from '@/lib/firebase';
+// import executeQuery from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 import { logActivity } from '@/lib/activityLogger';
 
@@ -17,32 +18,26 @@ export async function POST(request: Request) {
             invoice_base64
         } = body;
 
-        await executeQuery({
-            query: `
-                INSERT INTO payout_logs 
-                (franchise_id, amount, revenue_reported, orders_count, share_percentage, platform_fee_per_order, total_fee_deducted, payout_date, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 'processed')
-            `,
-            values: [
-                franchise_id,
-                amount,
-                revenue_reported,
-                orders_count,
-                share_percentage,
-                platform_fee_per_order,
-                total_fee_deducted
-            ]
+        // Log payout to Firestore
+        await firestore.collection('payout_logs').add({
+            franchise_id,
+            amount,
+            revenue_reported,
+            orders_count,
+            share_percentage,
+            platform_fee_per_order,
+            total_fee_deducted,
+            payout_date: new Date(),
+            status: 'processed'
         });
 
-        // Fetch Franchise Email
-        const franchiseData: any = await executeQuery({
-            query: 'SELECT email, name, city FROM franchise_requests WHERE id = ?',
-            values: [franchise_id]
-        });
+        // Fetch Franchise Email from Firestore
+        const franchiseDoc = await firestore.collection('franchise_requests').doc(String(franchise_id)).get();
 
-        if (franchiseData && franchiseData.length > 0) {
-            const franchise = franchiseData[0];
-            const email = franchise.email;
+        if (franchiseDoc.exists) {
+            const franchise = franchiseDoc.data();
+            const email = franchise?.email;
+            const name = franchise?.name;
 
             if (email && invoice_base64) {
                 console.log('Sending Payout Invoice to:', email);
@@ -52,7 +47,7 @@ export async function POST(request: Request) {
                     html: `
                         <div style="font-family: Arial, sans-serif; color: #333;">
                             <h2>Payout Processed! 💰</h2>
-                            <p>Dear ${franchise.name},</p>
+                            <p>Dear ${name},</p>
                             <p>Your payout of <strong>₹${amount}</strong> for the recent period has been successfully processed.</p>
                             <p>Please find the detailed invoice attached to this email.</p>
                             <br>
@@ -79,6 +74,9 @@ export async function POST(request: Request) {
         }
 
         // Log Activity
+        // Note: logActivity might still use SQL if not refactored. 
+        // We will assume logActivity handles its own persistence or needs refactoring separately.
+        // Actually, I should check logActivity next.
         await logActivity({
             actor_id: 1, // Assuming Admin ID is 1 for now, or fetch from auth
             actor_type: 'admin',

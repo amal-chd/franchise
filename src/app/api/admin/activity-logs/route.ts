@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { firestore } from '@/lib/firebase';
+// import executeQuery from '@/lib/db';
 
 // GET: Fetch activity logs with pagination and filters
 export async function GET(request: NextRequest) {
@@ -13,68 +14,43 @@ export async function GET(request: NextRequest) {
         const endDate = searchParams.get('end_date');
         const actorId = searchParams.get('actor_id');
 
-        const offset = (page - 1) * limit;
-
-        let whereConditions: string[] = [];
-        let params: any[] = [];
+        let query: any = firestore.collection('activity_logs');
 
         if (actorType) {
-            whereConditions.push('actor_type = ?');
-            params.push(actorType);
+            query = query.where('actor_type', '==', actorType);
         }
 
         if (actorId) {
-            whereConditions.push('actor_id = ?');
-            params.push(parseInt(actorId));
+            query = query.where('actor_id', '==', parseInt(actorId)); // specific actor
         }
 
         if (action) {
-            whereConditions.push('action = ?');
-            params.push(action);
+            query = query.where('action', '==', action);
         }
 
         if (startDate) {
-            whereConditions.push('created_at >= ?');
-            params.push(startDate);
+            query = query.where('created_at', '>=', new Date(startDate));
         }
 
         if (endDate) {
-            whereConditions.push('created_at <= ?');
-            params.push(endDate + ' 23:59:59');
+            query = query.where('created_at', '<=', new Date(endDate + ' 23:59:59'));
         }
 
-        const whereClause = whereConditions.length > 0
-            ? 'WHERE ' + whereConditions.join(' AND ')
-            : '';
+        // Apply ordering (requires index)
+        try {
+            query = query.orderBy('created_at', 'desc');
+        } catch (e) {
+            console.warn('Firestore ordering requires index, fallback to default order or fetch all');
+        }
 
-        // Get total count
-        const countResult = await executeQuery({
-            query: `SELECT COUNT(*) as total FROM activity_logs ${whereClause}`,
-            values: params
-        }) as any[];
+        const snapshot = await query.get();
+        const allLogs = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
-        const total = countResult[0]?.total || 0;
+        const total = allLogs.length;
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const logs = allLogs.slice(startIndex, endIndex);
 
-        // Get paginated logs
-        const logs = await executeQuery({
-            query: `
-        SELECT 
-          id,
-          actor_id,
-          actor_type,
-          action,
-          entity_type,
-          entity_id,
-          details,
-          ip_address,
-          created_at
-        FROM activity_logs 
-        ${whereClause}
-        ORDER BY created_at DESC
-        LIMIT ? OFFSET ?
-      `,
-            values: [...params, limit, offset]
-        });
 
         return NextResponse.json({
             logs,
@@ -106,25 +82,20 @@ export async function POST(request: NextRequest) {
             request.headers.get('x-real-ip') ||
             'unknown';
 
-        const result = await executeQuery({
-            query: `
-        INSERT INTO activity_logs (actor_id, actor_type, action, entity_type, entity_id, details, ip_address)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `,
-            values: [
-                actor_id,
-                actor_type,
-                action,
-                entity_type || null,
-                entity_id || null,
-                details ? JSON.stringify(details) : null,
-                ip_address
-            ]
-        }) as any;
+        const docRef = await firestore.collection('activity_logs').add({
+            actor_id,
+            actor_type,
+            action,
+            entity_type: entity_type || null,
+            entity_id: entity_id || null,
+            details: details || null,
+            ip_address,
+            created_at: new Date()
+        });
 
         return NextResponse.json({
             success: true,
-            id: result.insertId,
+            id: docRef.id,
             message: 'Activity logged successfully'
         });
     } catch (error: any) {

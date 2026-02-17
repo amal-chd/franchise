@@ -5,6 +5,7 @@ import '../dashboard/franchise_provider.dart';
 import '../../widgets/premium_widgets.dart';
 
 import '../../widgets/modern_header.dart'; // Add import
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FranchiseVendorsScreen extends ConsumerWidget {
   const FranchiseVendorsScreen({super.key});
@@ -16,6 +17,16 @@ class FranchiseVendorsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: ModernDashboardHeader(
         title: '',
+        titleWidget: FutureBuilder<SharedPreferences>(
+          future: SharedPreferences.getInstance(),
+          builder: (context, snapshot) {
+             final zoneId = snapshot.data?.getInt('zoneId');
+             if (zoneId != null) {
+               return Text('Vendors (Zone: $zoneId)', style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold));
+             }
+             return const Text('Vendors (No Zone)', style: TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold));
+          }
+        ),
         leadingWidget: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -34,7 +45,7 @@ class FranchiseVendorsScreen extends ConsumerWidget {
                 child: Image.asset(
                   'assets/images/header_logo_new.png', 
                   height: 24,
-                  color: Colors.white,
+                  color: const Color(0xFF7C3AED), // Zomo Purple
                   errorBuilder: (context, error, stackTrace) => const SizedBox(),
                 ),
               ),
@@ -47,7 +58,10 @@ class FranchiseVendorsScreen extends ConsumerWidget {
       body: franchiseState.when(
         data: (state) {
           final total = state.vendors.length;
-          final active = state.vendors.where((v) => (v['status'] == 1 || v['active'] == 1)).length;
+          final active = state.vendors.where((v) => (
+            v['status'] == 1 || v['status'] == true || v['status'] == '1' ||
+            v['active'] == 1 || v['active'] == true || v['active'] == '1'
+          )).length;
 
           if (state.vendors.isEmpty) {
             return const IllustrativeState(
@@ -83,7 +97,7 @@ class FranchiseVendorsScreen extends ConsumerWidget {
               }
 
               final vendor = state.vendors[index - 1];
-              final isActive = (vendor['status'] == 1 || vendor['active'] == 1);
+              final isActive = (vendor['status'] == 1 || vendor['status'] == true || vendor['status'] == '1' || vendor['active'] == 1 || vendor['active'] == true || vendor['active'] == '1');
               
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16),
@@ -138,7 +152,7 @@ class FranchiseVendorsScreen extends ConsumerWidget {
   }
 
   void _showVendorDetails(BuildContext context, Map<String, dynamic> vendor) {
-    final isActive = (vendor['status'] == 1 || vendor['active'] == 1);
+    final isActive = (vendor['status'] == 1 || vendor['status'] == true || vendor['status'] == '1' || vendor['active'] == 1 || vendor['active'] == true || vendor['active'] == '1');
     
     showModalBottomSheet(
       context: context,

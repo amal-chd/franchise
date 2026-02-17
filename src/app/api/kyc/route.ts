@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { firestore } from '@/lib/firebase';
+// import executeQuery from '@/lib/db';
 import { put } from '@vercel/blob';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
@@ -63,23 +64,11 @@ export async function POST(request: Request) {
             }
         }
 
-        const result = (await executeQuery({
-            query: 'UPDATE franchise_requests SET aadhar_url = ? WHERE id = ?',
-            values: [fileUrl, requestId],
-        })) as any;
-
-        if (result.error) {
-            console.error('KYC Upload: Database update failed:', result.error);
-            return NextResponse.json({ message: 'Database update failed', error: result.error.message }, { status: 500 });
-        }
-
-        if (result.affectedRows === 0) {
-            console.warn('KYC Upload: No rows updated for requestId:', requestId);
-            return NextResponse.json({
-                message: 'KYC uploaded but no request found with this ID',
-                fileUrl: fileUrl
-            }, { status: 404 });
-        }
+        // Update Firestore
+        const docRef = firestore.collection('franchise_requests').doc(String(requestId));
+        await docRef.update({
+            aadhar_url: fileUrl
+        });
 
         console.log('KYC Upload: Success');
         return NextResponse.json({

@@ -1,13 +1,12 @@
-
-import executeQuery from './db';
+import { firestore } from './firebase';
 import { NextRequest } from 'next/server';
 
 interface LogActivityParams {
-    actor_id: number;
+    actor_id: number | string;
     actor_type: 'admin' | 'franchise';
     action: string;
     entity_type?: string;
-    entity_id?: number;
+    entity_id?: number | string;
     details?: any;
     req?: NextRequest;
 }
@@ -30,20 +29,15 @@ export async function logActivity({
                 'unknown';
         }
 
-        await executeQuery({
-            query: `
-        INSERT INTO activity_logs (actor_id, actor_type, action, entity_type, entity_id, details, ip_address)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `,
-            values: [
-                actor_id,
-                actor_type,
-                action,
-                entity_type || null,
-                entity_id || null,
-                details ? JSON.stringify(details) : null,
-                ip_address
-            ]
+        await firestore.collection('activity_logs').add({
+            actor_id: String(actor_id),
+            actor_type,
+            action,
+            entity_type: entity_type || null,
+            entity_id: entity_id ? String(entity_id) : null,
+            details: details ? JSON.stringify(details) : null,
+            ip_address,
+            created_at: new Date()
         });
     } catch (error) {
         console.error('Failed to log activity:', error);

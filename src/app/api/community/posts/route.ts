@@ -1,42 +1,32 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { firestore } from '@/lib/firebase';
 
 // GET: Fetch community feed
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId'); // Legacy INT
-    const authorId = searchParams.get('authorId'); // Legacy INT
+    const userId = searchParams.get('userId');
+    const authorId = searchParams.get('authorId');
 
     try {
-        // Resolve UUIDs from Legacy IDs
-        let userUuid = null;
-        let authorUuid = null;
-
-        if (userId) {
-            const { data } = await supabase.from('profiles').select('id').eq('franchise_id', userId).single();
-            if (data) userUuid = data.id;
-        }
+        let query: any = firestore.collection('community_posts')
+            .orderBy('created_at', 'desc');
 
         if (authorId) {
-            const { data } = await supabase.from('profiles').select('id').eq('franchise_id', authorId).single();
-            if (data) authorUuid = data.id;
+            query = query.where('user_id', '==', authorId);
         }
 
-        if (!userUuid) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
-        }
-
-        const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '10');
+        // Pagination in Firestore typically uses 'startAfter', but here we'll effectively list recent posts.
+        // Implementing full pagination requires client to send last doc snapshot or using offset (update V9 SDK).
+        // For simplicity in migration, just limit:
+        query = query.limit(limit);
 
-        const { data, error } = await supabase.rpc('get_community_feed', {
-            current_user_id: userUuid,
-            filter_author_id: authorUuid,
-            page_number: page,
-            page_size: limit
-        });
-
-        if (error) throw error;
+        const snapshot = await query.get();
+        const data = snapshot.docs.map((doc: any) => ({
+            id: doc.id,
+            ...doc.data(),
+            created_at: doc.data().created_at?.toDate ? doc.data().created_at.toDate() : doc.data().created_at
+        }));
 
         return NextResponse.json(data);
     } catch (error: any) {
@@ -49,22 +39,34 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { userId, contentText, imageUrl } = body; // userId is legacy INT
+        const { userId, contentText, imageUrl } = body;
 
-        // Resolve UUID
-        const { data: profile } = await supabase.from('profiles').select('id').eq('franchise_id', userId).single();
-        if (!profile) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        if (!userId) {
+            return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+        }
 
-        const { data, error } = await supabase.from('community_posts').insert({
-            user_id: profile.id,
+        // Ensure user exists (in franchise_requests)
+        const userDoc = await firestore.collection('franchise_requests').doc(String(userId)).get();
+        if (!userDoc.exists) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+        const userData = userDoc.data();
+
+        const postData = {
+            user_id: String(userId),
+            // Embed minimal user info to avoid joins if needed, or rely on client fetching user details
+            user_name: userData?.name || 'Unknown',
+            user_image: userData?.image || null, // Assuming image field exists
             content_text: contentText,
-            image_url: imageUrl
-        }).select().single();
+            image_url: imageUrl,
+            likes_count: 0,
+            comments_count: 0,
+            created_at: new Date()
+        };
 
-        if (error) throw error;
+        const docRef = await firestore.collection('community_posts').add(postData);
 
-        // Return simpler format or full object
-        return NextResponse.json({ success: true, result: { insertId: data.id, ...data } });
+        return NextResponse.json({ success: true, result: { insertId: docRef.id, ...postData } });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

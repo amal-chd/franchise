@@ -1,51 +1,50 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { firestore } from '@/lib/firebase';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
-    const userId = searchParams.get('userId'); // Legacy ID
+    const userId = searchParams.get('userId'); // Requester ID (Legacy INT or Firestore ID)
 
     if (!query) {
         return NextResponse.json([]);
     }
 
     try {
-        let currentUserId = null;
-        if (userId) {
-            const { data } = await supabase.from('profiles').select('id').eq('franchise_id', userId).single();
-            if (data) currentUserId = data.id;
-        }
+        // Basic search implementation for Firestore (prefix search)
+        // Note: Firestore doesn't support full-text search natively without third-party like Algolia.
+        // using >= and <= for prefix match on 'name'.
 
-        if (!currentUserId) {
-            // If user not found, maybe return simple search without status?
-            // Or just fail. Let's return error or empty.
-            // For guests, we can pass a dummy UUID? Or handle null in RPC?
-            // RPC expects uuid.
-            return NextResponse.json([], { status: 200 });
-        }
+        const snapshot = await firestore.collection('franchise_requests')
+            .where('name', '>=', query)
+            .where('name', '<=', query + '\uf8ff')
+            .limit(20)
+            .get();
 
-        const { data, error } = await supabase.rpc('search_users', {
-            search_query: query,
-            current_user_id: currentUserId
+        const users: any[] = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            // Filter out the requester themselves if needed
+            if (doc.id !== userId) {
+                users.push({
+                    id: doc.id, // Use Firestore ID
+                    f_name: data.name,
+                    l_name: '', // legacy field
+                    location: data.city,
+                    image: data.profile_image || null,
+                    role: 'franchise',
+                    friendship_status: null // TODO: Determine friendship status if possible, or handle on frontend
+                });
+            }
         });
 
-        if (error) throw error;
+        // Optionally fetch friendship status if userId is provided
+        // This is expensive in NoSQL without a dedicated graph or denormalization.
+        // For now returning null status, frontend might need to fetch separately or we assume 'none'.
 
-        // Transform to match frontend expectations
-        // Frontend expects: f_name, l_name, location, image, role, friendship_status
-        const result = data.map((u: any) => ({
-            id: u.legacy_id, // Frontend uses INT ID
-            f_name: u.user_name,
-            l_name: '',
-            location: u.location,
-            image: u.user_image,
-            role: 'franchise',
-            friendship_status: u.friendship_status
-        }));
-
-        return NextResponse.json(result);
+        return NextResponse.json(users);
     } catch (error: any) {
+        console.error('Search users error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

@@ -1,5 +1,6 @@
+
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { firestore } from '@/lib/firebase';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,46 +10,48 @@ export async function GET(request: Request) {
         const month = searchParams.get('month');
         const year = searchParams.get('year');
 
-        let query = supabase
-            .from('payout_logs')
-            .select(`
-                *,
-                franchise_requests (
-                    name,
-                    city
-                )
-            `)
-            .order('payout_date', { ascending: false });
+        let query: any = firestore.collection('payout_logs').orderBy('payout_date', 'desc');
 
-        // Filter by month/year if provided
-        // Note: Supabase doesn't have direct MONTH() function in builder, so we might filter by range or assume clients send date range.
-        // For simplicity, if month/year are passed, we construct a range.
         if (month && year) {
-            const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+            const startDate = new Date(`${year}-${month.toString().padStart(2, '0')}-01`);
             // Calculate end date (start of next month)
             const nextMonth = parseInt(month) === 12 ? 1 : parseInt(month) + 1;
             const nextYear = parseInt(month) === 12 ? parseInt(year) + 1 : parseInt(year);
-            const endDate = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`;
+            const endDate = new Date(`${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`);
 
-            query = query.gte('payout_date', startDate).lt('payout_date', endDate);
+            query = query.where('payout_date', '>=', startDate).where('payout_date', '<', endDate);
         }
 
-        const { data: history, error } = await query;
+        const snapshot = await query.get();
+        const logs = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
-        if (error) {
-            // If table doesn't exist, return empty array instead of crashing
-            if (error.code === '42P01') return NextResponse.json([]);
-            throw error;
-        }
+        // Manual Join to get Franchise details
+        // Collect unique franchise IDs
+        const franchiseIds = [...new Set(logs.map((log: any) => log.franchise_id))];
 
-        // Flatten structure
-        const flattened = history.map((h: any) => ({
-            ...h,
-            franchise_name: h.franchise_requests?.name,
-            city: h.franchise_requests?.city
-        }));
+        // Fetch franchises in bulk (if feasible, otherwise fetch all active or one by one)
+        // Firestore 'in' query supports up to 10 items. If we have more, we might need a different strategy.
+        // For admin dashboard logs, simplistic approach: Fetch ALL approved franchises and map, OR fetch specific if list is small.
+        // Let's assume fetching all approved franchises is efficient enough for now (likely < 1000).
 
-        return NextResponse.json(flattened);
+        const franchisesSnapshot = await firestore.collection('franchise_requests').get();
+        const franchisesMap = new Map();
+        franchisesSnapshot.forEach((doc: any) => {
+            franchisesMap.set(doc.id, doc.data());
+        });
+
+        const results = logs.map((log: any) => {
+            const franchise = franchisesMap.get(log.franchise_id);
+            return {
+                ...log,
+                franchise_name: franchise?.name || 'Unknown',
+                city: franchise?.city || 'Unknown',
+                // convert firestore timestamp to date string for frontend if needed, keeping simple for now
+                payout_date: log.payout_date?.toDate ? log.payout_date.toDate().toISOString() : log.payout_date
+            };
+        });
+
+        return NextResponse.json(results);
     } catch (error: any) {
         console.error('Error fetching payout history:', error);
         return NextResponse.json({ error: 'Failed to fetch history' }, { status: 500 });

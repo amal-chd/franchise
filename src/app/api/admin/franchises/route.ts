@@ -1,120 +1,77 @@
 import { NextResponse } from 'next/server';
-import executeFranchiseQuery from '@/lib/franchise_db';
+import { firestore } from '@/lib/firebase';
 import { logActivity } from '@/lib/activityLogger';
 
-// POST: Create a new franchise (admin with role_id=8)
+// POST: Create a new franchise request
 export async function POST(request: Request) {
     try {
         const body = await request.json();
         const {
             name, email, phone, city,
             plan_selected, status,
-            zone_id, password
+            upi_id, bank_account_number, ifsc_code, bank_name
         } = body;
 
-        // Note: Name comes as "Firstname Lastname", need to split
-        const nameParts = (name || '').trim().split(' ');
-        const f_name = nameParts[0] || '';
-        const l_name = nameParts.slice(1).join(' ') || '';
+        const newFranchise = {
+            name,
+            email,
+            phone,
+            city,
+            source: 'admin_manual',
+            plan_selected: plan_selected || 'standard',
+            status: status || 'pending_verification',
+            upi_id: upi_id || '',
+            bank_account_number: bank_account_number || '',
+            ifsc_code: ifsc_code || '',
+            bank_name: bank_name || '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
 
-        // Default password hash (placeholder as we lack bcrypt, and login uses Supabase currently)
-        // This allows the row to be created if password is NOT NULL.
-        // If real auth is needed against this DB, bcrypt is required.
-        const passwordHash = '$2y$10$PlaceholderHashForCompability......................';
-
-        const query = `
-            INSERT INTO admins (
-                f_name, l_name, email, phone, 
-                role_id, zone_id, status, 
-                password, is_logged_in,
-                created_at, updated_at
-            ) VALUES (
-                ?, ?, ?, ?, 
-                8, ?, ?, 
-                ?, 0,
-                NOW(), NOW()
-            )
-        `;
-
-        // status: 'approved' -> 1, 'pending' -> 0? 
-        // Admin table status is tinyint. Assuming 1=Active
-        const dbStatus = status === 'approved' ? 1 : 0;
-
-        const results: any = await executeFranchiseQuery({
-            query,
-            values: [
-                f_name, l_name, email, phone,
-                zone_id || null, dbStatus,
-                passwordHash
-            ]
-        });
-
-        if (results.error) {
-            throw new Error(results.error.message);
-        }
+        const docRef = await firestore.collection('franchise_requests').add(newFranchise);
 
         // Log Activity
         await logActivity({
-            actor_id: 1,
+            actor_id: 'admin', // standardizing actor_id
             actor_type: 'admin',
             action: 'FRANCHISE_CREATED',
-            entity_type: 'franchise',
-            entity_id: results.insertId,
-            details: { name: `${f_name} ${l_name}`, email, zone_id }
+            entity_type: 'franchise_request',
+            entity_id: docRef.id,
+            details: { name, email, city }
         });
 
-        return NextResponse.json({ success: true, id: results.insertId });
+        return NextResponse.json({ success: true, id: docRef.id });
     } catch (error: any) {
         console.error('Create Franchise Error:', error);
         return NextResponse.json({ message: 'Internal Server Error', error: error.message }, { status: 500 });
     }
 }
 
-// PUT: Update franchise details
+// PUT: Update franchise request details
 export async function PUT(request: Request) {
     try {
         const body = await request.json();
-        const {
-            id, name, email, phone,
-            zone_id, status
-        } = body;
+        const { id, ...updateData } = body;
 
-        const nameParts = (name || '').trim().split(' ');
-        const f_name = nameParts[0] || '';
-        const l_name = nameParts.slice(1).join(' ') || '';
-
-        const dbStatus = status === 'approved' ? 1 : 0;
-
-        const query = `
-            UPDATE admins 
-            SET 
-                f_name = ?, 
-                l_name = ?, 
-                email = ?, 
-                phone = ?, 
-                zone_id = ?,
-                status = ?,
-                updated_at = NOW()
-            WHERE id = ? AND role_id = 8
-        `;
-
-        const results: any = await executeFranchiseQuery({
-            query,
-            values: [f_name, l_name, email, phone, zone_id || null, dbStatus, id]
-        });
-
-        if (results.error) {
-            throw new Error(results.error.message);
+        if (!id) {
+            return NextResponse.json({ message: 'ID required' }, { status: 400 });
         }
+
+        const updatedFranchise = {
+            ...updateData,
+            updated_at: new Date().toISOString()
+        };
+
+        await firestore.collection('franchise_requests').doc(id).update(updatedFranchise);
 
         // Log Activity
         await logActivity({
-            actor_id: 1,
+            actor_id: 'admin',
             actor_type: 'admin',
             action: 'FRANCHISE_UPDATED',
-            entity_type: 'franchise',
+            entity_type: 'franchise_request',
             entity_id: id,
-            details: { name: `${f_name} ${l_name}`, status: status }
+            details: { ...updateData }
         });
 
         return NextResponse.json({ success: true });
@@ -124,7 +81,7 @@ export async function PUT(request: Request) {
     }
 }
 
-// DELETE: Delete a franchise
+// DELETE: Delete a franchise request
 export async function DELETE(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
@@ -134,20 +91,15 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ message: 'ID required' }, { status: 400 });
         }
 
-        const query = `DELETE FROM admins WHERE id = ? AND role_id = 8`;
-        const results: any = await executeFranchiseQuery({ query, values: [id] });
-
-        if (results.error) {
-            throw new Error(results.error.message);
-        }
+        await firestore.collection('franchise_requests').doc(id).delete();
 
         // Log Activity
         await logActivity({
-            actor_id: 1,
+            actor_id: 'admin',
             actor_type: 'admin',
             action: 'FRANCHISE_DELETED',
-            entity_type: 'franchise',
-            entity_id: parseInt(id),
+            entity_type: 'franchise_request',
+            entity_id: id,
         });
 
         return NextResponse.json({ success: true });

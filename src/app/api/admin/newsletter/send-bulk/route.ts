@@ -1,6 +1,7 @@
 
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { firestore } from '@/lib/firebase';
+
 import { sendEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
@@ -17,23 +18,20 @@ export async function POST(request: Request) {
         if (recipientType === 'custom' && Array.isArray(customRecipients)) {
             recipients = customRecipients;
         } else if (recipientType === 'subscribers') {
-            const { data, error } = await supabase
-                .from('newsletter_subscribers')
-                .select('email')
-                .eq('status', 'active');
+            const snapshot = await firestore.collection('newsletter_subscribers')
+                .where('status', '==', 'active')
+                .get();
 
-            if (error) throw error;
-            recipients = data.map((r: any) => r.email);
+            recipients = snapshot.docs.map(doc => doc.data().email);
 
         } else if (recipientType === 'all_franchises') {
-            // Fetch from profiles to ensure we get valid emails
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('email')
-                .neq('email', null);
+            // Fetch from franchise_requests where status is approved (assuming active franchises)
+            // or check 'profiles' if implemented
+            const snapshot = await firestore.collection('franchise_requests')
+                .where('status', '==', 'approved')
+                .get();
 
-            if (error) throw error;
-            recipients = data.map((r: any) => r.email).filter(e => e);
+            recipients = snapshot.docs.map(doc => doc.data().email).filter((e: any) => e);
         }
 
         if (recipients.length === 0) {

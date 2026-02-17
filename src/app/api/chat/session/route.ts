@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { firestore } from '@/lib/firebase';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,57 +12,44 @@ export async function GET(request: Request) {
     }
 
     try {
-        // Check for active session using Supabase Admin
-        const { data: sessions, error } = await supabaseAdmin
-            .from('admin_chat_sessions')
-            .select(`
-                *,
-                admin_chats (
-                    id,
-                    message,
-                    sender_type,
-                    created_at
-                )
-            `)
-            .eq('franchise_id', parseInt(franchiseId)) // Ensure numeric type match
-            .eq('status', 'open')
-            .limit(1);
+        // Check for active session in Firestore
+        // Using `chat_sessions` collection
+        const sessionsSnapshot = await firestore.collection('chat_sessions')
+            .where('franchise_id', '==', franchiseId)
+            .where('status', '==', 'open')
+            .limit(1)
+            .get();
 
-        if (error) {
-            console.error('Supabase Session Fetch Error:', error);
-            throw error;
-        }
+        if (!sessionsSnapshot.empty) {
+            const sessionDoc = sessionsSnapshot.docs[0];
+            const sessionData = sessionDoc.data();
 
-        if (sessions && sessions.length > 0) {
-            const session = sessions[0];
-            // Sort messages to get the last one if returned
-            const messages = session.admin_chats || [];
-            // Sort descending by created_at
-            messages.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-            const lastMsg = messages.length > 0 ? messages[0] : null;
+            // Get last message from 'chat_messages' collection
+            // Optimally, we store last_message in session doc itself as shown in POST refactor of messages
 
             return NextResponse.json({
-                ...session,
-                last_message_preview: lastMsg?.message || null,
-                last_sender_type: lastMsg?.sender_type || null,
-                last_message_id: lastMsg?.id || null
+                id: sessionDoc.id,
+                ...sessionData,
+                last_message_preview: sessionData.last_message || null,
+                last_sender_type: sessionData.last_sender_type || null,
+                last_message_id: sessionData.last_message_id || null
             });
         }
 
-        // Create new session if none exists using Admin client
-        const { data: newSession, error: createError } = await supabaseAdmin
-            .from('admin_chat_sessions')
-            .insert({ franchise_id: parseInt(franchiseId), status: 'open' })
-            .select()
-            .single();
+        // Create new session if none exists
+        const newSession = {
+            franchise_id: franchiseId,
+            status: 'open',
+            created_at: new Date(),
+            updated_at: new Date()
+        };
 
-        if (createError) {
-            console.error('Supabase Session Create Error:', createError);
-            throw createError;
-        }
+        const docRef = await firestore.collection('chat_sessions').add(newSession);
 
-        return NextResponse.json(newSession);
+        return NextResponse.json({
+            id: docRef.id,
+            ...newSession
+        });
     } catch (error: any) {
         console.error('Chat Session API Error:', error);
         return NextResponse.json({ error: 'Failed to get session' }, { status: 500 });

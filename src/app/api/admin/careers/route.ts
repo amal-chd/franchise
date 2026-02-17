@@ -1,14 +1,19 @@
+
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { firestore } from '@/lib/firebase';
 
 export async function GET() {
     try {
-        const { data, error } = await supabase
-            .from('careers')
-            .select('*')
-            .order('created_at', { ascending: false });
+        const snapshot = await firestore.collection('careers')
+            .orderBy('created_at', 'desc')
+            .get();
 
-        if (error) throw error;
+        const data = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            // Ensure dates are converted if needed for frontend
+            created_at: doc.data().created_at?.toDate ? doc.data().created_at.toDate() : doc.data().created_at
+        }));
 
         return NextResponse.json(data);
     } catch (error: any) {
@@ -21,19 +26,16 @@ export async function POST(request: Request) {
         const body = await request.json();
         const { title, department, location, type, description, requirements } = body;
 
-        const { error } = await supabase
-            .from('careers')
-            .insert([{
-                title,
-                department,
-                location,
-                type,
-                description,
-                requirements: requirements || '',
-                is_active: true
-            }]);
-
-        if (error) throw error;
+        await firestore.collection('careers').add({
+            title,
+            department,
+            location,
+            type,
+            description,
+            requirements: requirements || '',
+            is_active: true,
+            created_at: new Date()
+        });
 
         return NextResponse.json({ message: 'Job posted successfully' });
     } catch (error: any) {
@@ -50,12 +52,7 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ message: 'ID is required' }, { status: 400 });
         }
 
-        const { error } = await supabase
-            .from('careers')
-            .delete()
-            .eq('id', id);
-
-        if (error) throw error;
+        await firestore.collection('careers').doc(id).delete();
 
         return NextResponse.json({ message: 'Job deleted successfully' });
     } catch (error: any) {

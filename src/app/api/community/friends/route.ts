@@ -1,83 +1,87 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
-
-// Helper to resolve UUID
-async function getUuid(legacyId: string | number) {
-    const { data } = await supabase.from('profiles').select('id').eq('franchise_id', legacyId).single();
-    return data?.id || null;
-}
+import { firestore } from '@/lib/firebase';
 
 // GET: List friends or pending requests
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId'); // Legacy INT
+    const userId = searchParams.get('userId');
     const status = searchParams.get('status'); // 'accepted' or 'pending'
 
     if (!userId) return NextResponse.json({ error: 'User ID required' }, { status: 400 });
 
     try {
-        const myUuid = await getUuid(userId);
-        if (!myUuid) return NextResponse.json([], { status: 200 }); // User not migrated yet?
-
-        let data = [];
+        let result = [];
 
         if (status === 'pending') {
-            // Requests received BY me (I am friend_id)
-            const { data: requests, error } = await supabase
-                .from('friendships')
-                .select(`
-                    id,
-                    created_at,
-                    status,
-                    sender:user_id ( id, username, franchise_id, avatar_url )
-                `)
-                .eq('friend_id', myUuid)
-                .eq('status', 'pending');
+            // Requests received BY me (friend_id == userId)
+            const snapshot = await firestore.collection('friendships')
+                .where('friend_id', '==', String(userId))
+                .where('status', '==', 'pending')
+                .get();
 
-            if (error) throw error;
-
-            // Transform to legacy structure
-            data = requests.map((r: any) => ({
-                id: r.id,
-                user_id: r.sender.franchise_id, // Legacy ID expects INT
-                friend_id: userId,
-                status: r.status,
-                f_name: r.sender.username,
-                other_user_id: r.sender.franchise_id
+            // Fetch sender details
+            result = await Promise.all(snapshot.docs.map(async doc => {
+                const data = doc.data();
+                const senderDoc = await firestore.collection('franchise_requests').doc(data.user_id).get();
+                const sender = senderDoc.data();
+                return {
+                    id: doc.id,
+                    user_id: data.user_id,
+                    f_name: sender?.name || 'Unknown',
+                    image: sender?.profile_image || null,
+                    status: 'pending'
+                };
             }));
 
         } else {
-            // Accepted friends (Bi-directional)
-            const { data: friends, error } = await supabase
-                .from('friendships')
-                .select(`
-                    id,
-                    status,
-                    user_id,
-                    friend_id,
-                    user:user_id ( id, username, franchise_id, avatar_url ),
-                    friend:friend_id ( id, username, franchise_id, avatar_url )
-                `)
-                .or(`user_id.eq.${myUuid},friend_id.eq.${myUuid}`)
-                .eq('status', 'accepted');
+            // Accepted friends (Bi-directional in meaning, stored as one record?)
+            // If stored as A->B accepted, we check both user_id=me AND friend_id=me ???
+            // Typically friendship is stored as two records or queried with OR. 
+            // Firestore doesn't support OR across different fields easily in one query without multiple queries.
 
-            if (error) throw error;
+            // Query 1: I am the requester
+            const q1 = await firestore.collection('friendships')
+                .where('user_id', '==', String(userId))
+                .where('status', '==', 'accepted')
+                .get();
 
-            data = friends.map((f: any) => {
-                const isMyRequest = f.user_id === myUuid;
-                const other = isMyRequest ? f.friend : f.user;
-                return {
-                    id: f.id,
-                    status: f.status,
-                    friend_name: other.username,
-                    friend_image: other.avatar_url,
-                    other_user_id: other.franchise_id
-                };
-            });
+            // Query 2: I am the receiver
+            const q2 = await firestore.collection('friendships')
+                .where('friend_id', '==', String(userId))
+                .where('status', '==', 'accepted')
+                .get();
+
+            const friendsMaps = new Map();
+
+            const processDoc = async (doc: any, isRequester: boolean) => {
+                const data = doc.data();
+                const otherId = isRequester ? data.friend_id : data.user_id;
+
+                if (friendsMaps.has(otherId)) return; // distinct
+
+                const otherDoc = await firestore.collection('franchise_requests').doc(otherId).get();
+                const other = otherDoc.data();
+
+                friendsMaps.set(otherId, {
+                    id: doc.id,
+                    friend_id: otherId,
+                    friend_name: other?.name || 'Unknown',
+                    friend_image: other?.profile_image || null,
+                    status: 'accepted'
+                });
+            };
+
+            await Promise.all([
+                ...q1.docs.map(d => processDoc(d, true)),
+                ...q2.docs.map(d => processDoc(d, false))
+            ]);
+
+            result = Array.from(friendsMaps.values());
         }
 
-        return NextResponse.json(data);
+        return NextResponse.json(result);
     } catch (error: any) {
+        console.error('Friends API Error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
@@ -92,35 +96,56 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
         }
 
-        const myUuid = await getUuid(userId);
-        const targetUuid = await getUuid(friendId);
-
-        if (!myUuid || !targetUuid) {
-            return NextResponse.json({ error: 'User(s) not found in new system' }, { status: 400 });
-        }
-
         if (action === 'request') {
-            const { error } = await supabase.from('friendships').insert({
-                user_id: myUuid,
-                friend_id: targetUuid,
-                status: 'pending'
+            // Check if exists
+            const exists = await firestore.collection('friendships')
+                .where('user_id', '==', String(userId))
+                .where('friend_id', '==', String(friendId))
+                .limit(1)
+                .get();
+
+            if (!exists.empty) {
+                return NextResponse.json({ message: 'Request already sent or exists' });
+            }
+
+            await firestore.collection('friendships').add({
+                user_id: String(userId),
+                friend_id: String(friendId),
+                status: 'pending',
+                created_at: new Date()
             });
-            if (error) throw error;
             return NextResponse.json({ success: true, message: 'Request sent' });
         }
         else if (action === 'accept') {
-            // targetId (friend) SENT the request to ME (userId)
-            const { error } = await supabase.from('friendships').update({ status: 'accepted' })
-                .eq('user_id', targetUuid) // Sender
-                .eq('friend_id', myUuid); // Receiver
-            if (error) throw error;
+            // Find the request where friend came TO me (user_id=friendId, friend_id=userId)
+            const snapshot = await firestore.collection('friendships')
+                .where('user_id', '==', String(friendId))
+                .where('friend_id', '==', String(userId))
+                .where('status', '==', 'pending')
+                .limit(1)
+                .get();
+
+            if (snapshot.empty) {
+                return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+            }
+
+            await firestore.collection('friendships').doc(snapshot.docs[0].id).update({
+                status: 'accepted',
+                updated_at: new Date()
+            });
             return NextResponse.json({ success: true, message: 'Request accepted' });
         }
         else if (action === 'reject') {
-            const { error } = await supabase.from('friendships').delete()
-                .eq('user_id', targetUuid)
-                .eq('friend_id', myUuid);
-            if (error) throw error;
+            const snapshot = await firestore.collection('friendships')
+                .where('user_id', '==', String(friendId))
+                .where('friend_id', '==', String(userId))
+                .where('status', '==', 'pending')
+                .limit(1)
+                .get();
+
+            if (!snapshot.empty) {
+                await firestore.collection('friendships').doc(snapshot.docs[0].id).delete();
+            }
             return NextResponse.json({ success: true, message: 'Request rejected' });
         }
 

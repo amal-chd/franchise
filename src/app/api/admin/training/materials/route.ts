@@ -1,5 +1,6 @@
+
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { firestore } from '@/lib/firebase';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -10,14 +11,16 @@ export async function GET(request: Request) {
     }
 
     try {
-        const { data, error } = await supabase
-            .from('training_materials')
-            .select('*')
-            .eq('module_id', moduleId)
-            .order('order_index', { ascending: true })
-            .order('created_at', { ascending: true });
+        const snapshot = await firestore.collection('training_materials')
+            .where('module_id', '==', moduleId)
+            .orderBy('order_index', 'asc')
+            .orderBy('created_at', 'asc')
+            .get();
 
-        if (error) throw error;
+        const data = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
 
         return NextResponse.json(data);
     } catch (error: any) {
@@ -35,22 +38,22 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Module ID, title, and type are required' }, { status: 400 });
         }
 
-        const { data, error } = await supabase
-            .from('training_materials')
-            .insert([{
-                module_id,
-                title,
-                type,
-                content_url,
-                content_text,
-                order_index: order_index || 0
-            }])
-            .select()
-            .single();
+        const docRef = await firestore.collection('training_materials').add({
+            module_id,
+            title,
+            type,
+            content_url,
+            content_text,
+            order_index: order_index || 0,
+            created_at: new Date()
+        });
 
-        if (error) throw error;
+        const doc = await docRef.get();
 
-        return NextResponse.json({ success: true, result: { insertId: data.id, ...data } });
+        return NextResponse.json({
+            success: true,
+            result: { id: docRef.id, ...doc.data() }
+        });
     } catch (error: any) {
         console.error('Error adding training material:', error);
         return NextResponse.json({ error: 'Failed to add material' }, { status: 500 });
@@ -66,19 +69,14 @@ export async function PUT(request: Request) {
             return NextResponse.json({ error: 'ID, title, and type are required' }, { status: 400 });
         }
 
-        const { error } = await supabase
-            .from('training_materials')
-            .update({
-                title,
-                type,
-                content_url,
-                content_text,
-                order_index: order_index || 0,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', id);
-
-        if (error) throw error;
+        await firestore.collection('training_materials').doc(id).update({
+            title,
+            type,
+            content_url,
+            content_text,
+            order_index: order_index || 0,
+            updated_at: new Date()
+        });
 
         return NextResponse.json({ success: true });
     } catch (error: any) {
@@ -96,16 +94,9 @@ export async function DELETE(request: Request) {
     }
 
     try {
-        const { error } = await supabase
-            .from('training_materials')
-            .delete()
-            .eq('id', id);
-
-        if (error) throw error;
-
+        await firestore.collection('training_materials').doc(id).delete();
         return NextResponse.json({ success: true });
     } catch (error: any) {
         return NextResponse.json({ error: 'Failed to delete material' }, { status: 500 });
     }
 }
-

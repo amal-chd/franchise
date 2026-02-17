@@ -1,11 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
-
-// Helper to resolve UUID
-async function getUuid(legacyId: string | number) {
-    const { data } = await supabase.from('profiles').select('id').eq('franchise_id', legacyId).single();
-    return data?.id || null;
-}
+import { firestore } from '@/lib/firebase';
 
 export async function POST(request: Request) {
     try {
@@ -16,48 +10,69 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        const userUuid = await getUuid(userId);
-        if (!userUuid) return NextResponse.json({ error: 'User not found' }, { status: 404 });
-
         if (type === 'like') {
             // Check if already liked
-            const { data: existing, error: checkError } = await supabase
-                .from('community_interactions')
-                .select('id')
-                .eq('user_id', userUuid)
-                .eq('post_id', postId)
-                .eq('type', 'like')
-                .maybeSingle(); // Use maybeSingle to avoid 406 error if not found
+            const snapshot = await firestore.collection('community_interactions')
+                .where('user_id', '==', String(userId))
+                .where('post_id', '==', String(postId))
+                .where('type', '==', 'like')
+                .limit(1)
+                .get();
 
-            if (checkError) throw checkError;
-
-            if (existing) {
+            if (!snapshot.empty) {
                 // Unlike
-                const { error } = await supabase.from('community_interactions').delete().eq('id', existing.id);
-                if (error) throw error;
+                await firestore.collection('community_interactions').doc(snapshot.docs[0].id).delete();
+                // Decrement like count
+                const postRef = firestore.collection('community_posts').doc(String(postId));
+                const p = await postRef.get();
+                if (p.exists) {
+                    await postRef.update({
+                        likes_count: Math.max(0, (p.data()?.likes_count || 1) - 1)
+                    });
+                }
+
                 return NextResponse.json({ success: true, action: 'unliked' });
             } else {
                 // Like
-                const { error } = await supabase.from('community_interactions').insert({
-                    user_id: userUuid,
-                    post_id: postId,
-                    type: 'like'
+                await firestore.collection('community_interactions').add({
+                    user_id: String(userId),
+                    post_id: String(postId),
+                    type: 'like',
+                    created_at: new Date()
                 });
-                if (error) throw error;
+
+                // Increment like count
+                const postRef = firestore.collection('community_posts').doc(String(postId));
+                const p = await postRef.get();
+                if (p.exists) {
+                    await postRef.update({
+                        likes_count: (p.data()?.likes_count || 0) + 1
+                    });
+                }
+
                 return NextResponse.json({ success: true, action: 'liked' });
             }
         }
         else if (type === 'comment') {
             if (!commentText) return NextResponse.json({ error: 'Comment text required' }, { status: 400 });
 
-            const { error } = await supabase.from('community_interactions').insert({
-                user_id: userUuid,
-                post_id: postId,
+            await firestore.collection('community_interactions').add({
+                user_id: String(userId),
+                post_id: String(postId),
                 type: 'comment',
-                comment_text: commentText
+                comment_text: commentText,
+                created_at: new Date()
             });
 
-            if (error) throw error;
+            // Increment comments count
+            const postRef = firestore.collection('community_posts').doc(String(postId));
+            const p = await postRef.get();
+            if (p.exists) {
+                await postRef.update({
+                    comments_count: (p.data()?.comments_count || 0) + 1
+                });
+            }
+
             return NextResponse.json({ success: true, action: 'commented' });
         }
 
@@ -75,27 +90,34 @@ export async function GET(request: Request) {
     if (!postId) return NextResponse.json({ error: 'Post ID required' }, { status: 400 });
 
     try {
-        // Fetch comments with user details
-        const { data, error } = await supabase
-            .from('community_interactions')
-            .select(`
-                *,
-                user:profiles ( username, avatar_url )
-            `)
-            .eq('post_id', postId)
-            .eq('type', 'comment')
-            .order('created_at', { ascending: true });
+        const snapshot = await firestore.collection('community_interactions')
+            .where('post_id', '==', String(postId))
+            .where('type', '==', 'comment')
+            .orderBy('created_at', 'asc')
+            .get();
 
-        if (error) throw error;
+        const comments = await Promise.all(snapshot.docs.map(async (doc) => {
+            const data = doc.data();
+            let user_name = 'Unknown';
+            let user_image = null;
 
-        // Transform for frontend
-        const result = data.map((i: any) => ({
-            ...i,
-            user_name: i.user?.username || 'Unknown',
-            user_image: i.user?.avatar_url
+            if (data.user_id) {
+                const uDoc = await firestore.collection('franchise_requests').doc(data.user_id).get();
+                if (uDoc.exists) {
+                    user_name = uDoc.data()?.name || 'Unknown';
+                    user_image = uDoc.data()?.profile_image;
+                }
+            }
+
+            return {
+                id: doc.id,
+                ...data,
+                user_name,
+                user_image
+            };
         }));
 
-        return NextResponse.json(result);
+        return NextResponse.json(comments);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

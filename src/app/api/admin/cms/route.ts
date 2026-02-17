@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { firestore } from '@/lib/firebase';
+
 
 export async function GET() {
     try {
-        const { data: rows, error } = await supabase
-            .from('site_content')
-            .select('*');
-
-        if (error) throw error;
+        const snapshot = await firestore.collection('site_content').get();
+        const rows = snapshot.docs.map(doc => doc.data());
 
         // Group content by section
-        const content = (rows as any[]).reduce((acc, row) => {
+        const content = rows.reduce((acc: any, row: any) => {
             if (!acc[row.section]) {
                 acc[row.section] = {};
             }
@@ -35,19 +33,26 @@ export async function POST(request: Request) {
         }
 
         // Update or insert content
+        const batch = firestore.batch();
+
         for (const [key, value] of Object.entries(content)) {
             const valueToStore = typeof value === 'object' ? JSON.stringify(value) : value;
 
-            const { error } = await supabase
-                .from('site_content')
-                .upsert({
-                    section,
-                    content_key: key,
-                    content_value: valueToStore
-                }, { onConflict: 'section, content_key' });
+            // Create a unique ID or use a combination of section-key to enforce uniqueness if desired.
+            // Here, we query for existing document to update or create new.
+            // To make it efficient, let's use a deterministic ID: `${section}_${key}`
+            const docId = `${section}_${key}`;
+            const docRef = firestore.collection('site_content').doc(docId);
 
-            if (error) throw error;
+            batch.set(docRef, {
+                section,
+                content_key: key,
+                content_value: valueToStore,
+                updated_at: new Date()
+            }, { merge: true });
         }
+
+        await batch.commit();
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

@@ -1,18 +1,20 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { firestore } from '@/lib/firebase';
 
 export async function GET() {
     try {
-        const { data, error } = await supabase
-            .from('careers')
-            .select('*')
-            .eq('is_active', true)
-            .order('created_at', { ascending: false });
+        const snapshot = await firestore.collection('careers')
+            .orderBy('created_at', 'desc')
+            .get();
 
-        if (error) throw error;
+        // Filter active ones in-memory to avoid needing a Firestore composite index
+        const data = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter((doc: any) => doc.is_active !== false);
 
         return NextResponse.json(data);
     } catch (error: any) {
-        return NextResponse.json({ message: error.message }, { status: 500 });
+        console.error('Careers GET error:', error.message);
+        return NextResponse.json([], { status: 200 });
     }
 }

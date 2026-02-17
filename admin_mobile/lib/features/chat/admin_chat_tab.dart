@@ -10,6 +10,7 @@ import '../../core/api_service.dart';
 import '../../core/chat_notification_service.dart';
 import '../../widgets/modern_header.dart';
 import 'chat_provider.dart';
+import 'chat_models.dart';
 import '../notifications/badge_state_provider.dart';
 import '../community/community_tab.dart';
 import '../franchises/franchises_tab.dart';
@@ -715,7 +716,7 @@ class _AdminChatScreenState extends ConsumerState<AdminChatScreen> {
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
-                          msg.message,
+                          msg.message ?? '',
                           style: GoogleFonts.inter(
                             color: isMe ? Colors.white : Colors.black,
                             fontSize: 14,
@@ -727,11 +728,11 @@ class _AdminChatScreenState extends ConsumerState<AdminChatScreen> {
                     ],
                   ),
                 ),
-              if (msg.message.isNotEmpty && msg.attachmentType == 'image')
+              if ((msg.message ?? '').isNotEmpty && msg.attachmentType == 'image')
                 Padding(
                   padding: const EdgeInsets.all(12),
                   child: Text(
-                    msg.message,
+                    msg.message ?? '',
                     style: GoogleFonts.inter(
                       color: isMe ? Colors.white : const Color(0xFF1E293B),
                       fontSize: 15,
@@ -741,7 +742,7 @@ class _AdminChatScreenState extends ConsumerState<AdminChatScreen> {
             ] else
               // Text only message
               Text(
-                msg.message,
+                msg.message ?? '',
                 style: GoogleFonts.inter(
                   color: isMe ? Colors.white : const Color(0xFF1E293B),
                   fontSize: 15,

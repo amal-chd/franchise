@@ -4,18 +4,7 @@
 import { useState, useEffect } from 'react';
 
 export default function ChatTab() {
-    const [sessions, setSessions] = useState<any[]>([]); // We need an API to list all sessions, currently only have `get session by franchiseId`
-    // Wait, I missed implementing `GET /api/admin/chat/sessions` in the backend. 
-    // I need to implement that or use a workaround. 
-    // Let's implement active chat selection from a list of franchises for now?
-    // No, better to have a `GET /api/admin/chat/sessions` endpoint.
-    // I'll mock it for now or implement it. 
-    // The previous implementation plan mentioned `GET /api/admin/chat/sessions`.
-    // I missed creating it. I only created `/api/chat/session` (singular, for mobile).
-
-    // I will mock the list for now or assume I'll fix the backend in next step.
-    // Actually, I can fix the backend right after creating this file. 
-
+    const [sessions, setSessions] = useState<any[]>([]);
     const [activeSession, setActiveSession] = useState<number | null>(null);
     const [messages, setMessages] = useState<any[]>([]);
     const [newMessage, setNewMessage] = useState('');

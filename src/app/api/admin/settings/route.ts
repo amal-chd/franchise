@@ -1,18 +1,16 @@
+
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { firestore } from '@/lib/firebase';
 
 export async function GET() {
     try {
-        const { data: rows, error } = await supabase
-            .from('site_settings')
-            .select('*');
+        const snapshot = await firestore.collection('site_settings').get();
+        const settings: Record<string, any> = {};
 
-        if (error) throw error;
-
-        const settings = (rows as any[]).reduce((acc, row) => {
-            acc[row.setting_key] = row.setting_value;
-            return acc;
-        }, {});
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            settings[data.setting_key] = data.setting_value;
+        });
 
         return NextResponse.json(settings);
     } catch (error: any) {
@@ -30,17 +28,20 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Settings are required' }, { status: 400 });
         }
 
-        for (const [key, value] of Object.entries(settings)) {
-            const { error } = await supabase
-                .from('site_settings')
-                .upsert({
-                    setting_key: key,
-                    setting_value: value,
-                    setting_group: 'general'
-                }, { onConflict: 'setting_key' });
+        const batch = firestore.batch();
 
-            if (error) throw error;
+        for (const [key, value] of Object.entries(settings)) {
+            // Use setting_key as document ID for easy lookup and upsert
+            const docRef = firestore.collection('site_settings').doc(key);
+            batch.set(docRef, {
+                setting_key: key,
+                setting_value: value,
+                setting_group: 'general', // Default group
+                updated_at: new Date()
+            }, { merge: true });
         }
+
+        await batch.commit();
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

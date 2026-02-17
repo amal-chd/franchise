@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { firestore } from '@/lib/firebase';
 
 export async function POST(request: Request) {
     try {
@@ -10,15 +10,23 @@ export async function POST(request: Request) {
         }
 
         try {
-            await executeQuery({
-                query: 'INSERT INTO newsletter_subscribers (email) VALUES (?)',
-                values: [email]
-            });
-            return NextResponse.json({ message: 'Subscribed successfully' });
-        } catch (error: any) {
-            if (error.code === 'ER_DUP_ENTRY' || error.message?.includes('Duplicate entry')) {
+            // Check for duplicate
+            const snapshot = await firestore.collection('newsletter_subscribers')
+                .where('email', '==', email)
+                .get();
+
+            if (!snapshot.empty) {
                 return NextResponse.json({ message: 'Email already subscribed' }, { status: 200 });
             }
+
+            await firestore.collection('newsletter_subscribers').add({
+                email,
+                status: 'active',
+                subscribed_at: new Date()
+            });
+
+            return NextResponse.json({ message: 'Subscribed successfully' });
+        } catch (error: any) {
             throw error;
         }
     } catch (error: any) {

@@ -1,5 +1,6 @@
+
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { firestore } from '@/lib/firebase';
 import { sendEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
@@ -10,26 +11,27 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
         }
 
-        // Save reply to Supabase
-        const { error: replyError } = await supabase
-            .from('ticket_replies')
-            .insert([{
-                ticket_id: ticketId,
-                sender_type: 'admin',
-                message: message
-            }]);
+        const ticketRef = firestore.collection('support_tickets').doc(ticketId);
 
-        if (replyError) throw replyError;
+        // Add reply to subcollection
+        await ticketRef.collection('replies').add({
+            sender_type: 'admin',
+            message: message,
+            created_at: new Date()
+        });
 
-        // Update ticket status to replied
-        const { error: updateError } = await supabase
-            .from('support_tickets')
-            .update({ status: 'replied' })
-            .eq('id', ticketId);
+        // Update ticket status and latest reply
+        await ticketRef.update({
+            status: 'replied',
+            updated_at: new Date(),
+            last_reply: {
+                message: message,
+                created_at: new Date(),
+                sender_type: 'admin'
+            }
+        });
 
-        if (updateError) throw updateError;
-
-        // Send email asynchronously (don't wait for it)
+        // Send email asynchronously
         sendEmail({
             to: userEmail,
             subject: `[Ticket #${ticketId}] Re: ${ticketSubject}`,
@@ -47,10 +49,8 @@ export async function POST(request: Request) {
             `,
         }).catch(err => {
             console.error('Failed to send email:', err);
-            // Don't fail the request if email fails
         });
 
-        // Return immediately after database updates
         return NextResponse.json({ message: 'Reply sent successfully' }, { status: 200 });
 
     } catch (error: any) {

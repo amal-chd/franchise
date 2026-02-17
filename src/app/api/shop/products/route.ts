@@ -1,35 +1,40 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { firestore } from '@/lib/firebase';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category'); // This 'category' param might be ID or name? Assuming name based on frontend.
+    const category = searchParams.get('category');
     const isAdmin = searchParams.get('admin') === 'true';
 
     try {
-        let query = supabase
-            .from('shop_items')
-            .select('*')
-            .order('created_at', { ascending: false });
+        let query: any = firestore.collection('products');
 
         if (!isAdmin) {
-            query = query.eq('status', true);
+            query = query.where('status', '==', true);
         }
 
         if (category) {
-            // Frontend might send category string now
-            query = query.eq('category', category);
+            query = query.where('category', '==', category);
         }
 
-        // Limit
-        query = query.limit(100);
+        // Apply ordering (requires index for compound queries)
+        // For now, sorting by created_at desc manually or if index exists
+        // query = query.orderBy('created_at', 'desc'); 
 
-        const { data: products, error } = await query;
+        const snapshot = await query.get();
+        let products = snapshot.docs.map((doc: any) => ({
+            id: doc.id,
+            ...doc.data()
+        }));
 
-        if (error) throw error;
+        // Manual sort if index check fails often
+        products = products.sort((a: any, b: any) => {
+            const tA = a.created_at?.toMillis ? a.created_at.toMillis() : new Date(a.created_at).getTime();
+            const tB = b.created_at?.toMillis ? b.created_at.toMillis() : new Date(b.created_at).getTime();
+            return tB - tA;
+        });
 
         return NextResponse.json(products);
     } catch (error: any) {
@@ -38,52 +43,32 @@ export async function GET(request: Request) {
     }
 }
 
-// Enable CRUD for Admin using supabaseAdmin (bypassing RLS)
+// Enable CRUD for Admin
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        console.log("Attempting to add product:", JSON.stringify(body));
-
         const { name, description, price, image_url, category, category_id, stock } = body;
 
         // Validation
         if (!name || !price) {
-            console.error("Validation failed: Name and Price are required");
             return NextResponse.json({ error: 'Name and Price are required' }, { status: 400 });
         }
 
-        console.log("Using Supabase Admin to insert...");
-        // Use category string if provided, fallback to category_id if formatted as int (optional)
-        const payload: any = {
+        const newProduct = {
             name,
             description,
-            price,
+            price: Number(price),
             image_url,
-            stock,
-            status: true
+            stock: Number(stock) || 0,
+            status: true,
+            category: category || null,
+            category_id: category_id || null, // Keeping for compatibility
+            created_at: new Date()
         };
 
-        // If the database has both columns now, we can save both if available.
-        // If we only have 'category' column (text), we save to it.
-        // If we have 'category_id' (int), we save to it.
-        // My migration ADDED 'category' (text).
-        if (category) payload.category = category;
-        if (category_id) payload.category_id = category_id;
+        const docRef = await firestore.collection('products').add(newProduct);
 
-        const { data, error } = await supabaseAdmin
-            .from('shop_items')
-            .insert(payload)
-            .select()
-            .single();
-
-        if (error) {
-            console.error("Supabase Insert Error:", JSON.stringify(error));
-            console.error("Service Role Key present?", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-            throw error;
-        }
-
-        console.log("Product added successfully:", data.id);
-        return NextResponse.json(data);
+        return NextResponse.json({ id: docRef.id, ...newProduct });
     } catch (error: any) {
         console.error("Product POST exception:", error);
         return NextResponse.json({ error: error.message, details: error }, { status: 500 });
@@ -93,30 +78,29 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
     try {
         const body = await request.json();
-        const { id, name, description, price, image_url, category, category_id, stock, status } = body;
+        const { id, ...updates } = body;
 
         if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
-        const updates: any = {};
-        if (name !== undefined) updates.name = name;
-        if (description !== undefined) updates.description = description;
-        if (price !== undefined) updates.price = price;
-        if (image_url !== undefined) updates.image_url = image_url;
-        if (category !== undefined) updates.category = category;
-        if (category_id !== undefined) updates.category_id = category_id;
-        if (stock !== undefined) updates.stock = stock;
-        if (status !== undefined) updates.status = status;
+        // Filter valid updates
+        const validUpdates: any = {};
+        if (updates.name !== undefined) validUpdates.name = updates.name;
+        if (updates.description !== undefined) validUpdates.description = updates.description;
+        if (updates.price !== undefined) validUpdates.price = Number(updates.price);
+        if (updates.image_url !== undefined) validUpdates.image_url = updates.image_url;
+        if (updates.category !== undefined) validUpdates.category = updates.category;
+        if (updates.stock !== undefined) validUpdates.stock = Number(updates.stock);
+        if (updates.status !== undefined) validUpdates.status = updates.status;
 
-        const { data, error } = await supabaseAdmin
-            .from('shop_items')
-            .update(updates)
-            .eq('id', id)
-            .select()
-            .single();
+        // Add updated_at
+        validUpdates.updated_at = new Date();
 
-        if (error) throw error;
+        await firestore.collection('products').doc(id).update(validUpdates);
 
-        return NextResponse.json(data);
+        // Fetch updated doc to return
+        const updatedDoc = await firestore.collection('products').doc(id).get();
+
+        return NextResponse.json({ id, ...updatedDoc.data() });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -129,12 +113,7 @@ export async function DELETE(request: Request) {
 
         if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
-        const { error } = await supabaseAdmin
-            .from('shop_items')
-            .delete()
-            .eq('id', id);
-
-        if (error) throw error;
+        await firestore.collection('products').doc(id).delete();
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

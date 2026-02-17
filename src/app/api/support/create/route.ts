@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { firestore } from '@/lib/firebase';
+
 import { sendEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
@@ -10,16 +11,17 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'All fields are required' }, { status: 400 });
         }
 
-        // Save ticket to Supabase
-        const { data, error } = await supabase
-            .from('support_tickets')
-            .insert([{ name, email, subject, message, status: 'pending' }])
-            .select()
-            .single();
+        // Save ticket to Firestore
+        const docRef = await firestore.collection('support_tickets').add({
+            name,
+            email,
+            subject,
+            message,
+            status: 'pending',
+            created_at: new Date()
+        });
 
-        if (error) throw error;
-
-        const ticketId = data.id;
+        const ticketId = docRef.id;
 
         // Send confirmation email to user
         await sendEmail({

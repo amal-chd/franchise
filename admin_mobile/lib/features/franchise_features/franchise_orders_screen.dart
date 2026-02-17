@@ -6,6 +6,7 @@ import '../franchise_features/franchise_features_provider.dart';
 import '../../widgets/premium_widgets.dart';
 
 import '../../widgets/modern_header.dart'; // Add import
+import 'franchise_order_details_sheet.dart';
 
 class FranchiseOrdersScreen extends ConsumerStatefulWidget {
   const FranchiseOrdersScreen({super.key});
@@ -363,141 +364,19 @@ value: s == 'All' ? null : s,
 
 
   void _showOrderDetails(BuildContext context, Map<String, dynamic> order) async {
-    // Show loading dialog first
-    showDialog(
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    final zoneId = prefs.getInt('zoneId') ?? 18; // Fallback for safety
+
+    // Show full details sheet immediately with internal loading
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: Text('Order #${order['id']}', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-        content: const Center(
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: CircularProgressIndicator(),
-          ),
-        ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => FranchiseOrderDetailsSheet(
+        orderSummary: order,
+        zoneId: zoneId,
       ),
     );
-
-    try {
-      // Fetch full order details with items
-      final apiService = ref.read(franchiseOrdersProvider.notifier).apiService;
-      final prefs = await ref.read(sharedPreferencesProvider.future);
-      final zoneId = prefs.getInt('zoneId');
-      
-      final response = await apiService.client.get('/franchise/orders/${order['id']}?zoneId=$zoneId');
-      
-      // Close loading dialog
-      Navigator.pop(context);
-      
-      final orderDetails = response.data as Map<String, dynamic>;
-      final items = (orderDetails['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-
-      // Show full details dialog
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Order #${order['id']}', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildDetailRow('Customer', orderDetails['user_name'] ?? 'N/A'),
-                _buildDetailRow('Phone', orderDetails['user_phone'] ?? 'N/A'),
-                _buildDetailRow('Status', orderDetails['order_status'] ?? 'N/A'),
-                _buildDetailRow('Payment', orderDetails['payment_method'] ?? 'N/A'),
-                _buildDetailRow('Date', _formatDate(orderDetails['created_at'])),
-                if (orderDetails['delivery_address'] != null)
-                  _buildDetailRow('Address', orderDetails['delivery_address']),
-                
-                const Divider(height: 24),
-                
-                // Items section
-                Text('Items', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 14)),
-                const SizedBox(height: 8),
-                
-                if (items.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text('No items found', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                  )
-                else
-                  ...items.map((item) => Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item['item_name'] ?? 'Unknown Item',
-                                style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Qty: ${item['quantity']} × ₹${item['price']}',
-                                style: TextStyle(fontSize: 11, color: Colors.grey[700]),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          '₹${(double.tryParse(item['price']?.toString() ?? '0') ?? 0) * (int.tryParse(item['quantity']?.toString() ?? '0') ?? 0)}',
-                          style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  )).toList(),
-                
-                const Divider(height: 24),
-                
-                // Total
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Total Amount', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 14)),
-                    Text(
-                      '₹${orderDetails['order_amount']}',
-                      style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF2563EB)),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      // Close loading dialog
-      Navigator.pop(context);
-      
-      // Show error dialog
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Error'),
-          content: Text('Failed to load order details: $e'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      );
-    }
   }
 
 

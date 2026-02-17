@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { firestore, admin } from '@/lib/firebase';
 
 // GET: Fetch comments for a post
 export async function GET(request: Request) {
@@ -11,13 +11,38 @@ export async function GET(request: Request) {
     }
 
     try {
-        const { data, error } = await supabase.rpc('get_post_comments', {
-            target_post_id: parseInt(postId)
-        });
+        // Fetch comments from 'community_interactions' where type is 'comment'
+        // Need to join with user details manually or store basic user info in comment
+        const snapshot = await firestore.collection('community_interactions')
+            .where('post_id', '==', postId)
+            .where('type', '==', 'comment')
+            .orderBy('created_at', 'asc')
+            .get();
 
-        if (error) throw error;
+        const comments = await Promise.all(snapshot.docs.map(async (doc) => {
+            const data = doc.data();
+            // Fetch user details for each comment
+            // Optimization: Store user_name/image in the comment doc to avoid N+1 fetches
+            let user = { name: 'Unknown', image: null };
+            if (data.user_id) {
+                const userDoc = await firestore.collection('franchise_requests').doc(data.user_id).get();
+                if (userDoc.exists) {
+                    const uData = userDoc.data();
+                    user = { name: uData?.name, image: uData?.profile_image };
+                }
+            }
 
-        return NextResponse.json(data);
+            return {
+                id: doc.id,
+                post_id: data.post_id,
+                content: data.comment_text,
+                created_at: data.created_at?.toDate ? data.created_at.toDate() : data.created_at,
+                user_name: user.name,
+                user_image: user.image
+            };
+        }));
+
+        return NextResponse.json(comments);
     } catch (error: any) {
         console.error('Comments API Error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -29,36 +54,31 @@ export async function POST(request: Request) {
     try {
         const body = await request.json();
         const { userId, postId, content } = body;
-        // userId: legacy INT ID of the commenter
 
         if (!userId || !postId || !content) {
             return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
         }
 
-        // Resolve user UUID
-        const { data: profile } = await supabase.from('profiles').select('id').eq('franchise_id', userId).single();
-        if (!profile) return NextResponse.json({ error: 'User not found' }, { status: 404 });
-
-        // Insert Comment
-        const { data, error } = await supabase.from('community_interactions').insert({
-            user_id: profile.id,
-            post_id: postId, // BigInt ID
+        const newComment = {
+            user_id: String(userId),
+            post_id: String(postId),
             type: 'comment',
-            comment_text: content
-        }).select().single();
+            comment_text: content,
+            created_at: new Date()
+        };
 
-        if (error) throw error;
+        const docRef = await firestore.collection('community_interactions').add(newComment);
 
-        // Increment comments count on post (Optional: Trigger can handle this, but let's do it explicitly for now or rely on trigger)
-        // Check if trigger exists? Assuming not, let's update.
-        await supabase.rpc('increment_comments_count', { post_id_val: postId });
-        // Wait, I didn't create increment RPC. Let's just do a direct update or assume specific logic.
-        // Or better: Let's create a quick increment Logic here
-        await supabase.from('community_posts').update({
-            comments_count: (await supabase.from('community_posts').select('comments_count').eq('id', postId).single()).data?.comments_count + 1
-        }).eq('id', postId);
+        // Update comments count on the post
+        try {
+            await firestore.collection('community_posts').doc(String(postId)).update({
+                comments_count: admin.firestore.FieldValue.increment(1)
+            });
+        } catch (updateError) {
+            console.error('Failed to update comment count:', updateError);
+        }
 
-        return NextResponse.json({ success: true, comment: data });
+        return NextResponse.json({ success: true, comment: { id: docRef.id, ...newComment } });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

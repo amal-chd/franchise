@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../core/api_service.dart';
 import '../auth/auth_provider.dart';
+import 'package:flutter/foundation.dart';
 
 // Cache configuration
 const String FRANCHISE_CACHE_KEY = 'franchise_data_cache';
@@ -99,22 +100,23 @@ class FranchiseNotifier extends AsyncNotifier<FranchiseState> {
 
   @override
   Future<FranchiseState> build() async {
+    print('DEBUG: FranchiseNotifier.build() called');
     // Watch authProvider to force refresh when login state changes
     ref.watch(authProvider);
-    return _loadData(useCache: true);
+    return _loadData(useCache: false); // Disable cache for debugging
   }
 
   Future<FranchiseState> _loadData({bool useCache = true}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final zoneId = prefs.getInt('zoneId');
+      int? zoneId = prefs.getInt('zoneId');
 
-      if (zoneId == null) {
-        print('DEBUG: No Zone ID found in SharedPreferences');
-        return FranchiseState(stats: FranchiseStats());
+      if (zoneId == null || zoneId == 0) {
+        debugPrint('DEBUG: No Zone ID found in SharedPreferences. FALLBACK to 18 (Testing)');
+        zoneId = 18; // Fallback for testing
       }
       
-      print('DEBUG: Fetching Franchise Data for Zone ID: $zoneId');
+      debugPrint('DEBUG: Fetching Franchise Data for Zone ID: $zoneId');
 
       // Check cache first
       if (useCache) {
@@ -131,24 +133,24 @@ class FranchiseNotifier extends AsyncNotifier<FranchiseState> {
             final cachedState = FranchiseState.fromJson(cachedData);
             
             // Fetch fresh data in background
-            _fetchAndCacheFranchiseData(zoneId, prefs).then((freshState) {
+            _fetchAndCacheFranchiseData(zoneId!, prefs).then((freshState) {
               // Update state with fresh data
               state = AsyncValue.data(freshState);
-              print('DEBUG: Background franchise data refresh completed');
+            debugPrint('DEBUG: Background franchise data refresh completed');
             }).catchError((e) {
-              print('DEBUG: Background franchise data refresh failed: $e');
+              debugPrint('DEBUG: Background franchise data refresh failed: $e');
             });
             
             return cachedState;
           } catch (e) {
-            print('DEBUG: Failed to parse cached franchise data: $e');
+            debugPrint('DEBUG: Failed to parse cached franchise data: $e');
           }
         }
       }
 
       // Cache miss or expired, fetch fresh data
       print('DEBUG: Fetching fresh franchise data');
-      return await _fetchAndCacheFranchiseData(zoneId, prefs);
+      return await _fetchAndCacheFranchiseData(zoneId!, prefs);
     } catch (e) {
       print('Franchise Data Load Error: $e');
       return FranchiseState(stats: FranchiseStats());
@@ -157,14 +159,16 @@ class FranchiseNotifier extends AsyncNotifier<FranchiseState> {
 
   Future<FranchiseState> _fetchAndCacheFranchiseData(int zoneId, SharedPreferences prefs) async {
     // Fetch all data in parallel
-      print('DEBUG: FranchiseNotifier fetching data for Zone: $zoneId');
+      debugPrint('DEBUG: FranchiseNotifier fetching data for Zone: $zoneId');
       final responses = await Future.wait([
         _apiService.client.get('franchise/stats?zoneId=$zoneId'),
         _apiService.client.get('franchise/vendors?zoneId=$zoneId'),
         _apiService.client.get('franchise/delivery?zoneId=$zoneId'),
         _apiService.client.get('franchise/orders?zoneId=$zoneId'),
       ]);
-      print('DEBUG: All Franchise APIs responded successfully');
+      debugPrint('DEBUG: All Franchise APIs responded successfully');
+      
+      debugPrint('DEBUG: Vendors API Response Data: ${responses[1].data}');
 
     final statsData = responses[0].data;
     final vendorsData = responses[1].data is List ? responses[1].data as List : [];

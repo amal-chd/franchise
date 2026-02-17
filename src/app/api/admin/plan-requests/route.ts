@@ -1,21 +1,42 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { firestore } from '@/lib/firebase';
+// import executeQuery from '@/lib/db';
 
 export async function GET() {
     try {
-        const requests = await executeQuery({
-            query: `
-                SELECT 
-                    pcr.*,
-                    f.name as franchise_name,
-                    f.email as franchise_email,
-                    f.phone as franchise_phone
-                FROM plan_change_requests pcr
-                JOIN franchises f ON pcr.franchise_id = f.id
-                ORDER BY pcr.created_at DESC
-            `,
-            values: []
-        });
+        const snapshot = await firestore.collection('plan_change_requests')
+            .orderBy('created_at', 'desc')
+            .get();
+
+        const requests = await Promise.all(snapshot.docs.map(async doc => {
+            const data = doc.data();
+            const franchiseId = data.franchise_id;
+
+            // Allow manual join
+            let franchiseName = 'Unknown';
+            let franchiseEmail = 'N/A';
+            let franchisePhone = 'N/A';
+
+            if (franchiseId) {
+                const franchiseDoc = await firestore.collection('franchise_requests').doc(String(franchiseId)).get();
+                if (franchiseDoc.exists) {
+                    const franchiseData = franchiseDoc.data();
+                    franchiseName = franchiseData?.name || 'Unknown';
+                    franchiseEmail = franchiseData?.email || 'N/A';
+                    franchisePhone = franchiseData?.phone || 'N/A';
+                }
+            }
+
+            return {
+                id: doc.id,
+                ...data,
+                // created_at: data.created_at?.toDate(), // Ensure client handles serialized dates
+                franchise_name: franchiseName,
+                franchise_email: franchiseEmail,
+                franchise_phone: franchisePhone,
+            };
+        }));
+
         return NextResponse.json(requests);
     } catch (error: any) {
         console.error('Failed to fetch plan requests:', error);
@@ -31,38 +52,34 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
         }
 
-        const rows = (await executeQuery({
-            query: 'SELECT * FROM plan_change_requests WHERE id = ?',
-            values: [requestId]
-        })) as any[];
-        const request = rows[0];
+        const requestRef = firestore.collection('plan_change_requests').doc(String(requestId));
+        const requestDoc = await requestRef.get();
 
-        if (!request) {
+        if (!requestDoc.exists) {
             return NextResponse.json({ error: 'Request not found' }, { status: 404 });
         }
 
-        if (request.status !== 'pending') {
+        const requestData = requestDoc.data();
+
+        if (requestData?.status !== 'pending') {
             return NextResponse.json({ error: 'Request is already processed' }, { status: 400 });
         }
 
         if (action === 'approve') {
-            // Update franchise plan
-            await executeQuery({
-                query: 'UPDATE franchises SET plan_selected = ? WHERE id = ?',
-                values: [request.requested_plan, request.franchise_id]
-            });
+            // Update franchise plan in franchise_requests collection (acting as franchises table)
+            const franchiseId = requestData?.franchise_id;
+            if (franchiseId) {
+                await firestore.collection('franchise_requests').doc(String(franchiseId)).update({
+                    plan_selected: requestData?.requested_plan
+                });
+            }
 
             // Update request status
-            await executeQuery({
-                query: 'UPDATE plan_change_requests SET status = ? WHERE id = ?',
-                values: ['approved', requestId]
-            });
+            await requestRef.update({ status: 'approved' });
+
         } else {
             // Reject request
-            await executeQuery({
-                query: 'UPDATE plan_change_requests SET status = ? WHERE id = ?',
-                values: ['rejected', requestId]
-            });
+            await requestRef.update({ status: 'rejected' });
         }
 
         return NextResponse.json({ success: true, message: `Request ${action}ed successfully` });

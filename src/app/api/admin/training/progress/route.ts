@@ -1,5 +1,6 @@
+
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { firestore } from '@/lib/firebase';
 
 export async function POST(request: Request) {
     try {
@@ -10,18 +11,15 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'UserId and ModuleId required' }, { status: 400 });
         }
 
-        const { error } = await supabase
-            .from('training_progress')
-            .upsert({
-                user_id: userId,
-                module_id: moduleId,
-                material_ids_json: materialIds || [],
-                progress: progress || 0,
-                is_completed: isCompleted ? true : false,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'user_id, module_id' });
-
-        if (error) throw error;
+        const docId = `${userId}_${moduleId}`;
+        await firestore.collection('training_progress').doc(docId).set({
+            user_id: userId,
+            module_id: moduleId,
+            material_ids_json: materialIds || [],
+            progress: progress || 0,
+            is_completed: isCompleted ? true : false,
+            updated_at: new Date()
+        }, { merge: true });
 
         return NextResponse.json({ success: true });
     } catch (e: any) {
@@ -39,12 +37,11 @@ export async function GET(request: Request) {
     }
 
     try {
-        const { data, error } = await supabase
-            .from('training_progress')
-            .select('*')
-            .eq('user_id', userId);
+        const snapshot = await firestore.collection('training_progress')
+            .where('user_id', '==', userId)
+            .get();
 
-        if (error) throw error;
+        const data = snapshot.docs.map(doc => doc.data());
 
         return NextResponse.json(data);
     } catch (e: any) {

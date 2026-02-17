@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { firestore } from '@/lib/firebase';
 import { sendNotification } from '@/lib/notifications';
 
 export async function POST(request: Request) {
@@ -15,44 +15,37 @@ export async function POST(request: Request) {
         }
 
         // Check if email or phone already exists
-        const checkQuery = 'SELECT id FROM franchise_requests WHERE email = ? OR phone = ?';
-        const checkResult = await executeQuery({ query: checkQuery, values: [email, phone] });
-
-        if ((checkResult as any[]).length > 0) {
-            return NextResponse.json({ message: 'Email or Phone already registered' }, { status: 409 });
+        const emailCheck = await firestore.collection('franchise_requests').where('email', '==', email).limit(1).get();
+        if (!emailCheck.empty) {
+            return NextResponse.json({ message: 'Email already registered' }, { status: 409 });
         }
 
-        const query = `
-            INSERT INTO franchise_requests 
-            (name, email, phone, city, password, plan_selected, status, agreement_accepted, budget, upi_id, bank_account_number, ifsc_code, bank_name) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
+        const phoneCheck = await firestore.collection('franchise_requests').where('phone', '==', phone).limit(1).get();
+        if (!phoneCheck.empty) {
+            return NextResponse.json({ message: 'Phone already registered' }, { status: 409 });
+        }
 
-        const values = [
+        const newFranchise = {
             name,
             email,
             phone,
             city,
-            password,
-            'free', // Default plan
-            'pending_verification', // Default status
-            false, // Must accept agreement later
-            'Standard',
-            upi_id || null,
-            bank_account_number || null,
-            ifsc_code || null,
-            bank_name || null
-        ];
+            password, // Warning: Storing plain text based on previous logic. Should hash in real app.
+            plan_selected: 'free',
+            status: 'pending_verification',
+            agreement_accepted: false,
+            budget: 'Standard',
+            upi_id: upi_id || null,
+            bank_account_number: bank_account_number || null,
+            ifsc_code: ifsc_code || null,
+            bank_name: bank_name || null,
+            created_at: new Date()
+        };
 
-        const result = await executeQuery({ query, values });
-
-        if ((result as any).error) {
-            console.error('Database Error during registration:', (result as any).error);
-            throw new Error((result as any).error);
-        }
+        const docRef = await firestore.collection('franchise_requests').add(newFranchise);
+        const franchiseId = docRef.id;
 
         // Trigger notification for Admin
-        const franchiseId = (result as any).insertId;
         try {
             await sendNotification({
                 title: 'New Franchise Request',
@@ -61,7 +54,6 @@ export async function POST(request: Request) {
                 data: { franchiseId, name, city }
             });
         } catch (notifError) {
-            // Don't fail registration if notification fails
             console.error('Failed to send admin notification:', notifError);
         }
 

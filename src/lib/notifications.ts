@@ -1,12 +1,12 @@
-import executeQuery from './db';
+import { firestore } from './firebase';
 
 export type NotificationType = 'order' | 'franchise' | 'payment' | 'system' | 'general';
 
 interface SendNotificationParams {
-    userId?: number;
-    franchiseId?: number;
-    vendorId?: number;
-    deliveryManId?: number;
+    userId?: number | string; // Support string IDs for Firestore
+    franchiseId?: number | string;
+    vendorId?: number | string;
+    deliveryManId?: number | string;
     title: string;
     message: string;
     type?: NotificationType;
@@ -24,23 +24,18 @@ export async function sendNotification({
     data = null
 }: SendNotificationParams) {
     try {
-        const query = `
-            INSERT INTO user_notifications (user_id, franchise_id, vendor_id, delivery_man_id, title, message, type, data)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-
-        const values = [
-            userId || null,
-            franchiseId || null,
-            vendorId || null,
-            deliveryManId || null,
+        await firestore.collection('user_notifications').add({
+            user_id: userId ? String(userId) : null,
+            franchise_id: franchiseId ? String(franchiseId) : null,
+            vendor_id: vendorId ? String(vendorId) : null,
+            delivery_man_id: deliveryManId ? String(deliveryManId) : null,
             title,
             message,
             type,
-            data ? JSON.stringify(data) : null
-        ];
-
-        await executeQuery({ query, values });
+            data: data ? JSON.stringify(data) : null,
+            is_read: false,
+            created_at: new Date()
+        });
         return { success: true };
     } catch (error: any) {
         console.error('Failed to send notification:', error);
@@ -49,40 +44,44 @@ export async function sendNotification({
 }
 
 export async function getNotifications(params: {
-    userId?: number;
-    franchiseId?: number;
+    userId?: number | string;
+    franchiseId?: number | string;
     limit?: number;
-    offset?: number;
+    offset?: number; // Offset might be tricky in Firestore without a cursor, will fetch recent for now
 }) {
-    const { userId, franchiseId, limit = 20, offset = 0 } = params;
+    const { userId, franchiseId, limit = 20 } = params;
 
-    let query = 'SELECT * FROM user_notifications';
-    const conditions = [];
-    const values = [];
+    try {
+        let query: any = firestore.collection('user_notifications').orderBy('created_at', 'desc');
 
-    if (userId) {
-        conditions.push('user_id = ?');
-        values.push(userId);
+        if (userId) {
+            query = query.where('user_id', '==', String(userId));
+        } else if (franchiseId) {
+            query = query.where('franchise_id', '==', String(franchiseId));
+        }
+
+        query = query.limit(limit);
+
+        const snapshot = await query.get();
+        const notifications = snapshot.docs.map((doc: any) => ({
+            id: doc.id,
+            ...doc.data(),
+            created_at: doc.data().created_at?.toDate ? doc.data().created_at.toDate() : doc.data().created_at
+        }));
+
+        return notifications;
+    } catch (error) {
+        console.error('Failed to get notifications:', error);
+        return [];
     }
-
-    if (franchiseId) {
-        conditions.push('franchise_id = ?');
-        values.push(franchiseId);
-    }
-
-    if (conditions.length > 0) {
-        query += ' WHERE ' + conditions.join(' OR ');
-    }
-
-    query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-    values.push(limit, offset);
-
-    return await executeQuery({ query, values });
 }
 
-export async function markAsRead(id: number) {
-    return await executeQuery({
-        query: 'UPDATE user_notifications SET is_read = TRUE WHERE id = ?',
-        values: [id]
-    });
+export async function markAsRead(id: string) {
+    try {
+        await firestore.collection('user_notifications').doc(id).update({ is_read: true });
+        return { affectedRows: 1 };
+    } catch (error) {
+        console.error('Failed to mark as read:', error);
+        throw error;
+    }
 }

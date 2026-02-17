@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
-import { supabase } from '@/lib/supabaseClient';
+import { firestore } from '@/lib/firebase';
 
 export async function POST(request: Request) {
     try {
@@ -11,25 +11,34 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Request ID and plan are required' }, { status: 400 });
         }
 
-        // Fetch pricing from Supabase site_settings
-        const { data: settingsRows, error: settingsError } = await supabase
-            .from('site_settings')
-            .select('setting_key, setting_value')
-            .in('setting_key', ['pricing_basic_price', 'pricing_premium_price', 'pricing_free_price', 'pricing_elite_price']);
+        // Fetch pricing from Firestore site_settings
+        // Assuming site_settings logic: document ID 'pricing' or separate docs for keys
+        // Based on previous CMS/Settings refactor, they are in 'site_settings' with 'content_key' or similar if unified,
+        // BUT here it looks like specific keys. Let's assume we query 'site_settings' collection 
+        // where 'section' might be 'pricing' or key is the doc ID.
+        // Let's try to fetch all settings or filter by keys.
+        // To be safe and compatible with previous refactor (which used section/key), let's query.
 
-        if (settingsError) throw settingsError;
+        const settingsSnapshot = await firestore.collection('site_settings').get();
+        const settings: any = {};
 
-        const settings = (settingsRows || []).reduce((acc: any, row: any) => {
-            acc[row.setting_key] = row.setting_value;
-            return acc;
-        }, {});
+        settingsSnapshot.forEach(doc => {
+            const data = doc.data();
+            // Supports both structure: { key: value } or { content_key: value }
+            if (data.content_key) {
+                settings[data.content_key] = data.content_value;
+            } else if (data.setting_key) {
+                settings[data.setting_key] = data.setting_value;
+            }
+        });
 
         // Plan pricing mapping (in paise)
         const planPricing: { [key: string]: number } = {
-            'free': 0,
-            'basic': (parseInt(settings.pricing_basic_price) || 499) * 100,
-            'premium': (parseInt(settings.pricing_premium_price) || 999) * 100,
-            'elite': (parseInt(settings.pricing_elite_price) || 2499) * 100,
+
+
+            'basic': (Number(settings.pricing_basic_price) || 499) * 100,
+            'premium': (Number(settings.pricing_premium_price) || 999) * 100,
+            'elite': (Number(settings.pricing_elite_price) || 2499) * 100,
         };
 
         const amount = planPricing[plan];
@@ -38,20 +47,9 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Invalid plan selected' }, { status: 400 });
         }
 
-        // Check if amount is 0 (true free plan)
-        if (amount === 0) {
-            const { error: updateError } = await supabase
-                .from('franchise_requests')
-                .update({ pricing_plan: plan, payment_status: 'completed' })
-                .eq('id', requestId);
+        const requestRef = firestore.collection('franchise_requests').doc(String(requestId));
 
-            if (updateError) throw updateError;
 
-            return NextResponse.json({
-                message: 'Free plan selected',
-                isFree: true,
-            }, { status: 200 });
-        }
 
         // Create Razorpay instance
         const razorpay = new Razorpay({
@@ -70,17 +68,12 @@ export async function POST(request: Request) {
             receipt: receiptId,
         });
 
-        // Update Supabase with order details
-        const { error: updateOrderError } = await supabase
-            .from('franchise_requests')
-            .update({
-                pricing_plan: plan,
-                razorpay_order_id: order.id,
-                payment_status: 'pending'
-            })
-            .eq('id', requestId);
-
-        if (updateOrderError) throw updateOrderError;
+        // Update Firestore with order details
+        await requestRef.update({
+            pricing_plan: plan,
+            razorpay_order_id: order.id,
+            payment_status: 'pending'
+        });
 
         return NextResponse.json({
             orderId: order.id,

@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { firestore } from '@/lib/firebase';
 
 // Get order timeline/history
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -11,55 +11,74 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     try {
         // 1. Get Order Details
-        const { data: order, error: orderError } = await supabase
-            .from('orders')
-            .select('*, franchise_requests(name, city)')
-            .eq('id', orderId)
-            .single();
+        const orderDoc = await firestore.collection('orders').doc(orderId).get();
 
-        if (orderError || !order) {
+        if (!orderDoc.exists) {
             return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+        }
+
+        const order = orderDoc.data();
+
+        let franchise_name = 'Unknown';
+        let zone_name = 'Unknown';
+
+        if (order?.franchise_id) {
+            const fDoc = await firestore.collection('franchise_requests').doc(order.franchise_id).get();
+            if (fDoc.exists) {
+                franchise_name = fDoc.data()?.name || 'Unknown';
+                zone_name = fDoc.data()?.city || 'Unknown';
+            }
         }
 
         // Flatten franchise details for frontend consistency
         const orderData = {
+            id: orderDoc.id,
             ...order,
-            franchise_name: order.franchise_requests?.name || 'Unknown',
-            zone_name: order.franchise_requests?.city || 'Unknown'
+            franchise_name,
+            zone_name,
+            created_at: order?.created_at?.toDate ? order.created_at.toDate() : order?.created_at
         };
 
-        // 2. Get Order Items
-        const { data: items, error: itemsError } = await supabase
-            .from('order_items')
-            .select('*, shop_items(name, image_url)') // Join with shop_items (products)
-            .eq('order_id', orderId);
+        // 2. Get Order Items (Stored in 'items' array in order doc now, or separate if migrated differently)
+        // In previous POST refactor, I put them in 'items' field of order doc.
+        // But if we want to be safe, we check if 'items' exists, else try to fetch subcollection if we decided to use that?
+        // I'll assume 'items' array in doc as per my POST implementation match.
 
-        if (itemsError) throw itemsError;
-
-        const itemsData = items.map((item: any) => ({
+        const items = (order?.items || []).map((item: any) => ({
             ...item,
-            product_name: item.shop_items?.name || 'Unknown',
-            image_url: item.shop_items?.image_url || null
+            // If products were joined, we might need name/image. 
+            // Ideally we store snapshot of name/image in order item at purchase time.
+            // If not, we might need to fetch product details (N+1).
+            // Assuming basic details `name`, `image_url` might be needed from `products` collection if not in item.
+            // POST implementations usually include price/qty.
         }));
 
-        // 3. Get Order History
-        const { data: history, error: historyError } = await supabase
-            .from('order_history')
-            .select('*')
-            .eq('order_id', orderId)
-            .order('created_at', { ascending: true }); // Legacy changed_at -> created_at
+        // Enrich items with product details if needed (optional optimization: parallel fetch)
+        const enrichedItems = await Promise.all(items.map(async (item: any) => {
+            if (item.product_id) {
+                const pDoc = await firestore.collection('products').doc(item.product_id).get();
+                const pData = pDoc.data();
+                return { ...item, product_name: pData?.name || 'Unknown', image_url: pData?.image_url };
+            }
+            return item;
+        }));
 
-        if (historyError) throw historyError;
 
-        // Map changed_by to name if possible (omitted complex join for now, just show ID or passed name)
-        const historyData = history.map((h: any) => ({
-            ...h,
-            changed_by_name: h.changed_by || 'System'
+        // 3. Get Order History (Subcollection 'history')
+        const historySnapshot = await firestore.collection('orders').doc(orderId).collection('history')
+            .orderBy('created_at', 'asc')
+            .get();
+
+        const historyData = historySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            created_at: doc.data().created_at?.toDate ? doc.data().created_at.toDate() : doc.data().created_at,
+            changed_by_name: doc.data().changed_by || 'System'
         }));
 
         return NextResponse.json({
             order: orderData,
-            items: itemsData,
+            items: enrichedItems,
             timeline: historyData
         });
 

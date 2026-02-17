@@ -1,20 +1,14 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { firestore } from '@/lib/firebase';
 
 export async function GET() {
     try {
         // Fetch content
-        const contentRows = await executeQuery({
-            query: 'SELECT * FROM site_content',
-            values: []
-        });
-
-        if ((contentRows as any).error) {
-            throw new Error((contentRows as any).error);
-        }
+        const contentSnapshot = await firestore.collection('site_content').get();
+        const contentRows = contentSnapshot.docs.map(doc => doc.data());
 
         // Group content by section and parse JSON
-        const content = (contentRows as any[]).reduce((acc, row) => {
+        const content = contentRows.reduce((acc: any, row: any) => {
             if (!acc[row.section]) {
                 acc[row.section] = {};
             }
@@ -22,7 +16,7 @@ export async function GET() {
             let value = row.content_value;
             // Try to parse JSON for arrays/objects
             try {
-                if (value && (value.startsWith('[') || value.startsWith('{'))) {
+                if (value && typeof value === 'string' && (value.startsWith('[') || value.startsWith('{'))) {
                     value = JSON.parse(value);
                 }
             } catch (e) {
@@ -34,16 +28,10 @@ export async function GET() {
         }, {});
 
         // Fetch settings
-        const settingsRows = await executeQuery({
-            query: 'SELECT * FROM site_settings',
-            values: []
-        });
+        const settingsSnapshot = await firestore.collection('site_settings').get();
+        const settingsRows = settingsSnapshot.docs.map(doc => doc.data());
 
-        if ((settingsRows as any).error) {
-            throw new Error((settingsRows as any).error);
-        }
-
-        const settings = (settingsRows as any[]).reduce((acc, row) => {
+        const settings = settingsRows.reduce((acc: any, row: any) => {
             acc[row.setting_key] = row.setting_value;
             return acc;
         }, {});

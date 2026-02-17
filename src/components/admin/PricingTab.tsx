@@ -1,9 +1,5 @@
 
-import React from 'react';
-import dynamic from 'next/dynamic';
-import 'react-quill-new/dist/quill.snow.css';
-
-const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
+import React, { useState } from 'react';
 
 interface PricingTabProps {
     siteSettings: any;
@@ -13,56 +9,79 @@ interface PricingTabProps {
 }
 
 export default function PricingTab({ siteSettings, setSiteSettings, handleSaveSettings, savingCms }: PricingTabProps) {
+    const [uploadingAgreement, setUploadingAgreement] = useState(false);
+
+    const handleAgreementUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.type !== 'application/pdf') {
+            alert('Please upload a PDF file');
+            return;
+        }
+
+        try {
+            setUploadingAgreement(true);
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch('/api/admin/upload-agreement', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.url) {
+                setSiteSettings({ ...siteSettings, agreement_url: data.url });
+                alert('Agreement uploaded successfully!');
+            } else {
+                throw new Error(data.message || 'Upload failed');
+            }
+        } catch (error) {
+            console.error('Error uploading agreement:', error);
+            alert('Failed to upload agreement');
+        } finally {
+            setUploadingAgreement(false);
+        }
+    };
+
     return (
         <div className="flex flex-col gap-8">
             {/* Header */}
-            <div>
-                <h2 className="text-2xl font-bold text-slate-800">Pricing & Agreement</h2>
-                <p className="text-slate-500 mt-1">Manage subscription plans and franchise legal agreements.</p>
+
+
+
+            {/* Pricing Plans Header & Actions */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h3 className="text-xl font-bold text-slate-800">Subscription Plans</h3>
+                    <p className="text-sm text-slate-500">Set the pricing and revenue share for each tier.</p>
+                </div>
+                <button
+                    onClick={handleSaveSettings}
+                    disabled={savingCms}
+                    className={`
+                        px-6 py-2.5 rounded-xl font-semibold text-white shadow-lg shadow-blue-500/30 transition-all
+                        ${savingCms ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:scale-105 active:scale-95'}
+                    `}
+                >
+                    {savingCms ? (
+                        <span className="flex items-center gap-2">
+                            <i className="fas fa-circle-notch fa-spin"></i> Saving...
+                        </span>
+                    ) : (
+                        <span className="flex items-center gap-2">
+                            <i className="fas fa-save"></i> Save Prices
+                        </span>
+                    )}
+                </button>
             </div>
 
             {/* Pricing Plans Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
 
-                {/* Starter Plan */}
-                <div className="relative group bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300">
-                    <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <i className="fas fa-seedling text-4xl text-slate-600"></i>
-                    </div>
-                    <div className="mb-4">
-                        <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 mb-2">FREE</span>
-                        <h3 className="text-xl font-bold text-slate-800">Starter</h3>
-                    </div>
-
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Revenue Share</label>
-                            <div className="relative">
-                                <input
-                                    type="number"
-                                    className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-semibold text-slate-700"
-                                    value={siteSettings.pricing_free_share || ''}
-                                    onChange={(e) => setSiteSettings({ ...siteSettings, pricing_free_share: e.target.value })}
-                                    placeholder="50"
-                                />
-                                <span className="absolute right-3 top-2 text-slate-400 font-bold">%</span>
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Doc Fee</label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-2 text-slate-400 font-bold">₹</span>
-                                <input
-                                    type="number"
-                                    className="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-semibold text-slate-700"
-                                    value={siteSettings.pricing_free_price || ''}
-                                    onChange={(e) => setSiteSettings({ ...siteSettings, pricing_free_price: e.target.value })}
-                                    placeholder="1500"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {/* Starter Plan Removed */}
 
                 {/* Standard Plan */}
                 <div className="relative group bg-white rounded-2xl p-6 border border-blue-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
@@ -213,14 +232,70 @@ export default function PricingTab({ siteSettings, setSiteSettings, handleSaveSe
                     </button>
                 </div>
                 <div className="p-6">
-                    <div className="prose max-w-none">
-                        <ReactQuill
-                            theme="snow"
-                            value={siteSettings.agreement_text || ''}
-                            onChange={(content: string) => setSiteSettings({ ...siteSettings, agreement_text: content })}
-                            className="bg-slate-50 rounded-lg"
-                            style={{ height: '400px', marginBottom: '50px' }}
-                        />
+                    <div className="flex flex-col items-center gap-6 py-8">
+                        {siteSettings.agreement_url ? (
+                            <div className="w-full max-w-lg bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+                                        <i className="fas fa-file-pdf text-xl"></i>
+                                    </div>
+                                    <div className="text-left">
+                                        <p className="font-medium text-blue-900">Current Agreement</p>
+                                        <a
+                                            href={siteSettings.agreement_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                                        >
+                                            View PDF <i className="fas fa-external-link-alt text-[10px]"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                                <div className="text-green-600 text-sm font-medium flex items-center gap-1">
+                                    <i className="fas fa-check-circle"></i> Active
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="w-full max-w-lg bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-8 text-center">
+                                <i className="fas fa-file-upload text-3xl text-slate-400 mb-2"></i>
+                                <p className="text-slate-500 font-medium">No agreement uploaded yet</p>
+                                <p className="text-slate-400 text-sm">Upload a PDF file to display to applicants</p>
+                            </div>
+                        )}
+
+                        <div className="relative">
+                            <input
+                                type="file"
+                                id="agreement-upload"
+                                accept="application/pdf"
+                                onChange={handleAgreementUpload}
+                                className="hidden"
+                                disabled={uploadingAgreement}
+                            />
+                            <label
+                                htmlFor="agreement-upload"
+                                className={`
+                                    flex items-center gap-2 px-6 py-3 rounded-xl cursor-pointer transition-all
+                                    ${uploadingAgreement
+                                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                        : 'bg-white border-2 border-blue-100 text-blue-600 hover:border-blue-200 hover:bg-blue-50 font-semibold shadow-sm'}
+                                `}
+                            >
+                                {uploadingAgreement ? (
+                                    <>
+                                        <i className="fas fa-circle-notch fa-spin"></i> Uploading...
+                                    </>
+                                ) : (
+                                    <>
+                                        <i className="fas fa-cloud-upload-alt"></i>
+                                        {siteSettings.agreement_url ? 'Upload New Version' : 'Upload Agreement PDF'}
+                                    </>
+                                )}
+                            </label>
+                        </div>
+                        <p className="text-slate-400 text-xs text-center max-w-xs">
+                            Supports PDF files only. New uploads will replace the current agreement immediately upon saving.
+                        </p>
                     </div>
                 </div>
             </div>

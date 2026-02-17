@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { firestore } from '@/lib/firebase';
 import { sendEmail } from '@/lib/email';
 import crypto from 'crypto';
 
@@ -18,32 +18,31 @@ export async function POST(request: Request) {
         }
 
         // Check if user exists in franchise_requests (franchise users)
-        const franchiseResult: any = await executeQuery({
-            query: 'SELECT id, name, email FROM franchise_requests WHERE email = ? AND status = ?',
-            values: [email, 'approved']
-        });
+        const franchiseSnapshot = await firestore.collection('franchise_requests')
+            .where('email', '==', email)
+            .where('status', '==', 'approved')
+            .limit(1)
+            .get();
 
-        // Check if user exists in admins table
-        const adminResult: any = await executeQuery({
-            query: 'SELECT id, name, email FROM admins WHERE email = ?',
-            values: [email]
-        });
+        // Check if user exists in admins collection (if admins are in Firestore now?)
+        // Assuming admins are also in Firestore for consistency.
+        const adminSnapshot = await firestore.collection('admins')
+            .where('email', '==', email)
+            .limit(1)
+            .get();
 
-        let user = null;
-        let userType = '';
-        let tableName = '';
+        let userDoc = null;
+        let collectionName = '';
 
-        if (franchiseResult && franchiseResult.length > 0) {
-            user = franchiseResult[0];
-            userType = 'franchise';
-            tableName = 'franchise_requests';
-        } else if (adminResult && adminResult.length > 0) {
-            user = adminResult[0];
-            userType = 'admin';
-            tableName = 'admins';
+        if (!franchiseSnapshot.empty) {
+            userDoc = franchiseSnapshot.docs[0];
+            collectionName = 'franchise_requests';
+        } else if (!adminSnapshot.empty) {
+            userDoc = adminSnapshot.docs[0];
+            collectionName = 'admins';
         }
 
-        if (!user) {
+        if (!userDoc) {
             // Don't reveal if email exists or not for security
             return NextResponse.json({
                 success: true,
@@ -51,13 +50,14 @@ export async function POST(request: Request) {
             });
         }
 
+        const userData = userDoc.data();
+
         // Generate temporary password
         const tempPassword = generateTempPassword();
 
-        // Update password in database
-        await executeQuery({
-            query: `UPDATE ${tableName} SET password = ? WHERE id = ?`,
-            values: [tempPassword, user.id]
+        // Update password in Firestore
+        await firestore.collection(collectionName).doc(userDoc.id).update({
+            password: tempPassword
         });
 
         // Send email with temporary password
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
                     </div>
                     
                     <div style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); padding: 30px; border-radius: 16px; color: white; margin-bottom: 30px;">
-                        <h2 style="margin: 0 0 10px 0;">Hello ${user.name || 'User'},</h2>
+                        <h2 style="margin: 0 0 10px 0;">Hello ${userData.name || 'User'},</h2>
                         <p style="margin: 0; opacity: 0.9;">We received a password reset request for your account.</p>
                     </div>
                     

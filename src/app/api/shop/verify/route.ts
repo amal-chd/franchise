@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { supabase } from '@/lib/supabaseClient';
+import { firestore } from '@/lib/firebase';
 
 export async function POST(request: Request) {
     try {
@@ -14,13 +14,13 @@ export async function POST(request: Request) {
             .digest('hex');
 
         if (generated_signature === razorpay_signature) {
-            // Update order status
-            const { error } = await supabase
-                .from('orders')
-                .update({ payment_status: 'paid', order_status: 'processing' })
-                .eq('id', orderId);
-
-            if (error) throw error;
+            // Update order status in Firestore
+            await firestore.collection('orders').doc(orderId).update({
+                payment_status: 'paid',
+                order_status: 'processing',
+                razorpay_payment_id: razorpay_payment_id,
+                updated_at: new Date()
+            });
 
             return NextResponse.json({ success: true });
         } else {

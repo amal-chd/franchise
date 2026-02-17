@@ -107,71 +107,66 @@ function ApplyContent() {
             const data = await res.json();
 
             if (res.ok) {
-                if (data.isFree) {
-                    setStatus('');
-                    setStep(4);
-                } else {
-                    const options = {
-                        key: data.keyId,
-                        amount: data.amount,
-                        currency: data.currency,
-                        name: 'The Kada Franchise',
-                        description: `${plan === 'basic' ? 'Standard' : plan === 'premium' ? 'Premium' : 'Elite'} Revenue Share Plan`,
-                        order_id: data.orderId,
-                        handler: async function (response: any) {
-                            console.log('Razorpay Payment Success Callback:', response);
-                            console.log('Verifying payment with requestId:', requestId);
+                const options = {
+                    key: data.keyId,
+                    amount: data.amount,
+                    currency: data.currency,
+                    name: 'The Kada Franchise',
+                    description: `${plan === 'basic' ? 'Standard' : plan === 'premium' ? 'Premium' : 'Elite'} Revenue Share Plan`,
+                    order_id: data.orderId,
+                    handler: async function (response: any) {
+                        console.log('Razorpay Payment Success Callback:', response);
+                        console.log('Verifying payment with requestId:', requestId);
 
-                            try {
-                                const verifyRes = await fetch('/api/pricing/verify', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        razorpay_order_id: response.razorpay_order_id,
-                                        razorpay_payment_id: response.razorpay_payment_id,
-                                        razorpay_signature: response.razorpay_signature,
-                                        requestId,
-                                    }),
-                                });
+                        try {
+                            const verifyRes = await fetch('/api/pricing/verify', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    razorpay_order_id: response.razorpay_order_id,
+                                    razorpay_payment_id: response.razorpay_payment_id,
+                                    razorpay_signature: response.razorpay_signature,
+                                    requestId,
+                                }),
+                            });
 
-                                const verifyData = await verifyRes.json();
-                                console.log('Verification API Response:', verifyData);
+                            const verifyData = await verifyRes.json();
+                            console.log('Verification API Response:', verifyData);
 
-                                if (verifyRes.ok) {
-                                    console.log('Payment verified successfully. Moving to next step.');
-                                    setStatus('');
-                                    setStep(4);
-                                } else {
-                                    console.error('Payment verification failed:', verifyData);
-                                    setStatus('error');
-                                }
-                            } catch (err) {
-                                console.error('Error during payment verification:', err);
+                            if (verifyRes.ok) {
+                                console.log('Payment verified successfully. Moving to next step.');
+                                setStatus('');
+                                setStep(4);
+                            } else {
+                                console.error('Payment verification failed:', verifyData);
                                 setStatus('error');
                             }
-                        },
-                        prefill: {
-                            name: formData.name,
-                            email: formData.email,
-                            contact: formData.phone,
-                        },
-                        theme: {
-                            color: '#2563EB',
-                        },
-                    };
+                        } catch (err) {
+                            console.error('Error during payment verification:', err);
+                            setStatus('error');
+                        }
+                    },
+                    prefill: {
+                        name: formData.name,
+                        email: formData.email,
+                        contact: formData.phone,
+                    },
+                    theme: {
+                        color: '#2563EB',
+                    },
+                };
 
 
 
-                    if (!(window as any).Razorpay) {
-                        console.error('Razorpay SDK not loaded');
-                        setStatus('error');
-                        return;
-                    }
-
-                    const rzp = new (window as any).Razorpay(options);
-                    rzp.open();
-                    setStatus('');
+                if (!(window as any).Razorpay) {
+                    console.error('Razorpay SDK not loaded');
+                    setStatus('error');
+                    return;
                 }
+
+                const rzp = new (window as any).Razorpay(options);
+                rzp.open();
+                setStatus('');
             } else {
                 console.error('Order creation failed:', data);
                 setStatus('error');
@@ -384,37 +379,7 @@ function ApplyContent() {
                     <div>
                         <h3 className="text-center" style={{ marginBottom: '2rem' }}>Choose Your Plan</h3>
                         <div className="pricing-grid">
-                            {/* Free Plan */}
-                            <div
-                                className={`pricing-card ${selectedPlan === 'free' ? 'selected' : ''}`}
-                                onClick={() => setSelectedPlan('free')}
-                                style={{ borderTop: '4px solid #10B981', background: selectedPlan === 'free' ? 'linear-gradient(to bottom, #ecfdf5, #ffffff)' : 'white' }}
-                            >
-                                <div className="pricing-header">
-                                    <h4 style={{ color: '#047857' }}>Starter Partner</h4>
-                                    <div className="price">Free<span>/to join</span></div>
-                                </div>
-                                <ul className="pricing-features">
-                                    <li><i className="fas fa-check" style={{ color: '#10B981' }}></i> {content.pricing_free_share || '50'}% Revenue Share</li>
-                                    <li><i className="fas fa-check" style={{ color: '#10B981' }}></i> Basic Support</li>
-                                    <li><i className="fas fa-check" style={{ color: '#10B981' }}></i> ₹{content.pricing_free_price || '1500'} Documentation Fee (Payable Later)</li>
-                                    <li><i className="fas fa-check" style={{ color: '#10B981' }}></i> App Access</li>
-                                </ul>
-                                <button
-                                    className={`btn`}
-                                    onClick={(e) => { e.stopPropagation(); handlePricingSubmit('free'); }}
-                                    style={{
-                                        width: '100%',
-                                        background: selectedPlan === 'free' ? '#10B981' : '#f3f4f6',
-                                        color: selectedPlan === 'free' ? 'white' : '#374151',
-                                        border: 'none',
-                                        fontWeight: 600
-                                    }}
-                                    disabled={status === 'sending'}
-                                >
-                                    Select Plan
-                                </button>
-                            </div>
+
 
                             {/* Basic Plan */}
                             <div
@@ -553,18 +518,40 @@ function ApplyContent() {
                             whiteSpace: 'pre-wrap',
                             WebkitOverflowScrolling: 'touch' // Enable momentum scrolling on iOS
                         }}>
-                            {content.agreement_text ? (
-                                <div dangerouslySetInnerHTML={{ __html: content.agreement_text }} />
+                            {content.agreement_url ? (
+                                <div className="flex flex-col items-center justify-center py-8 gap-4">
+                                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mb-2">
+                                        <i className="fas fa-file-contract text-3xl"></i>
+                                    </div>
+                                    <h4 className="text-lg font-bold text-slate-800">Review Franchise Agreement</h4>
+                                    <p className="text-slate-500 text-center max-w-md mb-4">
+                                        Please download and review the Franchise Partner Agreement below before proceeding.
+                                    </p>
+
+                                    <a
+                                        href={content.agreement_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 flex items-center gap-2 px-6 py-3 rounded-xl shadow-sm transition-all"
+                                        download
+                                    >
+                                        <i className="fas fa-file-download text-blue-500"></i> Download Agreement PDF
+                                    </a>
+                                </div>
                             ) : (
-                                <>
-                                    <h4 style={{ marginBottom: '1rem' }}>FRANCHISE PARTNER AGREEMENT</h4>
-                                    <p>This Agreement is made between The Kada Franchise ("Company") and the Applicant ("Partner").</p>
-                                    <p><strong>1. Term:</strong> This agreement is valid for a period of 12 months from the date of signing.</p>
-                                    <p><strong>2. Revenue Share:</strong> The Partner is entitled to the revenue share as per the selected plan of the net profit from their designated zone.</p>
-                                    <p><strong>3. Responsibilities:</strong> The Partner agrees to manage local deliveries, onboard vendors, and maintain service quality standards set by the Company.</p>
-                                    <p><strong>4. Termination:</strong> Either party may terminate this agreement with 30 days written notice.</p>
-                                    <p><strong>5. Confidentiality:</strong> The Partner agrees to keep all business data and customer information confidential.</p>
-                                </>
+                                content.agreement_text ? (
+                                    <div dangerouslySetInnerHTML={{ __html: content.agreement_text }} />
+                                ) : (
+                                    <>
+                                        <h4 style={{ marginBottom: '1rem' }}>FRANCHISE PARTNER AGREEMENT</h4>
+                                        <p>This Agreement is made between The Kada Franchise ("Company") and the Applicant ("Partner").</p>
+                                        <p><strong>1. Term:</strong> This agreement is valid for a period of 12 months from the date of signing.</p>
+                                        <p><strong>2. Revenue Share:</strong> The Partner is entitled to the revenue share as per the selected plan of the net profit from their designated zone.</p>
+                                        <p><strong>3. Responsibilities:</strong> The Partner agrees to manage local deliveries, onboard vendors, and maintain service quality standards set by the Company.</p>
+                                        <p><strong>4. Termination:</strong> Either party may terminate this agreement with 30 days written notice.</p>
+                                        <p><strong>5. Confidentiality:</strong> The Partner agrees to keep all business data and customer information confidential.</p>
+                                    </>
+                                )
                             )}
                         </div>
 

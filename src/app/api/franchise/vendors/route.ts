@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/franchise_db';
+import { firestore } from '@/lib/firebase';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -12,32 +12,22 @@ export async function GET(request: Request) {
     try {
         console.log(`DEBUG: Fetching vendors for zoneId: ${zoneId}`);
 
-        // DEBUG: Count total stores to verify DB connection and data existence
-        const totalStoresResult: any = await executeQuery({
-            query: 'SELECT COUNT(*) as count FROM stores',
-            values: []
-        });
-        console.log(`DEBUG: Total Stores in DB: ${totalStoresResult[0]?.count}`);
+        // Fetch vendors/stores for the given zone from Firestore collection 'vendors'
+        const snapshot = await firestore.collection('vendors')
+            .where('zone_id', '==', parseInt(zoneId) || zoneId)
+            .get();
 
-        // DEBUG: Count stores for this zone
-        const zoneStoresResult: any = await executeQuery({
-            query: 'SELECT COUNT(*) as count FROM stores WHERE zone_id = ?',
-            values: [zoneId]
+        const result = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                // Ensure fields match frontend expectations
+                type: data.type || data.module_name || 'Store'
+            };
         });
-        console.log(`DEBUG: Stores in Zone ${zoneId}: ${zoneStoresResult[0]?.count}`);
 
-        // Fetch stores (vendors) for the given zone from READ-ONLY Franchise DB
-        const result: any = await executeQuery({
-            query: `
-                SELECT s.id, s.name, s.logo, s.address, s.phone, s.email, s.active, s.status, s.zone_id, 
-                       s.cover_photo, s.rating, s.delivery_time,
-                       m.module_name as type
-                FROM stores s
-                LEFT JOIN modules m ON s.module_id = m.id
-                WHERE s.zone_id = ?
-            `,
-            values: [zoneId],
-        });
+        console.log(`DEBUG: Stores in Zone ${zoneId}: ${result.length}`);
 
         return NextResponse.json(result);
     } catch (error: any) {

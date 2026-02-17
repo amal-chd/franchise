@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { firestore } from '@/lib/firebase';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -10,13 +10,16 @@ export async function GET(request: Request) {
     }
 
     try {
-        const { data: messages, error } = await supabase
-            .from('admin_chats')
-            .select('*')
-            .eq('session_id', sessionId)
-            .order('created_at', { ascending: true });
+        const snapshot = await firestore.collection('chat_messages')
+            .where('session_id', '==', sessionId)
+            .orderBy('created_at', 'asc')
+            .get();
 
-        if (error) throw error;
+        const messages = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            created_at: doc.data().created_at?.toDate ? doc.data().created_at.toDate() : doc.data().created_at
+        }));
 
         return NextResponse.json(messages);
     } catch (error: any) {
@@ -34,34 +37,31 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        // Insert into admin_chats
-        const { error: insertError } = await supabase
-            .from('admin_chats')
-            .insert([{
-                session_id: sessionId,
-                sender_type: senderType,
-                // sender_id is not in admin_chats schema based on inspection, standardizing on sender_type
-                // If sender_id is needed, we should add it, but mobile app doesn't seem to use it for admin_chats
-                message: message || '',
-                attachment_url: attachmentUrl || null,
-                attachment_type: attachmentType || null
-            }]);
+        // Insert into chat_messages
+        const newMessage = {
+            session_id: sessionId,
+            sender_type: senderType,
+            // sender_id: senderId || null, // Optional if we want to track
+            message: message || '',
+            attachment_url: attachmentUrl || null,
+            attachment_type: attachmentType || null,
+            created_at: new Date()
+        };
 
-        if (insertError) throw insertError;
+        const docRef = await firestore.collection('chat_messages').add(newMessage);
 
         // Update session last_message
         const lastMsg = message || (attachmentType === 'image' ? 'Image' : 'File');
-        const { error: updateError } = await supabase
-            .from('admin_chat_sessions')
-            .update({
-                last_message: lastMsg,
-                last_message_time: new Date().toISOString()
-            })
-            .eq('id', sessionId);
 
-        if (updateError) throw updateError;
+        await firestore.collection('chat_sessions').doc(sessionId).update({
+            last_message: lastMsg,
+            last_message_time: new Date(),
+            last_sender_type: senderType,
+            last_message_id: docRef.id,
+            updated_at: new Date()
+        });
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ success: true, id: docRef.id });
     } catch (error: any) {
         console.error('Send Message Error:', error);
         return NextResponse.json({ error: 'Failed to send message' }, { status: 500 });

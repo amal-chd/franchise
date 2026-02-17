@@ -1,21 +1,37 @@
 
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { firestore } from '@/lib/firebase';
 
 export async function GET() {
     try {
-        // Fetch logs 
-        const { data: logs, error } = await supabaseAdmin
-            .from('plan_upgrade_logs')
-            .select(`
-        *,
-        franchise_requests:franchise_id (name, email, phone)
-      `)
-            .order('created_at', { ascending: false });
+        const snapshot = await firestore.collection('plan_upgrade_logs')
+            .orderBy('created_at', 'desc')
+            .get();
 
-        if (error) throw error;
+        const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        return NextResponse.json(logs);
+        // Manual Join for Franchise Details
+        // Ideally, we should fetch only relevant franchises, but fetching all is simpler for initial migration
+        const franchisesSnapshot = await firestore.collection('franchise_requests').get();
+        const franchisesMap = new Map();
+        franchisesSnapshot.forEach(doc => {
+            franchisesMap.set(doc.id, doc.data());
+        });
+
+        const results = logs.map((log: any) => {
+            const franchise = franchisesMap.get(log.franchise_id);
+            return {
+                ...log,
+                franchise_requests: franchise ? {
+                    name: franchise.name,
+                    email: franchise.email,
+                    phone: franchise.phone
+                } : null,
+                created_at: log.created_at?.toDate ? log.created_at.toDate().toISOString() : log.created_at
+            };
+        });
+
+        return NextResponse.json(results);
     } catch (error: any) {
         console.error('Fetch Upgrades Logs Error:', error);
         return NextResponse.json({ message: 'Internal Server Error', error: error.message }, { status: 500 });

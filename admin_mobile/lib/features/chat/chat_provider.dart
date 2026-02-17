@@ -2,159 +2,45 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../core/api_service.dart'; // For upload
+import 'chat_models.dart';
+import 'chat_service.dart';
 
-class ChatMessage {
-  final int id;
-  final String message;
-  final String senderType; 
-  final DateTime createdAt;
-  final String? attachmentUrl;
-  final String? attachmentType;
-  final String status; // 'sent', 'delivered', 'read'
-  final DateTime? readAt;
+// --- SERVICE PROVIDER ---
+final chatServiceProvider = Provider((ref) => ChatService());
 
-  ChatMessage({
-    required this.id,
-    required this.message,
-    required this.senderType,
-    required this.createdAt,
-    this.attachmentUrl,
-    this.attachmentType,
-    this.status = 'sent',
-    this.readAt,
-  });
+// --- FRANCHISE CHAT PROVIDERS ---
 
-  factory ChatMessage.fromJson(Map<String, dynamic> json) {
-    var status = json['status'] ?? 'sent';
-    final readAt = json['read_at'] != null ? DateTime.parse(json['read_at']) : null;
-    
-    // Explicitly infer status for UI if read_at is present
-    if (readAt != null) {
-      status = 'read';
-    }
-
-    return ChatMessage(
-      id: json['id'],
-      message: json['message'] ?? '',
-      senderType: json['sender_type'],
-      createdAt: DateTime.parse(json['created_at']),
-      attachmentUrl: json['attachment_url'],
-      attachmentType: json['attachment_type'],
-      status: status,
-      readAt: readAt,
-    );
-  }
-}
-
-class ChatSession {
-  final int id;
-  final String status;
-  final int franchiseId;
-  final DateTime? lastSeenAdmin;
-
-  ChatSession({
-    required this.id, 
-    required this.status,
-    this.franchiseId = 0,
-    this.lastSeenAdmin,
-  });
-
-  factory ChatSession.fromJson(Map<String, dynamic> json) {
-    return ChatSession(
-      id: json['id'],
-      status: json['status'] ?? 'open',
-      franchiseId: json['franchise_id'] ?? 0,
-      lastSeenAdmin: json['last_seen_admin'] != null 
-          ? DateTime.parse(json['last_seen_admin']) 
-          : null,
-    );
-  }
-}
-
-// Check for active session or create one
+// 1. Session Provider
 final chatSessionProvider = FutureProvider<ChatSession?>((ref) async {
+  final service = ref.watch(chatServiceProvider);
   final user = Supabase.instance.client.auth.currentUser;
+  
+  if (user == null) return null;
+
   final prefs = await SharedPreferences.getInstance();
   final franchiseId = prefs.getInt('franchiseId') ?? 0;
-  
-  if (user == null && franchiseId == 0) return null;
 
-  try {
-    // 1. Try finding by UUID (Most reliable)
-    if (user != null) {
-        final byUuid = await Supabase.instance.client
-            .from('admin_chat_sessions')
-            .select()
-            .eq('franchise_uuid', user.id)
-            .maybeSingle();
-            
-        if (byUuid != null) {
-            return ChatSession.fromJson(byUuid);
-        }
-    }
-
-    // 2. Fallback: Find by Franchise ID
-    if (franchiseId != 0) {
-        final byId = await Supabase.instance.client
-            .from('admin_chat_sessions')
-            .select()
-            .eq('franchise_id', franchiseId)
-            .maybeSingle();
-            
-        if (byId != null) {
-            // Self-heal: Update UUID if missing
-            if (user != null && byId['franchise_uuid'] == null) {
-                 await Supabase.instance.client
-                     .from('admin_chat_sessions')
-                     .update({'franchise_uuid': user.id})
-                     .eq('id', byId['id']);
-            }
-            return ChatSession.fromJson(byId);
-        }
-    }
-
-    // 3. Create if not found
-    final data = await Supabase.instance.client
-        .from('admin_chat_sessions')
-        .insert({
-            'franchise_id': franchiseId,
-            'franchise_uuid': user?.id,
-            'status': 'open'
-        })
-        .select()
-        .single();
-    
-    return ChatSession.fromJson(data);
-  } catch (e) {
-    print('Session Error: $e');
-    return null;
-  }
+  return service.getSession(
+    franchiseId: franchiseId,
+    franchiseUuid: user.id,
+  );
 });
 
-// Messages Provider (Stream)
+// 2. Messages Stream Provider
 final chatMessagesProvider = StreamProvider<List<ChatMessage>>((ref) {
-   // Watch session to get ID
-   final sessionAsync = ref.watch(chatSessionProvider);
-   
-   return sessionAsync.when(
-       data: (session) {
-           if (session == null) return const Stream.empty();
-           
-           return Supabase.instance.client
-               .from('admin_chats')
-               .stream(primaryKey: ['id'])
-               .eq('session_id', session.id)
-               .order('created_at', ascending: true)
-               .map((data) => data.map((e) => ChatMessage.fromJson(e)).toList());
-       },
-       loading: () => const Stream.empty(),
-       error: (e, s) => const Stream.empty()
-   );
+  final sessionAsync = ref.watch(chatSessionProvider);
+
+  return sessionAsync.when(
+    data: (session) {
+      if (session == null) return const Stream.empty();
+      return ref.watch(chatServiceProvider).getMessagesStream(session.id);
+    },
+    loading: () => const Stream.empty(),
+    error: (_, __) => const Stream.empty(),
+  );
 });
 
-
-// Controller for sending messages & presence
+// 3. Controller Provider
 final chatControllerProvider = Provider((ref) => ChatController(ref));
 
 class ChatController {
@@ -163,78 +49,30 @@ class ChatController {
 
   Future<bool> sendMessage(String? message, {String? attachmentUrl, String? attachmentType}) async {
     final session = await ref.read(chatSessionProvider.future);
-    if (session == null) return false; 
+    if (session == null) return false;
 
-    try {
-      await Supabase.instance.client.from('admin_chats').insert({
-          'session_id': session.id,
-          'message': message,
-          'sender_type': 'franchise',
-          'attachment_url': attachmentUrl,
-          'attachment_type': attachmentType,
-          'status': 'sent'
-      });
-      
-      // Update session last message for preview (Fail-open)
-      try {
-        await Supabase.instance.client.from('admin_chat_sessions').update({
-           'last_message_preview': message ?? (attachmentType == 'image' ? 'Image' : 'File'),
-           'last_message_at': DateTime.now().toUtc().toIso8601String(),
-           'last_sender_type': 'franchise'
-        }).eq('id', session.id);
-      } catch (updateError) {
-        print('Session Update Error (Non-fatal): $updateError');
-      }
-
-      return true;
-    } catch (e) {
-      print('Send Error: $e');
-      return false;
-    }
+    return ref.read(chatServiceProvider).sendMessage(
+      sessionId: session.id,
+      message: message,
+      attachmentUrl: attachmentUrl,
+      attachmentType: attachmentType,
+    );
   }
 
-  Future<String?> uploadFile(XFile file) async {
-      return await ApiService().uploadFile(file, folder: 'chat');
+  Future<String?> uploadFile(XFile file) {
+    return ref.read(chatServiceProvider).uploadFile(file);
   }
 
-  Future<void> markMessagesAsRead(int sessionId) async {
-    // Mark all 'admin' messages in this session as read where read_at is null
-    try {
-      await Supabase.instance.client
-          .from('admin_chats')
-          .update({
-            'read_at': DateTime.now().toUtc().toIso8601String(),
-            'status': 'read'
-          })
-          .eq('session_id', sessionId)
-          .eq('sender_type', 'admin')
-          .isFilter('read_at', null);
-    } catch (e) {
-      print('Mark Read Error: $e');
-    }
-  }
-
-  Future<void> updateLastSeen(int sessionId) async {
-    try {
-      await Supabase.instance.client
-          .from('admin_chat_sessions')
-          .update({
-            'last_seen_franchise': DateTime.now().toUtc().toIso8601String()
-          })
-          .eq('id', sessionId);
-    } catch (e) {
-      print('Update Last Seen Error: $e');
-    }
+  Future<void> markMessagesAsRead(int sessionId) {
+    return ref.read(chatServiceProvider).markAdminMessagesAsRead(sessionId);
   }
 }
 
-// Admin Providers (Optional, if Admin app uses same codebase)
-// ... Keeping minimal Admin stubs or migrating similarly if needed.
-// For now focusing on Franchise side features.
 
-// ... existing ChatMessage and ChatSession classes ...
+// --- ADMIN CHAT PROVIDERS (Legacy/Shared Codebase Support) ---
+// Keeping these to ensure Admin side works if this app is shared, 
+// using correct Schema now.
 
-// Admin Chat Session Model
 class AdminChatSession {
   final int id;
   final int franchiseId;
@@ -253,52 +91,41 @@ class AdminChatSession {
   });
 }
 
-// Realtime Listener for Sessions List
-final adminSessionsRealtimeProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
-  return Supabase.instance.client
-      .from('admin_chat_sessions')
-      .stream(primaryKey: ['id']);
-});
-
-// Admin Sessions Provider (Fetches sessions + profiles)
 final adminChatSessionsProvider = FutureProvider<List<AdminChatSession>>((ref) async {
-  // Ensure we are listening to realtime updates
-  ref.watch(adminSessionsRealtimeProvider); 
-
+  // Realtime subscription binding would go here if needed
+  
   try {
-      // Direct DB query to ensure consistency with Realtime/Writes
-      // Bypasses potentially misconfigured Vercel API
-      final data = await Supabase.instance.client
-          .from('admin_chat_sessions')
-          .select()
-          .order('last_message_at', ascending: false); // Show recent first
-          
-      return (data as List).map<AdminChatSession>((s) {
-        return AdminChatSession(
-          id: s['id'],
-          franchiseId: s['franchise_id'] ?? 0,
-          franchiseName: s['franchise_name'] ?? 'Franchise #${s['franchise_id']}',
-          lastMessage: s['last_message_preview'],
-          lastMessageTime: s['last_message_at'] != null 
-              ? DateTime.parse(s['last_message_at']).toLocal() 
-              : null,
-          status: s['status'] ?? 'open',
-        );
-      }).toList();
+    final data = await Supabase.instance.client
+        .from('admin_chat_sessions')
+        .select()
+        .order('last_message_time', ascending: false);
+
+    return (data as List).map<AdminChatSession>((s) {
+      return AdminChatSession(
+        id: s['id'],
+        franchiseId: s['franchise_id'] ?? 0,
+        franchiseName: s['franchise_name'] ?? 'Franchise #${s['franchise_id']}',
+        lastMessage: s['last_message'], // Correct Schema
+        lastMessageTime: s['last_message_time'] != null 
+            ? DateTime.parse(s['last_message_time']).toLocal() 
+            : null,
+        status: s['status'] ?? 'open',
+      );
+    }).toList();
   } catch (e) {
-      print('Admin Sessions Error: $e');
-      return [];
+    // ignore: avoid_print
+    print('Admin Sessions Error: $e');
+    return [];
   }
 });
 
-// Admin Message Stream
 final adminChatMessagesFamilyProvider = StreamProvider.family<List<ChatMessage>, int>((ref, sessionId) {
-  return Supabase.instance.client
-      .from('admin_chats')
-      .stream(primaryKey: ['id'])
-      .eq('session_id', sessionId)
-      .order('created_at', ascending: true)
-      .map((data) => data.map((e) => ChatMessage.fromJson(e)).toList());
+   return Supabase.instance.client
+       .from('admin_chats')
+       .stream(primaryKey: ['id'])
+       .eq('session_id', sessionId)
+       .order('created_at', ascending: true)
+       .map((data) => data.map((e) => ChatMessage.fromJson(e)).toList());
 });
 
 final adminChatControllerProvider = Provider((ref) => AdminChatController(ref));
@@ -307,98 +134,6 @@ class AdminChatController {
   final Ref ref;
   AdminChatController(this.ref);
 
-  Future<AdminChatSession?> startNewChat(int franchiseId, String franchiseEmail) async {
-    try {
-        print('Starting chat with Franchise ID: $franchiseId, Email: $franchiseEmail');
-        
-        // 1. Get Franchise UUID from profiles using EMAIL
-        // Because MySQL ID and Supabase franchise_id are out of sync.
-        final profile = await Supabase.instance.client
-            .from('profiles')
-            .select()
-            .eq('email', franchiseEmail) 
-            .maybeSingle(); 
-            
-            
-        if (profile == null) {
-            print('Profile not found for franchise Email: $franchiseEmail');
-            // Attempt to search by franchise_id (legacy) if passed?
-            // Or just return a helpful error.
-             throw 'User has not logged in to the new app yet (Profile missing). Ask them to login once.';
-        }
-        
-        final franchiseUuid = profile['id'];
-        print('Found profile: $franchiseUuid');
-
-        // 2. Check existing session by UUID
-        var existing = await Supabase.instance.client
-            .from('admin_chat_sessions')
-            .select()
-            .eq('franchise_uuid', franchiseUuid)
-            .maybeSingle();
-            
-        // Fallback: Check by legacy ID if UUID session not found (rare but possible migration case)
-        if (existing == null) {
-             existing = await Supabase.instance.client
-            .from('admin_chat_sessions')
-            .select()
-            .eq('franchise_id', franchiseId)
-            .maybeSingle();
-        }
-
-        if (existing != null) {
-           print('Found existing session: ${existing['id']}');
-           return AdminChatSession(
-             id: existing['id'], 
-             franchiseId: franchiseId, 
-             franchiseName: profile['username'] ?? 'User',
-             status: existing['status']
-           );
-        }
-
-        // 3. Create
-        print('Creating new session...');
-        final newSession = await Supabase.instance.client
-            .from('admin_chat_sessions')
-            .insert({
-               'franchise_id': franchiseId,
-               'franchise_uuid': franchiseUuid,
-               'status': 'open',
-               // 'created_at' defaults to now() usually
-            })
-            .select()
-            .single();
-            
-        print('New session created: ${newSession['id']}');
-        return AdminChatSession(
-           id: newSession['id'],
-           franchiseId: franchiseId,
-           franchiseName: profile['username'] ?? 'User',
-           status: 'open'
-        );
-    } catch (e) {
-        print('Start Chat Error: $e');
-        if (e is String) rethrow; // Pass custom messages
-        throw 'Failed to start chat: $e';
-    }
-  }
-
-  Future<void> markMessagesAsRead(int sessionId) async {
-    try {
-      await Supabase.instance.client
-          .from('admin_chats')
-          .update({
-            'read_at': DateTime.now().toUtc().toIso8601String(),
-            'status': 'read'
-          })
-          .eq('session_id', sessionId)
-          .eq('sender_type', 'franchise')
-          .isFilter('read_at', null); // Only unread messages
-    } catch (e) {
-      print('Admin Mark Read Error: $e');
-    }
-  }
-
   Future<bool> sendMessage(int sessionId, String? message, {String? attachmentUrl, String? attachmentType}) async {
       try {
         await Supabase.instance.client.from('admin_chats').insert({
@@ -406,19 +141,79 @@ class AdminChatController {
             'message': message,
             'sender_type': 'admin',
             'attachment_url': attachmentUrl,
-            'attachment_type': attachmentType
+            'attachment_type': attachmentType,
+            'status': 'sent'
         });
         
-        // Update session last message
         await Supabase.instance.client.from('admin_chat_sessions').update({
            'last_message': message ?? (attachmentType == 'image' ? 'Image' : 'File'),
-           'last_message_time': DateTime.now().toIso8601String()
+           'last_message_time': DateTime.now().toUtc().toIso8601String()
         }).eq('id', sessionId);
         
         return true;
       } catch (e) {
+        // ignore: avoid_print
         print('Admin Send Error: $e');
         return false;
+      }
+  }
+  Future<AdminChatSession?> startNewChat(int franchiseId, String email) async {
+    try {
+      // 1. Check for existing session
+      final existing = await Supabase.instance.client
+          .from('admin_chat_sessions')
+          .select()
+          .eq('franchise_id', franchiseId)
+          .maybeSingle();
+
+      if (existing != null) {
+          return AdminChatSession(
+              id: existing['id'],
+              franchiseId: existing['franchise_id'],
+              franchiseName: existing['franchise_name'] ?? 'Franchise #$franchiseId',
+              lastMessage: existing['last_message'],
+              lastMessageTime: existing['last_message_time'] != null ? DateTime.parse(existing['last_message_time']).toLocal() : null,
+              status: existing['status'] ?? 'open'
+          );
+      }
+
+      // 2. Create new session
+      final newSession = await Supabase.instance.client
+          .from('admin_chat_sessions')
+          .insert({
+            'franchise_id': franchiseId,
+            'franchise_name': 'Franchise #$franchiseId', // Placeholder name
+            'status': 'open',
+            'created_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .select()
+          .single();
+
+      return AdminChatSession(
+          id: newSession['id'],
+          franchiseId: newSession['franchise_id'],
+          franchiseName: newSession['franchise_name'] ?? 'New Franchise',
+          status: newSession['status'] ?? 'open'
+      );
+    } catch (e) {
+      print('Start Chat Error: $e');
+      return null;
+    }
+  }
+
+  Future<void> markMessagesAsRead(int sessionId) async {
+      try {
+        await Supabase.instance.client
+            .from('admin_chats')
+            .update({
+              'status': 'read',
+              'read_at': DateTime.now().toUtc().toIso8601String()
+            })
+            .eq('session_id', sessionId)
+            .eq('sender_type', 'franchise') // Admin reads franchise messages
+            .isFilter('read_at', null);
+      } catch (e) {
+        print('Mark Read Error: $e');
       }
   }
 }

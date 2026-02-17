@@ -112,10 +112,13 @@ class _FranchiseHomeTabState extends ConsumerState<FranchiseHomeTab> {
           child: Hero(
             tag: 'franchise_app_logo',
             child: Image.asset(
-              'assets/images/header_logo_new.png',
-              height: 24,
-              color: Colors.white,
-              errorBuilder: (context, error, stackTrace) => const SizedBox(),
+              'assets/images/logo_text.png',
+              height: 28,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                print('LOGO ERROR: $error');
+                return const Icon(Icons.broken_image, color: Colors.white);
+              },
             ),
           ),
         ),

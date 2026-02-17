@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/db';
+import { firestore } from '@/lib/firebase';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -11,24 +11,24 @@ export async function GET(request: Request) {
     }
 
     try {
-        let query = 'SELECT id, name, email, phone, city, plan_selected, status, zone_id, upi_id, bank_account_number, ifsc_code, bank_name, created_at FROM franchise_requests WHERE ';
-        let values: any[] = [];
+        let franchiseData = null;
 
         if (id) {
-            query += 'id = ?';
-            values.push(id);
-        } else {
-            query += 'email = ?';
-            values.push(email);
+            const doc = await firestore.collection('franchise_requests').doc(id).get();
+            if (doc.exists) {
+                franchiseData = { id: doc.id, ...doc.data() };
+            }
+        } else if (email) {
+            const snapshot = await firestore.collection('franchise_requests').where('email', '==', email).limit(1).get();
+            if (!snapshot.empty) {
+                const doc = snapshot.docs[0];
+                franchiseData = { id: doc.id, ...doc.data() };
+            }
         }
 
-        const result: any = await executeQuery({
-            query: query,
-            values: values
-        });
-
-        if (Array.isArray(result) && result.length > 0) {
-            return NextResponse.json(result[0]);
+        if (franchiseData) {
+            // Filter fields if needed (e.g. remove sensitive data like password hash if stored)
+            return NextResponse.json(franchiseData);
         }
 
         return NextResponse.json({ error: 'Franchise not found' }, { status: 404 });
@@ -47,21 +47,15 @@ export async function PUT(request: Request) {
             return NextResponse.json({ error: 'Franchise ID is required' }, { status: 400 });
         }
 
-        let updateQuery = 'UPDATE franchise_requests SET name = ?, phone = ?, city = ?, upi_id = ?, bank_account_number = ?, ifsc_code = ?, bank_name = ?';
-        let values = [name, phone, city, upi_id, bank_account_number, ifsc_code, bank_name];
+        const updateData: any = {
+            name, phone, city, upi_id, bank_account_number, ifsc_code, bank_name
+        };
 
         if (password && password.trim().length > 0) {
-            updateQuery += ', password = ?';
-            values.push(password);
+            updateData.password = password; // Should hash password in real app if storing directly
         }
 
-        updateQuery += ' WHERE id = ?';
-        values.push(id);
-
-        await executeQuery({
-            query: updateQuery,
-            values: values
-        });
+        await firestore.collection('franchise_requests').doc(String(id)).update(updateData);
 
         return NextResponse.json({ success: true, message: 'Profile updated successfully' });
     } catch (error: any) {

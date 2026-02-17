@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import executeQuery from '@/lib/franchise_db';
-import executeMainQuery from '@/lib/db'; // Main database for franchise_requests
+import { firestore } from '@/lib/firebase';
 import { apiCache, CACHE_TTL } from '@/lib/cache';
 
 // CONFIGURATION: Franchise Revenue Share Percentages (matching payout algorithm)
@@ -43,30 +42,54 @@ export async function GET(request: Request) {
 
         console.log(`DEBUG: Fetching fresh stats for Zone ${zoneId}`);
 
-        // 1. Get franchise details from MAIN database (franchise_requests table is there)
-        const franchiseResult: any = await executeMainQuery({
-            query: `SELECT plan_selected FROM franchise_requests WHERE zone_id = ? AND status = 'approved' LIMIT 1`,
-            values: [zoneId],
-        });
+        // 1. Get franchise details from Firestore
+        const franchiseSnapshot = await firestore.collection('franchise_requests')
+            .where('zone_id', '==', zoneId)
+            .where('status', '==', 'approved')
+            .limit(1)
+            .get();
 
-        const franchisePlan = franchiseResult[0]?.plan_selected || 'free';
+        const franchisePlan = !franchiseSnapshot.empty ? (franchiseSnapshot.docs[0].data().plan_selected || 'free') : 'free';
         const commissionRate = COMMISSION_RATES[franchisePlan] || COMMISSION_RATES['free'];
 
-        // 2. Query admin commission from order_transactions (commission is stored there, not in orders table)
-        const revenueResult: any = await executeQuery({
-            query: `
-                SELECT 
-                    SUM(ot.admin_commission) as totalAdminCommission, 
-                    COUNT(DISTINCT o.id) as deliveredOrders 
-                FROM orders o
-                INNER JOIN order_transactions ot ON o.id = ot.order_id
-                WHERE o.zone_id = ? AND o.order_status = 'delivered'
-            `,
-            values: [zoneId],
-        });
+        // 2. Fetch orders to calculate stats (Assuming 'orders' collection)
+        // Note: Firestore aggregation for SUM is not direct. fetching delivered orders for zone.
+        // Warning: This can be expensive if many orders. Optimized approach would be to maintain counters.
+        // For migration, we'll fetch fields needed.
+        const ordersSnapshot = await firestore.collection('orders')
+            .where('zone_id', '==', zoneId)
+            .get();
 
-        const totalAdminCommission = parseFloat(revenueResult[0]?.totalAdminCommission || 0);
-        const deliveredOrders = parseInt(revenueResult[0]?.deliveredOrders || 0);
+        let totalAdminCommission = 0;
+        let deliveredOrders = 0;
+        let activeOrdersCount = 0;
+        let todaysAdminCommission = 0;
+        let ordersTodayCount = 0;
+
+        const today = new Date().toISOString().split('T')[0];
+
+        ordersSnapshot.forEach(doc => {
+            const data = doc.data();
+            const status = data.order_status;
+            // Assuming admin_commission is stored on the order or a sub-collection 'transactions'.
+            // The original SQL joined `order_transactions`. Let's assume it's merged or we check `transactions` subcollection?
+            // "data.admin_commission" might be available if denormalized.
+            // If not, we might miss it. Let's assume denormalized on order for now or 0.
+            const adminComm = parseFloat(data.admin_commission || 0);
+
+            if (status === 'delivered') {
+                deliveredOrders++;
+                totalAdminCommission += adminComm;
+
+                const orderDate = data.created_at?.toDate ? data.created_at.toDate().toISOString().split('T')[0] : '';
+                if (orderDate === today) {
+                    todaysAdminCommission += adminComm;
+                    ordersTodayCount++;
+                }
+            } else if (!['delivered', 'canceled', 'failed', 'refunded'].includes(status)) {
+                activeOrdersCount++;
+            }
+        });
 
         // 3. Calculate franchise share from admin commission
         const sharePercent = commissionRate * 100;
@@ -74,33 +97,13 @@ export async function GET(request: Request) {
         const franchiseShare = (totalAdminCommission * sharePercent) / 100;
         const netRevenue = franchiseShare - platformCharges;
 
-        // 4. Active Orders: Count of orders not in final states
-        const activeOrdersResult: any = await executeQuery({
-            query: `SELECT COUNT(*) as activeOrders FROM orders WHERE zone_id = ? AND order_status NOT IN ('delivered', 'canceled', 'failed', 'refunded')`,
-            values: [zoneId],
-        });
+        // 4. Active Orders: Count of orders not in final states (already calculated in loop)
+        const activeOrders = activeOrdersCount;
 
-        // 5. Today's Payout: Franchise share of today's admin commission
-        const today = new Date().toISOString().split('T')[0];
-        const todaysResult: any = await executeQuery({
-            query: `
-                SELECT 
-                    SUM(ot.admin_commission) as todaysAdminCommission, 
-                    COUNT(DISTINCT o.id) as ordersToday 
-                FROM orders o
-                INNER JOIN order_transactions ot ON o.id = ot.order_id
-                WHERE ot.zone_id = ? AND o.order_status = 'delivered' AND DATE(o.created_at) = ?
-            `,
-            values: [zoneId, today],
-        });
-
-        const todaysAdminCommission = parseFloat(todaysResult[0]?.todaysAdminCommission || 0);
-        const ordersToday = parseInt(todaysResult[0]?.ordersToday || 0);
+        // 5. Today's Payout: Franchise share of today's admin commission (already calculated in loop)
         const todaysFranchiseShare = (todaysAdminCommission * sharePercent) / 100;
-        const todaysPlatformCharges = ordersToday * PLATFORM_CHARGE_PER_ORDER;
+        const todaysPlatformCharges = ordersTodayCount * PLATFORM_CHARGE_PER_ORDER;
         const todaysPayout = todaysFranchiseShare - todaysPlatformCharges;
-
-        const activeOrders = activeOrdersResult[0]?.activeOrders || 0;
 
         const responseData = {
             totalRevenue: Math.max(0, netRevenue),

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { firestore } from '@/lib/firebase';
 
 // Bulk operations for orders
 export async function POST(request: Request) {
@@ -13,7 +12,7 @@ export async function POST(request: Request) {
         }
 
         let successCount = 0;
-        let failedIds: number[] = [];
+        let failedIds: any[] = []; // Allow strings/numbers
 
         switch (action) {
             case 'update_status':
@@ -23,33 +22,28 @@ export async function POST(request: Request) {
 
                 for (const orderId of orderIds) {
                     try {
-                        // Get current status (Read can be public/anon)
-                        const { data: currentOrder, error: fetchError } = await supabase
-                            .from('orders')
-                            .select('order_status')
-                            .eq('id', orderId)
-                            .single();
+                        const orderRef = firestore.collection('orders').doc(orderId);
+                        const orderSnapshot = await orderRef.get();
 
-                        if (fetchError || !currentOrder) {
+                        if (!orderSnapshot.exists) {
                             failedIds.push(orderId);
                             continue;
                         }
 
-                        // Update with Admin
-                        const { error: updateError } = await supabaseAdmin
-                            .from('orders')
-                            .update({ order_status: data.status })
-                            .eq('id', orderId);
+                        const currentStatus = orderSnapshot.data()?.order_status;
 
-                        if (updateError) throw updateError;
+                        await orderRef.update({
+                            order_status: data.status,
+                            updated_at: new Date()
+                        });
 
-                        // History with Admin
-                        await supabaseAdmin.from('order_history').insert({
-                            order_id: orderId,
-                            status_from: currentOrder.order_status,
+                        // History
+                        await orderRef.collection('history').add({
+                            status_from: currentStatus,
                             status_to: data.status,
                             changed_by: data.changedBy || null,
-                            notes: data.notes || `Bulk status update to ${data.status}`
+                            notes: data.notes || `Bulk status update to ${data.status}`,
+                            created_at: new Date()
                         });
 
                         successCount++;
@@ -65,16 +59,24 @@ export async function POST(request: Request) {
                     return NextResponse.json({ error: 'Payment status is required' }, { status: 400 });
                 }
 
-                const { error: paymentError } = await supabaseAdmin
-                    .from('orders')
-                    .update({ payment_status: data.paymentStatus })
-                    .in('id', orderIds);
+                // Firestore batch (limit 500)
+                const batch = firestore.batch();
+                // If > 500, need to chunk. Assuming < 500 for now or user is aware of limits.
 
-                if (paymentError) {
-                    console.error('Bulk payment update error:', paymentError);
-                    failedIds = orderIds; // All failed
-                } else {
+                for (const orderId of orderIds) {
+                    const ref = firestore.collection('orders').doc(orderId);
+                    batch.update(ref, {
+                        payment_status: data.paymentStatus,
+                        updated_at: new Date()
+                    });
+                }
+
+                try {
+                    await batch.commit();
                     successCount = orderIds.length;
+                } catch (batchError) {
+                    console.error('Bulk payment update error:', batchError);
+                    failedIds = orderIds;
                 }
                 break;
 
@@ -82,17 +84,16 @@ export async function POST(request: Request) {
                 // Soft delete by updating status to 'cancelled'
                 for (const orderId of orderIds) {
                     try {
-                        const { error: updateError } = await supabaseAdmin
-                            .from('orders')
-                            .update({ order_status: 'cancelled' })
-                            .eq('id', orderId);
+                        const orderRef = firestore.collection('orders').doc(orderId);
+                        await orderRef.update({
+                            order_status: 'cancelled',
+                            updated_at: new Date()
+                        });
 
-                        if (updateError) throw updateError;
-
-                        await supabaseAdmin.from('order_history').insert({
-                            order_id: orderId,
+                        await orderRef.collection('history').add({
                             status_to: 'cancelled',
-                            notes: 'Bulk cancelled'
+                            notes: 'Bulk cancelled',
+                            created_at: new Date()
                         });
 
                         successCount++;
@@ -103,23 +104,47 @@ export async function POST(request: Request) {
                 break;
 
             case 'export':
-                // Export orders to CSV (Read is fine with anon if policies correct, else use Admin if admin dashboard)
                 try {
-                    const { data: orders, error: exportError } = await supabaseAdmin
-                        .from('orders') // use Admin for export just to be safe they can see everything
-                        .select('*, franchise_requests(name, city)')
-                        .in('id', orderIds);
+                    // Fetch orders
+                    // max limit for 'in' is 10. If more, we must iterate.
+                    // Or just fetch all and filter in memory if not too big, or Promise.all fetches.
+                    // Promise.all is robust for list of IDs.
 
-                    if (exportError) throw exportError;
+                    const validOrders: any[] = [];
+
+                    await Promise.all(orderIds.map(async (oid: string) => {
+                        const doc = await firestore.collection('orders').doc(oid).get();
+                        if (doc.exists) {
+                            const oData = doc.data();
+                            // Fetch franchise name
+                            let fName = '';
+                            let fCity = '';
+                            if (oData?.franchise_id) {
+                                const fDoc = await firestore.collection('franchise_requests').doc(oData.franchise_id).get();
+                                if (fDoc.exists) {
+                                    fName = fDoc.data()?.name || '';
+                                    fCity = fDoc.data()?.city || '';
+                                }
+                            }
+                            validOrders.push({
+                                id: doc.id,
+                                ...oData,
+                                franchise_name: fName,
+                                franchise_city: fCity,
+                                created_at: oData?.created_at?.toDate ? oData.created_at.toDate().toISOString() : oData?.created_at
+                            });
+                        }
+                    }));
+
 
                     // Convert to CSV format
                     const headers = ['Order ID', 'Franchise', 'Zone', 'Amount', 'Status', 'Payment', 'Razorpay ID', 'Created'];
                     const csvData = [
                         headers.join(','),
-                        ...(orders || []).map((order: any) => [
+                        ...(validOrders || []).map((order: any) => [
                             order.id,
-                            order.franchise_requests?.name || '',
-                            order.franchise_requests?.city || '',
+                            order.franchise_name,
+                            order.franchise_city,
                             order.order_amount,
                             order.order_status,
                             order.payment_status,
@@ -134,6 +159,7 @@ export async function POST(request: Request) {
                         filename: `orders_export_${Date.now()}.csv`
                     });
                 } catch (error: any) {
+                    console.error('Export error: ', error);
                     return NextResponse.json({ error: 'Export failed' }, { status: 500 });
                 }
 
