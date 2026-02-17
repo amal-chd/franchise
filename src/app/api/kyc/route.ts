@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { firestore, storageBucket } from '@/lib/firebase';
+import { firestore, getStorageBucket } from '@/lib/firebase';
 
 export async function POST(request: Request) {
     try {
@@ -11,15 +11,16 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'File and Request ID are required' }, { status: 400 });
         }
 
+        const bucket = getStorageBucket();
         const buffer = Buffer.from(await file.arrayBuffer());
         const safeName = (file.name || 'document').replace(/\s/g, '_');
         const filePath = `kyc/${requestId}_${Date.now()}_${safeName}`;
 
-        const blob = storageBucket.file(filePath);
+        const blob = bucket.file(filePath);
         await blob.save(buffer, { metadata: { contentType: file.type } });
         await blob.makePublic();
 
-        const fileUrl = `https://storage.googleapis.com/${storageBucket.name}/${filePath}`;
+        const fileUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
 
         // Update Firestore
         const docRef = firestore.collection('franchise_requests').doc(String(requestId));

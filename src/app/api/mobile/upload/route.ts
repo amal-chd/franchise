@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { storageBucket } from '@/lib/firebase';
+import { getStorageBucket } from '@/lib/firebase';
 
 export async function POST(request: Request) {
     try {
@@ -11,15 +11,16 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'No file provided' }, { status: 400 });
         }
 
+        const bucket = getStorageBucket();
         const buffer = Buffer.from(await file.arrayBuffer());
         const safeName = (file.name || 'file').replace(/\s/g, '_');
         const filePath = `${folder}/${Date.now()}-${safeName}`;
 
-        const blob = storageBucket.file(filePath);
+        const blob = bucket.file(filePath);
         await blob.save(buffer, { metadata: { contentType: file.type } });
         await blob.makePublic();
 
-        const publicUrl = `https://storage.googleapis.com/${storageBucket.name}/${filePath}`;
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
 
         return NextResponse.json({ success: true, url: publicUrl });
     } catch (error: any) {

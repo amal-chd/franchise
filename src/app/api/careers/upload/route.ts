@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { storageBucket } from '@/lib/firebase';
+import { getStorageBucket } from '@/lib/firebase';
 
 export async function POST(request: Request) {
     try {
@@ -31,12 +31,13 @@ export async function POST(request: Request) {
             );
         }
 
+        const bucket = getStorageBucket();
         const buffer = Buffer.from(await file.arrayBuffer());
         const timestamp = Date.now();
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const filePath = `resumes/${timestamp}_${safeName}`;
 
-        const blob = storageBucket.file(filePath);
+        const blob = bucket.file(filePath);
         await blob.save(buffer, {
             metadata: {
                 contentType: file.type,
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
 
         // Make the file publicly accessible
         await blob.makePublic();
-        const publicUrl = `https://storage.googleapis.com/${storageBucket.name}/${filePath}`;
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
 
         return NextResponse.json({ url: publicUrl });
     } catch (error: any) {

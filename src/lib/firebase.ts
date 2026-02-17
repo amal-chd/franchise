@@ -11,8 +11,11 @@ if (!admin.apps.length) {
 }
 
 const firestore = admin.firestore();
-const storageBucket = admin.storage().bucket(
-    process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID}.firebasestorage.app`
-);
 
-export { firestore, admin, storageBucket };
+function getStorageBucket() {
+    return admin.storage().bucket(
+        process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID}.firebasestorage.app`
+    );
+}
+
+export { firestore, admin, getStorageBucket };
