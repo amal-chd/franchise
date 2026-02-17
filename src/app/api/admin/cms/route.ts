@@ -5,7 +5,7 @@ import { firestore } from '@/lib/firebase';
 export async function GET() {
     try {
         const snapshot = await firestore.collection('site_content').get();
-        const rows = snapshot.docs.map(doc => doc.data());
+        const rows = snapshot.docs.map((doc: any) => doc.data());
 
         // Group content by section
         const content = rows.reduce((acc: any, row: any) => {

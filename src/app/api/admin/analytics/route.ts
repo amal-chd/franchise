@@ -46,7 +46,7 @@ export async function GET(request: Request) {
         let pendingVerification = 0;
         let activeFranchises = 0;
 
-        franchiseRequestsSnapshot.forEach(doc => {
+        franchiseRequestsSnapshot.forEach((doc: any) => {
             const data = doc.data();
             totalRequests++;
             if (data.status === 'pending_verification') pendingVerification++;
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
         let pendingTickets = 0;
         let repliedTickets = 0;
 
-        supportTicketsSnapshot.forEach(doc => {
+        supportTicketsSnapshot.forEach((doc: any) => {
             const data = doc.data();
             if (!data.status || data.status === 'open') pendingTickets++;
             if (data.status === 'replied') repliedTickets++;

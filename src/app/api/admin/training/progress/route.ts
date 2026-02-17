@@ -41,7 +41,7 @@ export async function GET(request: Request) {
             .where('user_id', '==', userId)
             .get();
 
-        const data = snapshot.docs.map(doc => doc.data());
+        const data = snapshot.docs.map((doc: any) => doc.data());
 
         return NextResponse.json(data);
     } catch (e: any) {

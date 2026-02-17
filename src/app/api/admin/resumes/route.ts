@@ -8,7 +8,7 @@ export async function GET() {
             .orderBy('submitted_at', 'desc')
             .get();
 
-        const data = snapshot.docs.map(doc => ({
+        const data = snapshot.docs.map((doc: any) => ({
             id: doc.id,
             ...doc.data(),
             submitted_at: doc.data().submitted_at?.toDate ? doc.data().submitted_at.toDate().toISOString() : doc.data().submitted_at,

@@ -20,7 +20,7 @@ export async function GET(request: Request) {
                 .get();
 
             // Fetch sender details
-            result = await Promise.all(snapshot.docs.map(async doc => {
+            result = await Promise.all(snapshot.docs.map(async (doc: any) => {
                 const data = doc.data();
                 const senderDoc = await firestore.collection('franchise_requests').doc(data.user_id).get();
                 const sender = senderDoc.data();
@@ -72,8 +72,8 @@ export async function GET(request: Request) {
             };
 
             await Promise.all([
-                ...q1.docs.map(d => processDoc(d, true)),
-                ...q2.docs.map(d => processDoc(d, false))
+                ...q1.docs.map((d: any) => processDoc(d, true)),
+                ...q2.docs.map((d: any) => processDoc(d, false))
             ]);
 
             result = Array.from(friendsMaps.values());

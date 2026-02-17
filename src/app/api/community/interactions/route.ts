@@ -96,7 +96,7 @@ export async function GET(request: Request) {
             .orderBy('created_at', 'asc')
             .get();
 
-        const comments = await Promise.all(snapshot.docs.map(async (doc) => {
+        const comments = await Promise.all(snapshot.docs.map(async (doc: any) => {
             const data = doc.data();
             let user_name = 'Unknown';
             let user_image = null;

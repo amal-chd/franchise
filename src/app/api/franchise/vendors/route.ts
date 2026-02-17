@@ -17,7 +17,7 @@ export async function GET(request: Request) {
             .where('zone_id', '==', parseInt(zoneId) || zoneId)
             .get();
 
-        const result = snapshot.docs.map(doc => {
+        const result = snapshot.docs.map((doc: any) => {
             const data = doc.data();
             return {
                 id: doc.id,

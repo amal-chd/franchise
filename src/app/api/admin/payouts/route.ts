@@ -11,7 +11,7 @@ export async function GET() {
             .orderBy('name', 'asc')
             .get();
 
-        const results = snapshot.docs.map(doc => {
+        const results = snapshot.docs.map((doc: any) => {
             const f = doc.data();
             return {
                 id: doc.id,

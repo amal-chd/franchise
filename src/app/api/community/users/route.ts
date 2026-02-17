@@ -22,7 +22,7 @@ export async function GET(request: Request) {
             .get();
 
         const users: any[] = [];
-        snapshot.forEach(doc => {
+        snapshot.forEach((doc: any) => {
             const data = doc.data();
             // Filter out the requester themselves if needed
             if (doc.id !== userId) {

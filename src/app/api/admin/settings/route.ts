@@ -7,7 +7,7 @@ export async function GET() {
         const snapshot = await firestore.collection('site_settings').get();
         const settings: Record<string, any> = {};
 
-        snapshot.forEach(doc => {
+        snapshot.forEach((doc: any) => {
             const data = doc.data();
             settings[data.setting_key] = data.setting_value;
         });

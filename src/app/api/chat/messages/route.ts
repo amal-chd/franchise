@@ -15,7 +15,7 @@ export async function GET(request: Request) {
             .orderBy('created_at', 'asc')
             .get();
 
-        const messages = snapshot.docs.map(doc => ({
+        const messages = snapshot.docs.map((doc: any) => ({
             id: doc.id,
             ...doc.data(),
             created_at: doc.data().created_at?.toDate ? doc.data().created_at.toDate() : doc.data().created_at

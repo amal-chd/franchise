@@ -9,7 +9,7 @@ export async function GET() {
             .orderBy('updated_at', 'desc')
             .get();
 
-        const sessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const sessions = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
         // Fetch Franchise Details
         const franchiseIds = [...new Set(sessions.map((s: any) => s.franchise_id).filter((id: any) => id))];

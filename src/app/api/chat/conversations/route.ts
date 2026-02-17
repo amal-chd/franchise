@@ -20,7 +20,7 @@ export async function GET(request: Request) {
             .orderBy('updated_at', 'desc')
             .get();
 
-        const conversations = snapshot.docs.map(doc => {
+        const conversations = snapshot.docs.map((doc: any) => {
             const data = doc.data();
             return {
                 id: doc.id,

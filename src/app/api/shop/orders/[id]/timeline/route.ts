@@ -69,7 +69,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             .orderBy('created_at', 'asc')
             .get();
 
-        const historyData = historySnapshot.docs.map(doc => ({
+        const historyData = historySnapshot.docs.map((doc: any) => ({
             id: doc.id,
             ...doc.data(),
             created_at: doc.data().created_at?.toDate ? doc.data().created_at.toDate() : doc.data().created_at,

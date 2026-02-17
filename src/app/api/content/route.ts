@@ -5,7 +5,7 @@ export async function GET() {
     try {
         // Fetch content
         const contentSnapshot = await firestore.collection('site_content').get();
-        const contentRows = contentSnapshot.docs.map(doc => doc.data());
+        const contentRows = contentSnapshot.docs.map((doc: any) => doc.data());
 
         // Group content by section and parse JSON
         const content = contentRows.reduce((acc: any, row: any) => {
@@ -29,7 +29,7 @@ export async function GET() {
 
         // Fetch settings
         const settingsSnapshot = await firestore.collection('site_settings').get();
-        const settingsRows = settingsSnapshot.docs.map(doc => doc.data());
+        const settingsRows = settingsSnapshot.docs.map((doc: any) => doc.data());
 
         const settings = settingsRows.reduce((acc: any, row: any) => {
             acc[row.setting_key] = row.setting_value;

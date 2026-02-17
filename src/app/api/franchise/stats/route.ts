@@ -68,7 +68,7 @@ export async function GET(request: Request) {
 
         const today = new Date().toISOString().split('T')[0];
 
-        ordersSnapshot.forEach(doc => {
+        ordersSnapshot.forEach((doc: any) => {
             const data = doc.data();
             const status = data.order_status;
             // Assuming admin_commission is stored on the order or a sub-collection 'transactions'.

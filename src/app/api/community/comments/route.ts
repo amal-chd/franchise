@@ -19,7 +19,7 @@ export async function GET(request: Request) {
             .orderBy('created_at', 'asc')
             .get();
 
-        const comments = await Promise.all(snapshot.docs.map(async (doc) => {
+        const comments = await Promise.all(snapshot.docs.map(async (doc: any) => {
             const data = doc.data();
             // Fetch user details for each comment
             // Optimization: Store user_name/image in the comment doc to avoid N+1 fetches

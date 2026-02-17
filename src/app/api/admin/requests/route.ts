@@ -8,7 +8,7 @@ export async function GET() {
             .get();
 
         const requests = snapshot.docs
-            .map(doc => ({
+            .map((doc: any) => ({
                 id: doc.id,
                 ...doc.data()
             }))

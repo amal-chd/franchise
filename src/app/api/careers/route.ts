@@ -9,7 +9,7 @@ export async function GET() {
 
         // Filter active ones in-memory to avoid needing a Firestore composite index
         const data = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .map((doc: any) => ({ id: doc.id, ...doc.data() }))
             .filter((doc: any) => doc.is_active !== false);
 
         return NextResponse.json(data);

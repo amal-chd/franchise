@@ -22,7 +22,7 @@ export async function POST(request: Request) {
         const settingsSnapshot = await firestore.collection('site_settings').get();
         const settings: any = {};
 
-        settingsSnapshot.forEach(doc => {
+        settingsSnapshot.forEach((doc: any) => {
             const data = doc.data();
             // Supports both structure: { key: value } or { content_key: value }
             if (data.content_key) {

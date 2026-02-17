@@ -8,7 +8,7 @@ export async function GET() {
             .orderBy('created_at', 'desc')
             .get();
 
-        const requests = await Promise.all(snapshot.docs.map(async doc => {
+        const requests = await Promise.all(snapshot.docs.map(async (doc: any) => {
             const data = doc.data();
             const franchiseId = data.franchise_id;
 

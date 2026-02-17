@@ -8,7 +8,7 @@ export async function GET() {
             .orderBy('created_at', 'desc')
             .get();
 
-        const tickets = snapshot.docs.map(doc => {
+        const tickets = snapshot.docs.map((doc: any) => {
             const data = doc.data();
             return {
                 id: doc.id,

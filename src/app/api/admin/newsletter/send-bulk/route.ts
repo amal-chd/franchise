@@ -22,7 +22,7 @@ export async function POST(request: Request) {
                 .where('status', '==', 'active')
                 .get();
 
-            recipients = snapshot.docs.map(doc => doc.data().email);
+            recipients = snapshot.docs.map((doc: any) => doc.data().email);
 
         } else if (recipientType === 'all_franchises') {
             // Fetch from franchise_requests where status is approved (assuming active franchises)
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
                 .where('status', '==', 'approved')
                 .get();
 
-            recipients = snapshot.docs.map(doc => doc.data().email).filter((e: any) => e);
+            recipients = snapshot.docs.map((doc: any) => doc.data().email).filter((e: any) => e);
         }
 
         if (recipients.length === 0) {

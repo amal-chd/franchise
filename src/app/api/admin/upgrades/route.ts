@@ -8,13 +8,13 @@ export async function GET() {
             .orderBy('created_at', 'desc')
             .get();
 
-        const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const logs = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
         // Manual Join for Franchise Details
         // Ideally, we should fetch only relevant franchises, but fetching all is simpler for initial migration
         const franchisesSnapshot = await firestore.collection('franchise_requests').get();
         const franchisesMap = new Map();
-        franchisesSnapshot.forEach(doc => {
+        franchisesSnapshot.forEach((doc: any) => {
             franchisesMap.set(doc.id, doc.data());
         });
 

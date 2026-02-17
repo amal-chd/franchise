@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin';
 
-if (!admin.apps.length) {
+if (!admin.apps.length && process.env.FIREBASE_PROJECT_ID) {
     admin.initializeApp({
         credential: admin.credential.cert({
             projectId: process.env.FIREBASE_PROJECT_ID,
@@ -11,7 +11,7 @@ if (!admin.apps.length) {
     });
 }
 
-const firestore = admin.firestore();
+const firestore = admin.apps.length ? admin.firestore() : null as any;
 
 function getStorageBucket() {
     return admin.storage().bucket(

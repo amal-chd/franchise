@@ -8,7 +8,7 @@ export async function GET() {
             .orderBy('created_at', 'desc')
             .get();
 
-        const data = snapshot.docs.map(doc => ({
+        const data = snapshot.docs.map((doc: any) => ({
             id: doc.id,
             ...doc.data(),
             // Ensure dates are converted if needed for frontend
