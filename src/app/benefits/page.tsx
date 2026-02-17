@@ -1,414 +1,624 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 type Role = 'franchise' | 'delivery' | 'vendor';
+
+function useInView(threshold = 0.15) {
+    const ref = useRef<HTMLDivElement>(null);
+    const [visible, setVisible] = useState(false);
+    useEffect(() => {
+        const el = ref.current;
+        if (!el) return;
+        const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } }, { threshold });
+        obs.observe(el);
+        return () => obs.disconnect();
+    }, [threshold]);
+    return { ref, visible };
+}
 
 export default function Benefits() {
     const [activeRole, setActiveRole] = useState<Role>('franchise');
 
     const benefits = {
         franchise: [
-            { icon: 'fa-chart-line', title: 'High ROI', description: 'Break even in 3-6 months with our proven business model. Low operational costs maximize your profits.' },
-            { icon: 'fa-headset', title: '24/7 Support', description: 'Dedicated support team to help you succeed. We are always just a call away.' },
-            { icon: 'fa-laptop-code', title: 'Tech Platform', description: 'Advanced dashboard to manage operations effortlessly. Real-time analytics at your fingertips.' },
-            { icon: 'fa-bullhorn', title: 'Marketing Support', description: 'National and local marketing campaigns included. We drive customers to your doorstep.' },
-            { icon: 'fa-graduation-cap', title: 'Training Programs', description: 'Comprehensive training for you and your team. Master the business from day one.' },
-            { icon: 'fa-shield-alt', title: 'Protected Territory', description: 'Exclusive rights in your operating area. No competition from other franchise partners.' },
-            { icon: 'fa-users', title: 'Network Access', description: 'Join a growing community of successful franchise owners. Share insights and grow together.' },
-            { icon: 'fa-coins', title: 'Low Investment', description: 'Affordable franchise fee with flexible payment options. Start your journey with minimal risk.' }
+            { emoji: '📈', title: 'High ROI', desc: 'Break even in 3-6 months with our proven business model. Low operational costs maximize your profits.' },
+            { emoji: '🎧', title: '24/7 Support', desc: 'Dedicated support team available round the clock. We are always just a call away.' },
+            { emoji: '💻', title: 'Tech Platform', desc: 'Advanced dashboard with real-time analytics to manage operations effortlessly.' },
+            { emoji: '📣', title: 'Marketing Support', desc: 'National and local marketing campaigns included. We drive customers to your doorstep.' },
+            { emoji: '🎓', title: 'Training Programs', desc: 'Comprehensive training for you and your team. Master the business from day one.' },
+            { emoji: '🛡️', title: 'Protected Territory', desc: 'Exclusive rights in your operating area. No competition from other franchise partners.' },
+            { emoji: '🤝', title: 'Network Access', desc: 'Join a growing community of successful franchise owners. Share insights and grow together.' },
+            { emoji: '💰', title: 'Low Investment', desc: 'Affordable franchise fee with flexible payment options. Start with minimal risk.' },
         ],
         delivery: [
-            { icon: 'fa-wallet', title: 'Daily Payouts', description: 'Get paid every day for your hard work. No waiting for weekly or monthly cycles.' },
-            { icon: 'fa-clock', title: 'Flexible Hours', description: 'Work when you want, as much as you want. Be your own boss.' },
-            { icon: 'fa-shield-check', title: 'Insurance Coverage', description: 'Comprehensive insurance for your safety on and off the road.' },
-            { icon: 'fa-mobile-alt', title: 'Easy App', description: 'Simple app to accept and complete deliveries. Navigation and earnings all in one place.' },
-            { icon: 'fa-gas-pump', title: 'Fuel Allowance', description: 'Additional compensation for fuel expenses based on distance traveled.' },
-            { icon: 'fa-trophy', title: 'Performance Bonuses', description: 'Earn extra for excellent service ratings and completing milestone targets.' },
-            { icon: 'fa-user-friends', title: 'Referral Rewards', description: 'Get bonuses for bringing new delivery partners to the network.' },
-            { icon: 'fa-chart-bar', title: 'Track Earnings', description: 'Real-time view of your earnings and statistics. Know exactly how much you make.' }
+            { emoji: '💸', title: 'Daily Payouts', desc: 'Get paid every day for your hard work. No waiting for weekly or monthly cycles.' },
+            { emoji: '⏰', title: 'Flexible Hours', desc: 'Work when you want, as much as you want. Be your own boss.' },
+            { emoji: '🛡️', title: 'Insurance Coverage', desc: 'Comprehensive insurance for your safety on and off the road.' },
+            { emoji: '📱', title: 'Easy App', desc: 'Simple app to accept and complete deliveries. Navigation and earnings all in one place.' },
+            { emoji: '⛽', title: 'Fuel Allowance', desc: 'Additional compensation for fuel expenses based on distance traveled.' },
+            { emoji: '🏆', title: 'Performance Bonuses', desc: 'Earn extra for excellent ratings and completing milestone targets.' },
+            { emoji: '👥', title: 'Referral Rewards', desc: 'Get bonuses for bringing new delivery partners to the network.' },
+            { emoji: '📊', title: 'Track Earnings', desc: 'Real-time view of your earnings and statistics. Know exactly how much you make.' },
         ],
         vendor: [
-            { icon: 'fa-store', title: 'Zero Commission', description: 'Keep 100% of your profits for the first 3 months. Grow your customer base risk-free.' },
-            { icon: 'fa-users-cog', title: 'Customer Base', description: 'Instant access to thousands of active customers in your locality.' },
-            { icon: 'fa-chart-simple', title: 'Sales Analytics', description: 'Detailed insights to grow your business. Understand what sells best.' },
-            { icon: 'fa-camera', title: 'Free Photography', description: 'Professional product photos at no cost. Showcase your products beautifully.' },
-            { icon: 'fa-bolt', title: 'Fast Onboarding', description: 'Get started and selling within 24 hours. Simple documentation process.' },
-            { icon: 'fa-credit-card', title: 'Quick Settlements', description: 'Weekly payouts directly to your bank account. Cash flow made easy.' },
-            { icon: 'fa-bullseye', title: 'Targeted Promotions', description: 'Featured listings and promotional campaigns to boost your visibility.' },
-            { icon: 'fa-handshake', title: 'Dedicated Manager', description: 'Personal account manager to support your growth and resolve issues.' }
-        ]
+            { emoji: '🏪', title: 'Zero Commission', desc: 'Keep 100% of your profits for the first 3 months. Grow your base risk-free.' },
+            { emoji: '👥', title: 'Customer Base', desc: 'Instant access to thousands of active customers in your locality.' },
+            { emoji: '📈', title: 'Sales Analytics', desc: 'Detailed insights to grow your business. Understand what sells best.' },
+            { emoji: '📸', title: 'Free Photography', desc: 'Professional product photos at no cost. Showcase your products beautifully.' },
+            { emoji: '⚡', title: 'Fast Onboarding', desc: 'Get started and selling within 24 hours. Simple documentation process.' },
+            { emoji: '💳', title: 'Quick Settlements', desc: 'Weekly payouts directly to your bank account. Cash flow made easy.' },
+            { emoji: '🎯', title: 'Targeted Promos', desc: 'Featured listings and promotional campaigns to boost your visibility.' },
+            { emoji: '🤝', title: 'Dedicated Manager', desc: 'Personal account manager to support your growth and resolve issues.' },
+        ],
     };
 
-    const roleInfo = {
-        franchise: {
-            title: 'Franchise Partner',
-            subtitle: 'Build a profitable delivery business in your city',
-            color: '#2563EB',
-            bg: 'rgba(37, 99, 235, 0.1)',
-            gradient: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
-            cta: 'Start Your Franchise'
-        },
-        delivery: {
-            title: 'Delivery Partner',
-            subtitle: 'Earn flexible income with daily payouts',
-            color: '#059669',
-            bg: 'rgba(5, 150, 105, 0.1)',
-            gradient: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-            cta: 'Join as Delivery Partner'
-        },
-        vendor: {
-            title: 'Vendor Partner',
-            subtitle: 'Expand your reach and grow sales online',
-            color: '#D97706',
-            bg: 'rgba(217, 119, 6, 0.1)',
-            gradient: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-            cta: 'Register Your Shop'
-        }
-    };
+    const roles: { key: Role; icon: string; label: string; tagline: string; accent: string; gradient: string }[] = [
+        { key: 'franchise', icon: '🏢', label: 'Franchise Partner', tagline: 'Build a profitable delivery business in your city', accent: '#4A90D9', gradient: 'linear-gradient(135deg,#4A90D9 0%,#7C3AED 100%)' },
+        { key: 'delivery', icon: '🏍️', label: 'Delivery Partner', tagline: 'Earn flexible income with daily payouts', accent: '#10B981', gradient: 'linear-gradient(135deg,#10B981 0%,#059669 100%)' },
+        { key: 'vendor', icon: '🛒', label: 'Vendor Partner', tagline: 'Expand your reach and grow sales online', accent: '#F59E0B', gradient: 'linear-gradient(135deg,#F59E0B 0%,#EF4444 100%)' },
+    ];
+
+    const stats = [
+        { value: '50+', label: 'Active Franchises' },
+        { value: '3-6', label: 'Months to Break Even' },
+        { value: '24/7', label: 'Support Available' },
+        { value: '100%', label: 'Commission-Free Start' },
+    ];
+
+    const currentRole = roles.find(r => r.key === activeRole)!;
+
+    const heroObs = useInView();
+    const statsObs = useInView();
+    const gridObs = useInView();
+    const compObs = useInView();
+    const ctaObs = useInView();
 
     return (
-        <main className="benefits-page">
-            {/* Hero Section */}
-            <section className="hero-section">
-                <div className="container">
-                    <div className="badge-wrapper">
-                        <span className="hero-badge">Why Choose The Kada?</span>
-                    </div>
-                    <h1>Unlock Your Potential with <br /><span className="text-gradient">The Kada Ecosystem</span></h1>
-                    <p className="hero-subtitle">
+        <main>
+            {/* ─── HERO ─── */}
+            <section ref={heroObs.ref} className={`bf-hero ${heroObs.visible ? 'in' : ''}`}>
+                <div className="bf-hero__bg" />
+                <div className="container bf-hero__inner">
+                    <span className="bf-chip">Why Choose The Kada?</span>
+                    <h1>Benefits That<br /><span className="bf-grad">Set You Apart</span></h1>
+                    <p className="bf-hero__sub">
                         Whether you want to own a business, earn extra income, or grow your sales — we have the perfect opportunity for you.
                     </p>
-                    <div style={{ marginTop: '32px' }}>
-                        <Link
-                            href="#roles"
-                            className="hero-arrow-btn"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                document.querySelector('.tabs-section')?.scrollIntoView({ behavior: 'smooth' });
-                            }}
-                        >
-                            Explore Opportunities <i className="fas fa-arrow-down"></i>
-                        </Link>
-                    </div>
+                    <button
+                        className="bf-scroll-btn"
+                        onClick={() => document.getElementById('bf-tabs')?.scrollIntoView({ behavior: 'smooth' })}
+                    >
+                        Explore Opportunities <span className="bf-scroll-arrow">↓</span>
+                    </button>
                 </div>
             </section>
 
-            <style jsx>{`
-                .hero-arrow-btn {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 8px;
-                    color: #2563EB;
-                    font-weight: 600;
-                    font-size: 1.1rem;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    padding: 12px 24px;
-                    border-radius: 99px;
-                    background: rgba(37, 99, 235, 0.05);
-                }
-                .hero-arrow-btn:hover {
-                    background: rgba(37, 99, 235, 0.1);
-                    transform: translateY(2px);
-                }
-            `}</style>
+            {/* ─── STATS RIBBON ─── */}
+            <section ref={statsObs.ref} className={`bf-stats ${statsObs.visible ? 'in' : ''}`}>
+                <div className="container bf-stats__grid">
+                    {stats.map((s, i) => (
+                        <div key={i} className="bf-stat" style={{ transitionDelay: `${i * 80}ms` }}>
+                            <span className="bf-stat__val">{s.value}</span>
+                            <span className="bf-stat__lbl">{s.label}</span>
+                        </div>
+                    ))}
+                </div>
+            </section>
 
-
-            {/* Role Navigation */}
-            <section className="tabs-section">
+            {/* ─── ROLE TABS ─── */}
+            <section id="bf-tabs" className="bf-tabs">
                 <div className="container">
-                    {/* Removed global glass-card class to prevent style conflicts */}
-                    <div className="custom-tabs-container">
-
-                        {(Object.keys(roleInfo) as Role[]).map((role) => (
+                    <div className="bf-tabs__bar">
+                        {roles.map((r) => (
                             <button
-                                key={role}
-                                onClick={() => setActiveRole(role)}
-                                className={`tab-button ${activeRole === role ? 'active' : ''}`}
-                                style={{
-                                    '--active-color': roleInfo[role].color,
-                                    '--active-bg': roleInfo[role].bg
-                                } as React.CSSProperties}
+                                key={r.key}
+                                className={`bf-tab ${activeRole === r.key ? 'bf-tab--active' : ''}`}
+                                onClick={() => setActiveRole(r.key)}
+                                style={{ '--tab-accent': r.accent } as React.CSSProperties}
                             >
-                                <span className="tab-icon">
-                                    <i className={`fas ${role === 'franchise' ? 'fa-building' : role === 'delivery' ? 'fa-motorcycle' : 'fa-store'}`}></i>
-                                </span>
-                                {roleInfo[role].title}
+                                <span className="bf-tab__icon">{r.icon}</span>
+                                <span className="bf-tab__label">{r.label}</span>
                             </button>
                         ))}
                     </div>
+
+                    <div className="bf-tabs__header">
+                        <h2 style={{ color: currentRole.accent }}>{currentRole.label}</h2>
+                        <p>{currentRole.tagline}</p>
+                    </div>
                 </div>
             </section>
 
-            {/* Content Section */}
-            <section className="content-section">
+            {/* ─── BENEFITS GRID ─── */}
+            <section ref={gridObs.ref} className={`bf-grid-section ${gridObs.visible ? 'in' : ''}`}>
                 <div className="container">
-                    <div className="section-header text-center">
-                        <h2 style={{ color: roleInfo[activeRole].color, marginBottom: '0.5rem' }}>{roleInfo[activeRole].title} Benefits</h2>
-                        <p style={{ fontSize: '1.25rem', color: 'var(--text-main)', maxWidth: '600px', margin: '0 auto' }}>
-                            {roleInfo[activeRole].subtitle}
-                        </p>
-                    </div>
-
-                    <div className="benefits-grid">
-                        {benefits[activeRole].map((benefit, idx) => (
-                            <div key={idx} className="custom-card">
-                                <div className="card-icon" style={{ color: roleInfo[activeRole].color, background: roleInfo[activeRole].bg }}>
-                                    <i className={`fas ${benefit.icon}`}></i>
-                                </div>
-                                <h3>{benefit.title}</h3>
-                                <p>{benefit.description}</p>
+                    <div className="bf-grid">
+                        {benefits[activeRole].map((b, i) => (
+                            <div
+                                key={`${activeRole}-${i}`}
+                                className="bf-card"
+                                style={{
+                                    transitionDelay: `${i * 60}ms`,
+                                    '--card-accent': currentRole.accent,
+                                } as React.CSSProperties}
+                            >
+                                <div className="bf-card__emoji">{b.emoji}</div>
+                                <h3>{b.title}</h3>
+                                <p>{b.desc}</p>
+                                <div className="bf-card__shine" />
                             </div>
                         ))}
                     </div>
+                </div>
+            </section>
 
-                    <div className="cta-container">
-                        <Link
-                            href={activeRole === 'franchise' ? '/apply' : activeRole === 'delivery' ? 'https://thekada.in/deliveryman/apply' : 'https://thekada.in/vendor/apply'}
-                            className="primary-cta-btn"
-                            style={{ background: roleInfo[activeRole].gradient }}
-                        >
-                            {roleInfo[activeRole].cta} <i className="fas fa-arrow-right"></i>
-                        </Link>
+            {/* ─── COMPARISON TABLE ─── */}
+            <section ref={compObs.ref} className={`bf-compare ${compObs.visible ? 'in' : ''}`}>
+                <div className="container">
+                    <div className="bf-compare__header">
+                        <h2>The Kada vs Others</h2>
+                        <p>See how The Kada franchise stands out from the competition</p>
+                    </div>
+                    <div className="bf-table-wrap">
+                        <table className="bf-table">
+                            <thead>
+                                <tr>
+                                    <th>Feature</th>
+                                    <th className="bf-table__highlight">The Kada</th>
+                                    <th>Others</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {[
+                                    ['Investment Required', 'Starting ₹10,000', '₹5L – ₹20L+'],
+                                    ['Break-Even Timeline', '3-6 Months', '12-24 Months'],
+                                    ['Tech Platform', 'Full Suite Included', 'Basic / Extra Cost'],
+                                    ['Marketing Support', 'National + Local', 'Limited / Self'],
+                                    ['Territory Protection', 'Exclusive Zone', 'Overlapping'],
+                                    ['Training', 'Complete Program', 'Minimal / Paid'],
+                                    ['Support', '24/7 Dedicated', 'Business Hours'],
+                                ].map(([feature, kada, others], idx) => (
+                                    <tr key={idx}>
+                                        <td>{feature}</td>
+                                        <td className="bf-table__highlight">{kada}</td>
+                                        <td className="bf-table__muted">{others}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </section>
 
+            {/* ─── FINAL CTA ─── */}
+            <section ref={ctaObs.ref} className={`bf-cta ${ctaObs.visible ? 'in' : ''}`}>
+                <div className="container bf-cta__inner">
+                    <h2>Ready to Start Your Journey?</h2>
+                    <p>Join hundreds of successful partners across India. Low investment, high returns, and full support from day one.</p>
+                    <div className="bf-cta__btns">
+                        <Link href="/apply" className="bf-btn bf-btn--primary">Apply for Franchise</Link>
+                        <Link href="/support" className="bf-btn bf-btn--outline">Contact Us</Link>
+                    </div>
+                </div>
+            </section>
+
+            {/* ─── STYLES ─── */}
             <style jsx>{`
-                .benefits-page {
-                    background: #F8FAFC;
-                    min-height: 100vh;
-                }
-
-                /* Hero Styles */
-                .hero-section {
-                    padding: 120px 0 80px;
-                    background: linear-gradient(180deg, #FFFFFF 0%, #F1F5F9 100%);
+                /* == HERO ============================== */
+                .bf-hero {
+                    position: relative;
+                    overflow: hidden;
+                    padding: 140px 0 80px;
                     text-align: center;
+                    background: var(--bg-dark);
+                    color: #fff;
                 }
-
-                .badge-wrapper {
-                    display: flex;
-                    justify-content: center;
+                .bf-hero__bg {
+                    position: absolute;
+                    inset: 0;
+                    background:
+                        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(74,144,217,.25) 0%, transparent 70%),
+                        radial-gradient(ellipse 50% 40% at 80% 100%, rgba(124,58,237,.18) 0%, transparent 70%);
+                    pointer-events: none;
+                }
+                .bf-hero__inner {
+                    position: relative;
+                    z-index: 1;
+                    max-width: 780px;
+                    margin: 0 auto;
+                }
+                .bf-chip {
+                    display: inline-block;
+                    padding: 6px 18px;
+                    border-radius: var(--radius-pill);
+                    font-size: .8rem;
+                    font-weight: 700;
+                    letter-spacing: .06em;
+                    text-transform: uppercase;
+                    color: var(--primary-color);
+                    background: rgba(74,144,217,.12);
                     margin-bottom: 24px;
                 }
-
-                .hero-badge {
-                    padding: 8px 20px;
-                    background: rgba(37, 99, 235, 0.1);
-                    color: var(--primary-color);
-                    border-radius: 999px;
-                    font-weight: 700;
-                    font-size: 0.875rem;
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
-                }
-
-                h1 {
-                    font-size: clamp(2.5rem, 5vw, 4rem);
+                .bf-hero h1 {
+                    font-size: clamp(2.4rem, 5.5vw, 3.8rem);
                     font-weight: 800;
                     line-height: 1.1;
-                    margin-bottom: 24px;
-                    color: #0F172A;
-                    letter-spacing: -0.02em;
+                    letter-spacing: -0.03em;
+                    margin: 0 0 20px;
+                    color: #fff;
                 }
-
-                .text-gradient {
-                    background: linear-gradient(135deg, var(--primary-color) 0%, #7C3AED 100%);
+                .bf-grad {
+                    background: linear-gradient(135deg, var(--primary-color), #A78BFA);
                     -webkit-background-clip: text;
                     -webkit-text-fill-color: transparent;
                 }
-
-                .hero-subtitle {
-                    font-size: 1.25rem;
-                    line-height: 1.6;
-                    color: #64748B;
-                    max-width: 700px;
-                    margin: 0 auto;
+                .bf-hero__sub {
+                    font-size: 1.15rem;
+                    line-height: 1.7;
+                    color: #94A3B8;
+                    max-width: 600px;
+                    margin: 0 auto 32px;
                 }
-
-                /* Tabs Styles */
-                .tabs-section {
-                    position: sticky;
-                    top: 80px;
-                    z-index: 50;
-                    margin-bottom: 40px;
-                    pointer-events: none; /* Allow click through around pill */
-                }
-
-                .tabs-section .container {
-                    display: flex;
-                    justify-content: center;
-                }
-
-                .custom-tabs-container {
-                    pointer-events: auto; /* Re-enable clicks */
-                    display: flex;
-                    padding: 6px;
+                .bf-scroll-btn {
+                    display: inline-flex;
+                    align-items: center;
                     gap: 8px;
-                    border-radius: 999px;
-                    background: rgba(255, 255, 255, 0.8);
-                    backdrop-filter: blur(16px);
-                    -webkit-backdrop-filter: blur(16px);
-                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-                    border: 1px solid rgba(255, 255, 255, 0.5);
-                    max-width: fit-content;
-                }
-
-                .tab-button {
+                    padding: 12px 28px;
                     border: none;
-                    background: transparent;
-                    padding: 12px 24px;
-                    border-radius: 999px;
+                    border-radius: var(--radius-pill);
+                    background: rgba(255,255,255,.08);
+                    color: #CBD5E1;
                     font-size: 1rem;
                     font-weight: 600;
-                    color: #64748B;
                     cursor: pointer;
-                    transition: all 0.2s ease;
+                    transition: var(--transition-std);
+                    backdrop-filter: blur(8px);
+                }
+                .bf-scroll-btn:hover { background: rgba(255,255,255,.14); color: #fff; }
+                .bf-scroll-arrow {
+                    display: inline-block;
+                    animation: bounce 1.6s infinite;
+                }
+                @keyframes bounce {
+                    0%,100% { transform: translateY(0); }
+                    50% { transform: translateY(4px); }
+                }
+
+                /* hero entrance */
+                .bf-hero .bf-chip,
+                .bf-hero h1,
+                .bf-hero__sub,
+                .bf-scroll-btn { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
+                .bf-hero.in .bf-chip   { opacity:1; transform:translateY(0); transition-delay:.1s; }
+                .bf-hero.in h1         { opacity:1; transform:translateY(0); transition-delay:.2s; }
+                .bf-hero.in .bf-hero__sub  { opacity:1; transform:translateY(0); transition-delay:.3s; }
+                .bf-hero.in .bf-scroll-btn { opacity:1; transform:translateY(0); transition-delay:.4s; }
+
+                /* == STATS ============================== */
+                .bf-stats {
+                    position: relative;
+                    margin-top: -40px;
+                    padding: 0 16px;
+                    z-index: 2;
+                }
+                .bf-stats__grid {
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 1px;
+                    background: var(--border-color);
+                    border-radius: var(--radius-lg);
+                    overflow: hidden;
+                    box-shadow: var(--shadow-lg);
+                }
+                .bf-stat {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    padding: 28px 16px;
+                    background: #fff;
+                    opacity: 0;
+                    transform: translateY(16px);
+                    transition: opacity .5s ease, transform .5s ease;
+                }
+                .bf-stats.in .bf-stat { opacity: 1; transform: translateY(0); }
+                .bf-stat__val {
+                    font-size: 1.8rem;
+                    font-weight: 800;
+                    color: var(--primary-color);
+                    letter-spacing: -0.02em;
+                }
+                .bf-stat__lbl {
+                    font-size: .85rem;
+                    color: var(--text-secondary);
+                    font-weight: 500;
+                    margin-top: 4px;
+                }
+
+                @media (max-width: 640px) {
+                    .bf-stats__grid { grid-template-columns: repeat(2, 1fr); }
+                }
+
+                /* == ROLE TABS ============================== */
+                .bf-tabs {
+                    padding: 56px 0 0;
+                }
+                .bf-tabs__bar {
+                    display: flex;
+                    justify-content: center;
+                    gap: 8px;
+                    padding: 6px;
+                    background: var(--bg-secondary);
+                    border-radius: var(--radius-pill);
+                    max-width: fit-content;
+                    margin: 0 auto 40px;
+                }
+                .bf-tab {
                     display: flex;
                     align-items: center;
                     gap: 8px;
+                    padding: 12px 24px;
+                    border: none;
+                    border-radius: var(--radius-pill);
+                    background: transparent;
+                    font-size: .95rem;
+                    font-weight: 600;
+                    color: var(--text-secondary);
+                    cursor: pointer;
+                    transition: all .25s ease;
                     white-space: nowrap;
                 }
+                .bf-tab:hover { color: var(--text-main); background: rgba(0,0,0,.04); }
+                .bf-tab--active {
+                    background: #fff !important;
+                    color: var(--tab-accent) !important;
+                    box-shadow: var(--shadow-sm);
+                }
+                .bf-tab__icon { font-size: 1.2rem; }
 
-                .tab-button:hover {
-                    color: #1E293B;
-                    background: rgba(0,0,0,0.05);
+                .bf-tabs__header {
+                    text-align: center;
+                    max-width: 560px;
+                    margin: 0 auto;
+                }
+                .bf-tabs__header h2 {
+                    font-size: 2rem;
+                    font-weight: 800;
+                    margin: 0 0 8px;
+                }
+                .bf-tabs__header p {
+                    font-size: 1.1rem;
+                    color: var(--text-secondary);
+                    margin: 0;
                 }
 
-                .tab-button.active {
-                    background: var(--active-bg);
-                    color: var(--active-color);
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                @media (max-width: 640px) {
+                    .bf-tabs__bar {
+                        flex-direction: column;
+                        border-radius: var(--radius-md);
+                        width: 100%;
+                        max-width: 100%;
+                    }
+                    .bf-tab { justify-content: center; width: 100%; padding: 14px; }
                 }
 
-                /* Content Styles */
-                .content-section {
-                    padding-bottom: 160px; /* Increased to prevent bottom cutoff on mobile */
+                /* == BENEFITS GRID ============================== */
+                .bf-grid-section {
+                    padding: 48px 0 80px;
                 }
-
-                .section-header {
-                    margin-bottom: 60px;
-                }
-
-                .benefits-grid {
+                .bf-grid {
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-                    gap: 32px;
-                    margin-bottom: 80px; /* Increased space before CTA */
+                    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                    gap: 20px;
+                }
+                .bf-card {
+                    position: relative;
+                    overflow: hidden;
+                    padding: 28px;
+                    background: #fff;
+                    border: 1px solid var(--border-color);
+                    border-radius: var(--radius-lg);
+                    transition: transform .35s ease, box-shadow .35s ease, opacity .5s ease;
+                    opacity: 0;
+                    transform: translateY(20px);
+                    cursor: default;
+                }
+                .bf-grid-section.in .bf-card { opacity: 1; transform: translateY(0); }
+                .bf-card:hover {
+                    transform: translateY(-6px);
+                    box-shadow: 0 16px 40px -8px rgba(0,0,0,.10);
+                    border-color: var(--card-accent);
+                }
+                .bf-card__emoji {
+                    font-size: 2rem;
+                    margin-bottom: 14px;
+                    display: block;
+                    line-height: 1;
+                }
+                .bf-card h3 {
+                    font-size: 1.15rem;
+                    font-weight: 700;
+                    margin: 0 0 8px;
+                    color: var(--text-main);
+                }
+                .bf-card p {
+                    font-size: .92rem;
+                    line-height: 1.6;
+                    color: var(--text-secondary);
+                    margin: 0;
+                }
+                .bf-card__shine {
+                    position: absolute;
+                    top: -50%;
+                    left: -50%;
+                    width: 200%;
+                    height: 200%;
+                    background: linear-gradient(120deg, transparent 40%, rgba(255,255,255,.45) 50%, transparent 60%);
+                    opacity: 0;
+                    transform: translateX(-100%);
+                    transition: none;
+                    pointer-events: none;
+                }
+                .bf-card:hover .bf-card__shine {
+                    opacity: 1;
+                    transform: translateX(100%);
+                    transition: transform .8s ease;
                 }
 
-                .cta-container {
+                /* == COMPARISON TABLE ============================== */
+                .bf-compare {
+                    padding: 80px 0;
+                    background: var(--bg-secondary);
+                }
+                .bf-compare__header {
+                    text-align: center;
+                    margin-bottom: 48px;
+                }
+                .bf-compare__header h2 {
+                    font-size: 2rem;
+                    font-weight: 800;
+                    margin: 0 0 8px;
+                    color: var(--text-main);
+                }
+                .bf-compare__header p {
+                    font-size: 1.1rem;
+                    color: var(--text-secondary);
+                    margin: 0;
+                }
+                .bf-table-wrap {
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
+                }
+                .bf-table {
+                    width: 100%;
+                    border-collapse: separate;
+                    border-spacing: 0;
+                    background: #fff;
+                    border-radius: var(--radius-lg);
+                    overflow: hidden;
+                    box-shadow: var(--shadow-md);
+                    min-width: 520px;
+                }
+                .bf-table th,
+                .bf-table td {
+                    padding: 16px 24px;
+                    text-align: left;
+                    font-size: .95rem;
+                    border-bottom: 1px solid var(--border-color);
+                }
+                .bf-table thead th {
+                    font-weight: 700;
+                    color: var(--text-secondary);
+                    font-size: .8rem;
+                    text-transform: uppercase;
+                    letter-spacing: .06em;
+                    background: var(--bg-surface);
+                }
+                .bf-table tbody tr:last-child td { border-bottom: none; }
+                .bf-table__highlight {
+                    color: var(--primary-color) !important;
+                    font-weight: 700 !important;
+                    background: rgba(74,144,217,.04);
+                }
+                .bf-table thead .bf-table__highlight {
+                    color: var(--primary-color) !important;
+                }
+                .bf-table__muted {
+                    color: var(--text-muted);
+                }
+
+                /* comparison entrance */
+                .bf-compare .bf-compare__header,
+                .bf-compare .bf-table-wrap {
+                    opacity: 0;
+                    transform: translateY(20px);
+                    transition: opacity .6s ease, transform .6s ease;
+                }
+                .bf-compare.in .bf-compare__header { opacity:1; transform:translateY(0); transition-delay:.1s; }
+                .bf-compare.in .bf-table-wrap { opacity:1; transform:translateY(0); transition-delay:.25s; }
+
+                /* == CTA ============================== */
+                .bf-cta {
+                    padding: 80px 0 120px;
+                    background: var(--bg-dark);
+                    color: #fff;
                     text-align: center;
                     position: relative;
-                    z-index: 10;
-                    padding: 0 20px; /* Safety padding */
+                    overflow: hidden;
                 }
-
-                .custom-card {
-                    background: white;
-                    padding: 32px;
-                    border-radius: 24px;
-                    border: 1px solid rgba(226, 232, 240, 0.8);
-                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                .bf-cta::before {
+                    content: '';
+                    position: absolute;
+                    inset: 0;
+                    background: radial-gradient(ellipse 70% 50% at 50% 100%, rgba(74,144,217,.22), transparent 70%);
+                    pointer-events: none;
+                }
+                .bf-cta__inner {
+                    position: relative;
+                    z-index: 1;
+                    max-width: 640px;
+                    margin: 0 auto;
+                }
+                .bf-cta h2 {
+                    font-size: clamp(1.8rem, 4vw, 2.6rem);
+                    font-weight: 800;
+                    margin: 0 0 16px;
+                    color: #fff;
+                }
+                .bf-cta p {
+                    font-size: 1.1rem;
+                    line-height: 1.7;
+                    color: #94A3B8;
+                    margin: 0 0 36px;
+                }
+                .bf-cta__btns {
                     display: flex;
-                    flex-direction: column;
-                    align-items: flex-start;
-                    height: 100%;
-                }
-
-                .custom-card:hover {
-                    transform: translateY(-8px);
-                    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-                    border-color: rgba(37, 99, 235, 0.3);
-                }
-
-                .card-icon {
-                    width: 64px;
-                    height: 64px;
-                    border-radius: 16px;
-                    display: flex;
-                    align-items: center;
+                    gap: 14px;
                     justify-content: center;
-                    font-size: 1.75rem;
-                    margin-bottom: 24px;
+                    flex-wrap: wrap;
                 }
-
-                .custom-card h3 {
-                    font-size: 1.35rem;
-                    font-weight: 700;
-                    margin: 0 0 12px 0;
-                    color: #1E293B;
-                }
-
-                .custom-card p {
-                    margin: 0;
-                    font-size: 1rem;
-                    line-height: 1.6;
-                    color: #64748B;
-                }
-
-                .cta-container {
-                    text-align: center;
-                }
-
-                /* CTA Button Polish */
-                .primary-cta-btn {
+                .bf-btn {
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
-                    padding: 0 48px;
-                    height: 64px;
-                    border-radius: 99px; /* Pill shape is more modern for gradients */
-                    font-size: 1.125rem;
+                    padding: 14px 36px;
+                    border-radius: var(--radius-pill);
+                    font-size: 1rem;
                     font-weight: 700;
-                    color: white;
                     text-decoration: none;
-                    gap: 12px;
-                    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.15); /* More neutral base shadow */
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                    position: relative;
-                    width: auto;
-                    min-width: 260px;
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                    transition: var(--transition-std);
+                    cursor: pointer;
+                    border: none;
                 }
-
-                .primary-cta-btn:hover {
-                    transform: translateY(-4px);
-                    box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.2);
-                    filter: brightness(1.1);
+                .bf-btn--primary {
+                    background: linear-gradient(135deg, var(--primary-color), #7C3AED);
+                    color: #fff;
+                    box-shadow: 0 8px 24px -6px rgba(74,144,217,.4);
                 }
-
-                .primary-cta-btn:active {
-                    transform: translateY(0);
+                .bf-btn--primary:hover { transform: translateY(-3px); box-shadow: 0 14px 32px -6px rgba(74,144,217,.5); }
+                .bf-btn--outline {
+                    background: transparent;
+                    color: #CBD5E1;
+                    border: 1.5px solid rgba(203,213,225,.3);
                 }
+                .bf-btn--outline:hover { background: rgba(255,255,255,.06); border-color: rgba(203,213,225,.5); color: #fff; }
 
-                @media (max-width: 768px) {
-                    .primary-cta-btn {
-                        width: 100%; /* Full width on mobile */
-                        max-width: 100%;
-                    }
-                    
-                    /* Better Tab Alignment on Mobile */
-                    .tab-button {
-                        width: 100%;
-                        justify-content: center; /* Center text/icon */
-                        text-align: center;
-                        padding: 16px;
-                    }
-                    
-                    .custom-tabs-container {
-                        width: 100%;
-                        padding: 6px;
-                        border-radius: 16px;
-                        display: flex;
-                        flex-direction: column;
-                        gap: 8px;
-                    }
+                /* CTA entrance */
+                .bf-cta h2,
+                .bf-cta p,
+                .bf-cta__btns {
+                    opacity: 0;
+                    transform: translateY(20px);
+                    transition: opacity .6s ease, transform .6s ease;
+                }
+                .bf-cta.in h2 { opacity:1; transform:translateY(0); transition-delay:.1s; }
+                .bf-cta.in p { opacity:1; transform:translateY(0); transition-delay:.2s; }
+                .bf-cta.in .bf-cta__btns { opacity:1; transform:translateY(0); transition-delay:.3s; }
+
+                @media (max-width: 480px) {
+                    .bf-cta__btns { flex-direction: column; }
+                    .bf-btn { width: 100%; }
                 }
             `}</style>
         </main>
