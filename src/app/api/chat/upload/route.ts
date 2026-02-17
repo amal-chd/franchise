@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
+import { storageBucket } from '@/lib/firebase';
 
 export async function POST(request: Request) {
     try {
@@ -12,27 +10,15 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'File is required' }, { status: 400 });
         }
 
-        const filename = `chat_${Date.now()}_${file.name.replace(/\s/g, '_')}`;
-        let fileUrl = '';
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const safeName = file.name.replace(/\s/g, '_');
+        const filePath = `chat/chat_${Date.now()}_${safeName}`;
 
-        const token = process.env.BLOB_READ_WRITE_TOKEN;
+        const blob = storageBucket.file(filePath);
+        await blob.save(buffer, { metadata: { contentType: file.type } });
+        await blob.makePublic();
 
-        if (token) {
-            const blob = await put(filename, file, { access: 'public', token });
-            fileUrl = blob.url;
-        } else {
-            // Local storage fallback
-            const bytes = await file.arrayBuffer();
-            const buffer = Buffer.from(bytes);
-
-            const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'chat');
-            await mkdir(uploadDir, { recursive: true });
-
-            const filePath = path.join(uploadDir, filename);
-            await writeFile(filePath, buffer);
-
-            fileUrl = `/uploads/chat/${filename}`;
-        }
+        const fileUrl = `https://storage.googleapis.com/${storageBucket.name}/${filePath}`;
 
         return NextResponse.json({ success: true, fileUrl }, { status: 200 });
     } catch (error: any) {

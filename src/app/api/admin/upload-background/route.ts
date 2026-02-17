@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
+import { storageBucket } from '@/lib/firebase';
 
 export async function POST(request: Request) {
     try {
@@ -20,32 +20,23 @@ export async function POST(request: Request) {
 
         // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
-            return NextResponse.json({
-                message: 'File too large. Maximum size is 5MB.'
-            }, { status: 400 });
+            return NextResponse.json({ message: 'File too large. Maximum size is 5MB.' }, { status: 400 });
         }
 
-        // Upload to Vercel Blob
-        const token = process.env.BLOB_READ_WRITE_TOKEN ||
-            process.env.thekada_READ_WRITE_TOKEN ||
-            process.env.READ_WRITE_TOKEN;
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const safeName = file.name.replace(/\s/g, '_');
+        const filePath = `backgrounds/${Date.now()}_${safeName}`;
 
-        if (!token) {
-            return NextResponse.json({
-                message: 'Blob storage not configured'
-            }, { status: 500 });
-        }
+        const blob = storageBucket.file(filePath);
+        await blob.save(buffer, { metadata: { contentType: file.type } });
+        await blob.makePublic();
 
-        const blob = await put(file.name, file, {
-            access: 'public',
-            token: token,
-        });
+        const publicUrl = `https://storage.googleapis.com/${storageBucket.name}/${filePath}`;
 
         return NextResponse.json({
             message: 'Image uploaded successfully',
-            url: blob.url
+            url: publicUrl
         }, { status: 200 });
-
     } catch (error: any) {
         console.error('Background Upload Error:', error);
         return NextResponse.json({

@@ -28,14 +28,19 @@ export default function TestimonialsTab() {
             const res = await fetch('/api/admin/cms');
             if (res.ok) {
                 const data = await res.json();
-                if (Array.isArray(data.testimonials)) {
-                    setTestimonials(data.testimonials);
-                } else if (data.testimonials) {
-                    try {
-                        const parsed = typeof data.testimonials === 'string' ? JSON.parse(data.testimonials) : data.testimonials;
-                        setTestimonials(Array.isArray(parsed) ? parsed : []);
-                    } catch {
-                        setTestimonials([]);
+                const section = data.testimonials;
+                if (section) {
+                    // The CMS stores testimonials as section.testimonials or section.items (JSON string)
+                    const raw = section.testimonials || section.items;
+                    if (raw) {
+                        try {
+                            const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                            setTestimonials(Array.isArray(parsed) ? parsed : []);
+                        } catch {
+                            setTestimonials([]);
+                        }
+                    } else if (Array.isArray(section)) {
+                        setTestimonials(section);
                     }
                 }
             }

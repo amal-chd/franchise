@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@vercel/blob": "^2.0.0",
     "dotenv": "^17.2.3",
     "firebase": "^12.9.0",
     "firebase-admin": "^13.6.1",

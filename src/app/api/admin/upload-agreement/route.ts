@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
+import { storageBucket } from '@/lib/firebase';
 
 export async function POST(request: Request) {
     try {
@@ -17,30 +15,17 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Only PDF files are allowed' }, { status: 400 });
         }
 
-        const filename = `agreement_${Date.now()}_${file.name.replace(/\s/g, '_')}`;
-        let fileUrl = '';
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const safeName = file.name.replace(/\s/g, '_');
+        const filePath = `agreements/agreement_${Date.now()}_${safeName}`;
 
-        const token = process.env.BLOB_READ_WRITE_TOKEN;
+        const blob = storageBucket.file(filePath);
+        await blob.save(buffer, { metadata: { contentType: file.type } });
+        await blob.makePublic();
 
-        if (token) {
-            const blob = await put(filename, file, { access: 'public', token });
-            fileUrl = blob.url;
-        } else {
-            // Local storage fallback
-            const bytes = await file.arrayBuffer();
-            const buffer = Buffer.from(bytes);
-
-            const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'agreements');
-            await mkdir(uploadDir, { recursive: true });
-
-            const filePath = path.join(uploadDir, filename);
-            await writeFile(filePath, buffer);
-
-            fileUrl = `/uploads/agreements/${filename}`;
-        }
+        const fileUrl = `https://storage.googleapis.com/${storageBucket.name}/${filePath}`;
 
         return NextResponse.json({ success: true, url: fileUrl }, { status: 200 });
-
     } catch (error: any) {
         console.error('Agreement Upload Error:', error);
         return NextResponse.json({ message: 'Upload failed', error: error.message }, { status: 500 });
