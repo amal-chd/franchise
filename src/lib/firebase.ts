@@ -22,9 +22,30 @@ function initAdmin() {
     }
 
     try {
-        const privateKey = (process.env.FIREBASE_PRIVATE_KEY || '')
-            .replace(/\\n/g, '\n')
-            .replace(/^"(.*)"$/, '$1'); // Remove surrounding quotes
+        // Robust Private Key Sanitization
+        // 1. Handle literal newlines (common in JSON)
+        let privateKey = (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+
+        // 2. Remove outer quotes if present
+        if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+            privateKey = privateKey.slice(1, -1);
+        }
+
+        // 3. Reconstruct the key to ensure valid PEM format (strips random spaces, fixes line breaks)
+        const header = '-----BEGIN PRIVATE KEY-----';
+        const footer = '-----END PRIVATE KEY-----';
+
+        if (privateKey.includes(header) && privateKey.includes(footer)) {
+            // Extract the base64 body
+            const body = privateKey.substring(
+                privateKey.indexOf(header) + header.length,
+                privateKey.lastIndexOf(footer)
+            ).replace(/\s/g, ''); // Remove ALL whitespace (newlines, spaces, tabs) from body
+
+            // Re-wrap with correct headers and 64-char line breaks
+            const formattedBody = body.match(/.{1,64}/g)?.join('\n');
+            privateKey = `${header}\n${formattedBody}\n${footer}`;
+        }
 
         const app = admin.initializeApp({
             credential: admin.credential.cert({
