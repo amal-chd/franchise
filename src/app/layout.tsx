@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://thekada.in'),
   title: "The Kada Franchise - Empowering Local Commerce | Join Our Network",
-  description: "Start your own profitable hyper-local delivery business with The Kada Franchise. We empower local vendors and deliver happiness across Kerala. Apply now!",
+  description: "Start your own profitable hyper-local delivery business with The Kada Franchise. We empower local vendors and deliver happiness across India. Apply now!",
   keywords: ["The Kada", "The Kada Franchise", "Delivery Franchise", "Hyper-local Delivery", "Business Opportunity", "Kerala Startup", "Logistics"],
   icons: {
     icon: [
