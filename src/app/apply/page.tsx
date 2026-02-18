@@ -404,126 +404,92 @@ function ApplyContent() {
 
                 {/* Step 3: Pricing */}
                 {step === 3 && (
-                    <div>
-                        <h3 className="text-center" style={{ marginBottom: '2rem' }}>Choose Your Plan</h3>
+                    <div className="animate-fade-in">
+                        <div className="text-center mb-6">
+                            <h3 style={{ marginBottom: '0.5rem' }}>Choose Your Plan</h3>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                                Select the partnership tier that suits your goals.
+                            </p>
+                        </div>
+
                         <div className="pricing-grid">
-
-
                             {/* Basic Plan */}
                             <div
-                                className={`pricing-card ${selectedPlan === 'basic' ? 'selected' : ''}`}
+                                className={`pricing-card basic ${selectedPlan === 'basic' ? 'selected' : ''}`}
                                 onClick={() => setSelectedPlan('basic')}
-                                style={{ borderTop: '4px solid #3B82F6', background: selectedPlan === 'basic' ? 'linear-gradient(to bottom, #eff6ff, #ffffff)' : 'white' }}
                             >
                                 <div className="pricing-header">
-                                    <h4 style={{ color: '#1d4ed8' }}>Standard Partner</h4>
-                                    <div className="price">₹{content.pricing_basic_price || '499'}<span>/year</span></div>
+                                    <h4>Standard Partner</h4>
+                                    <div className="pricing-amount">₹{content.pricing_basic_price || '499'}<span>/year</span></div>
                                 </div>
                                 <ul className="pricing-features">
-                                    <li><i className="fas fa-check" style={{ color: '#3B82F6' }}></i> {content.pricing_basic_share || '60'}% Revenue Share</li>
-                                    <li><i className="fas fa-check" style={{ color: '#3B82F6' }}></i> Standard Support</li>
-                                    <li><i className="fas fa-check" style={{ color: '#3B82F6' }}></i> Basic Marketing Kit</li>
-                                    <li><i className="fas fa-check" style={{ color: '#3B82F6' }}></i> App Access</li>
+                                    <li><i className="fas fa-check"></i> {content.pricing_basic_share || '60'}% Revenue Share</li>
+                                    <li><i className="fas fa-check"></i> Standard Support</li>
+                                    <li><i className="fas fa-check"></i> Basic Marketing Kit</li>
+                                    <li><i className="fas fa-check"></i> App Access</li>
+                                    <li className="unavailable"><i className="fas fa-times"></i> Advanced Analytics</li>
                                 </ul>
                                 <button
-                                    className={`btn`}
+                                    className="pricing-btn"
                                     onClick={(e) => { e.stopPropagation(); handlePricingSubmit('basic'); }}
-                                    style={{
-                                        width: '100%',
-                                        background: selectedPlan === 'basic' ? '#3B82F6' : '#f3f4f6',
-                                        color: selectedPlan === 'basic' ? 'white' : '#374151',
-                                        border: 'none',
-                                        fontWeight: 600
-                                    }}
                                     disabled={status === 'sending'}
                                 >
-                                    Select Plan
+                                    Select Standard
                                 </button>
                             </div>
 
                             {/* Premium Plan */}
                             <div
-                                className={`pricing-card ${selectedPlan === 'premium' ? 'selected' : ''}`}
+                                className={`pricing-card premium ${selectedPlan === 'premium' ? 'selected' : ''}`}
                                 onClick={() => setSelectedPlan('premium')}
-                                style={{
-                                    borderTop: '4px solid #EF4444',
-                                    background: selectedPlan === 'premium' ? 'rgba(255, 255, 255, 0.7)' : 'white',
-                                    backdropFilter: selectedPlan === 'premium' ? 'blur(10px)' : 'none',
-                                    boxShadow: selectedPlan === 'premium' ? '0 8px 32px 0 rgba(239, 68, 68, 0.15)' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                    border: selectedPlan === 'premium' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid #e5e7eb',
-                                    transform: selectedPlan === 'premium' ? 'scale(1.02)' : 'scale(1)',
-                                    transition: 'all 0.3s ease'
-                                }}
                             >
-                                <div className="popular-tag" style={{ background: '#EF4444' }}>Most Popular</div>
+                                <div className="popular-badge">Most Popular</div>
                                 <div className="pricing-header">
-                                    <h4 style={{ color: '#b91c1c' }}>Premium Partner</h4>
-                                    <div className="price">₹{content.pricing_premium_price || '999'}<span>/year</span></div>
+                                    <h4>Premium Partner</h4>
+                                    <div className="pricing-amount">₹{content.pricing_premium_price || '999'}<span>/year</span></div>
                                 </div>
                                 <ul className="pricing-features">
-                                    <li><i className="fas fa-check" style={{ color: '#EF4444' }}></i> {content.pricing_premium_share || '70'}% Revenue Share</li>
-                                    <li><i className="fas fa-check" style={{ color: '#EF4444' }}></i> Priority Support</li>
-                                    <li><i className="fas fa-check" style={{ color: '#EF4444' }}></i> Premium Marketing Kit</li>
-                                    <li><i className="fas fa-check" style={{ color: '#EF4444' }}></i> Advanced Analytics</li>
+                                    <li><i className="fas fa-check"></i> {content.pricing_premium_share || '70'}% Revenue Share</li>
+                                    <li><i className="fas fa-check"></i> Priority Support</li>
+                                    <li><i className="fas fa-check"></i> Premium Marketing Kit</li>
+                                    <li><i className="fas fa-check"></i> Advanced Analytics</li>
+                                    <li><i className="fas fa-check"></i> Dedicated Manager</li>
                                 </ul>
                                 <button
-                                    className={`btn`}
+                                    className="pricing-btn"
                                     onClick={(e) => { e.stopPropagation(); handlePricingSubmit('premium'); }}
-                                    style={{
-                                        width: '100%',
-                                        background: selectedPlan === 'premium' ? '#EF4444' : '#f3f4f6',
-                                        color: selectedPlan === 'premium' ? 'white' : '#374151',
-                                        border: 'none',
-                                        fontWeight: 600
-                                    }}
                                     disabled={status === 'sending'}
                                 >
-                                    Select Plan
+                                    Select Premium
                                 </button>
                             </div>
 
                             {/* Elite Plan */}
                             <div
-                                className={`pricing-card ${selectedPlan === 'elite' ? 'selected' : ''}`}
+                                className={`pricing-card elite ${selectedPlan === 'elite' ? 'selected' : ''}`}
                                 onClick={() => setSelectedPlan('elite')}
-                                style={{
-                                    borderTop: '4px solid #F59E0B',
-                                    background: selectedPlan === 'elite' ? 'rgba(255, 255, 255, 0.7)' : 'white',
-                                    backdropFilter: selectedPlan === 'elite' ? 'blur(10px)' : 'none',
-                                    boxShadow: selectedPlan === 'elite' ? '0 8px 32px 0 rgba(245, 158, 11, 0.15)' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                    border: selectedPlan === 'elite' ? '1px solid rgba(245, 158, 11, 0.2)' : '1px solid #e5e7eb',
-                                    transform: selectedPlan === 'elite' ? 'scale(1.02)' : 'scale(1)',
-                                    transition: 'all 0.3s ease'
-                                }}
                             >
-                                <div className="popular-tag" style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', color: '#fff' }}>Exclusive</div>
+                                <div className="elite-badge">Exclusive</div>
                                 <div className="pricing-header">
-                                    <h4 style={{ color: '#b45309' }}>Elite Partner</h4>
-                                    <div className="price">₹{content.pricing_elite_price || '2499'}<span>/year</span></div>
+                                    <h4>Elite Partner</h4>
+                                    <div className="pricing-amount">₹{content.pricing_elite_price || '2499'}<span>/year</span></div>
                                 </div>
                                 <ul className="pricing-features">
-                                    <li><i className="fas fa-check" style={{ color: '#F59E0B' }}></i> {content.pricing_elite_share || '80'}% Revenue Share</li>
-                                    <li><i className="fas fa-check" style={{ color: '#F59E0B' }}></i> 24x7 Dedicated Support</li>
-                                    <li><i className="fas fa-check" style={{ color: '#F59E0B' }}></i> Exclusive Marketing Kit</li>
-                                    <li><i className="fas fa-check" style={{ color: '#F59E0B' }}></i> Advanced Analytics + Insights</li>
+                                    <li><i className="fas fa-check"></i> {content.pricing_elite_share || '80'}% Revenue Share</li>
+                                    <li><i className="fas fa-check"></i> 24x7 Dedicated Support</li>
+                                    <li><i className="fas fa-check"></i> Exclusive Marketing Kit</li>
+                                    <li><i className="fas fa-check"></i> Deep Analytics + Insights</li>
+                                    <li><i className="fas fa-check"></i> Zero Onboarding Fee</li>
                                 </ul>
                                 <button
-                                    className={`btn`}
+                                    className="pricing-btn"
                                     onClick={(e) => { e.stopPropagation(); handlePricingSubmit('elite'); }}
-                                    style={{
-                                        width: '100%',
-                                        background: selectedPlan === 'elite' ? '#F59E0B' : '#f3f4f6',
-                                        color: selectedPlan === 'elite' ? 'white' : '#374151',
-                                        border: 'none',
-                                        fontWeight: 600
-                                    }}
                                     disabled={status === 'sending'}
                                 >
-                                    Select Plan
+                                    Select Elite
                                 </button>
                             </div>
                         </div>
-                        {status === 'error' && <p style={{ color: 'var(--accent-color)', marginTop: '1rem', textAlign: 'center' }}>Payment initialization failed.</p>}
                     </div>
                 )}
 

@@ -1050,136 +1050,229 @@ select:focus {
    PRICING CARDS
    ======================================== */
 
+/* ========================================
+   PRICING CARDS
+   ======================================== */
+
 .pricing-grid {
   display: flex;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  gap: 12px;
-  padding-bottom: 16px;
+  flex-direction: column;
+  gap: 16px;
   width: 100%;
-  padding-left: 12px;
-  padding-right: 12px;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  margin-top: 16px;
 }
 
-.pricing-grid::-webkit-scrollbar {
-  display: none;
-}
-
-.pricing-grid>div {
-  min-width: 85%;
-  flex: 0 0 auto;
-  scroll-snap-align: center;
+@media (min-width: 768px) {
+  .pricing-grid {
+    flex-direction: row;
+    justify-content: center;
+    align-items: stretch;
+    gap: 24px;
+  }
 }
 
 .pricing-card {
-  background: white;
-  border: 2px solid var(--border-color);
-  border-radius: 10px;
-  padding: 12px 8px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 24px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .pricing-card {
+    flex: 1;
+    max-width: 320px;
+  }
 }
 
 .pricing-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary-color);
 }
 
 .pricing-card.selected {
+  background: #FFFFFF;
   border-color: var(--primary-color);
-  background: #EFF6FF;
-  box-shadow: 0 4px 12px rgba(74, 144, 217, 0.2);
+  box-shadow: 0 8px 30px rgba(74, 144, 217, 0.15);
+  transform: scale(1.02);
+  z-index: 10;
 }
 
-.pricing-card.popular {
-  border-color: #FFA726;
+/* Plan Specific Styles */
+.pricing-card.basic {
+  border-top: 4px solid #3B82F6;
 }
 
 .pricing-card.premium {
-  border-color: #4CAF50;
+  border-top: 4px solid #EF4444;
 }
 
-.popular-badge,
-.premium-badge {
-  position: absolute;
-  top: -6px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 2px 6px;
-  border-radius: 8px;
-  font-size: 0.55rem;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  white-space: nowrap;
+.pricing-card.elite {
+  border-top: 4px solid #F59E0B;
+}
+
+.pricing-card.selected.basic {
+  background: linear-gradient(180deg, #EFF6FF 0%, #FFFFFF 100%);
+}
+
+.pricing-card.selected.premium {
+  background: linear-gradient(180deg, #FEF2F2 0%, #FFFFFF 100%);
+  border-color: #EF4444;
+  box-shadow: 0 8px 30px rgba(239, 68, 68, 0.15);
+}
+
+.pricing-card.selected.elite {
+  background: linear-gradient(180deg, #FFFBEB 0%, #FFFFFF 100%);
+  border-color: #F59E0B;
+  box-shadow: 0 8px 30px rgba(245, 158, 11, 0.15);
 }
 
 .popular-badge {
-  background: #FFA726;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #EF4444;
   color: white;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
-.premium-badge {
-  background: #4CAF50;
+.elite-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
   color: white;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
 }
 
 .pricing-header {
   text-align: center;
-  margin-bottom: 8px;
+  margin-bottom: 20px;
   width: 100%;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .pricing-header h4 {
-  color: var(--primary-color);
-  font-size: 0.8rem;
-  margin: 0 0 4px;
-  font-weight: 700;
-  line-height: 1.2;
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
 }
+
+.pricing-card.basic h4 { color: #1d4ed8; }
+.pricing-card.premium h4 { color: #b91c1c; }
+.pricing-card.elite h4 { color: #b45309; }
 
 .pricing-amount {
-  font-size: 1.25rem;
+  font-size: 2rem;
   font-weight: 800;
   color: var(--text-main);
-  margin-bottom: 2px;
   line-height: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
 }
 
-.pricing-period {
-  font-size: 0.6rem;
+.pricing-amount span {
+  font-size: 0.9rem;
+  font-weight: 500;
   color: var(--text-secondary);
-  margin-bottom: 6px;
 }
 
 .pricing-features {
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: 0 0 24px;
   width: 100%;
+  flex: 1;
 }
 
 .pricing-features li {
-  font-size: 0.65rem;
+  font-size: 0.9rem;
   color: var(--text-main);
-  margin-bottom: 4px;
+  margin-bottom: 10px;
   display: flex;
   align-items: flex-start;
-  gap: 4px;
-  line-height: 1.3;
+  gap: 10px;
+  line-height: 1.5;
 }
 
 .pricing-features i {
   color: var(--success-color);
-  font-size: 0.6rem;
+  font-size: 0.9rem;
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: 3px;
 }
+
+.pricing-features li.unavailable {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.pricing-features li.unavailable i {
+  color: var(--text-muted);
+}
+
+.pricing-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  background: var(--bg-secondary);
+  color: var(--text-main);
+}
+
+.pricing-card.selected .pricing-btn {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.pricing-card.basic .pricing-btn:hover,
+.pricing-card.selected.basic .pricing-btn {
+  background: #3B82F6;
+  color: white;
+}
+
+.pricing-card.premium .pricing-btn:hover,
+.pricing-card.selected.premium .pricing-btn {
+  background: #EF4444;
+  color: white;
+}
+
+.pricing-card.elite .pricing-btn:hover,
+.pricing-card.selected.elite .pricing-btn {
+  background: #F59E0B;
+  color: white;
+}
+
 
 /* ========================================
    STEP WIZARD

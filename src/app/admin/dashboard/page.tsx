@@ -24,6 +24,7 @@ import CMSTab from '@/components/admin/CMSTab';
 import TestimonialsTab from '@/components/admin/TestimonialsTab';
 import SettingsTab from '@/components/admin/SettingsTab';
 import AnalyticsTab from '@/components/admin/AnalyticsTab';
+import LeadsTab from '@/components/admin/LeadsTab';
 
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
@@ -44,6 +45,7 @@ export default function AdminDashboard() {
 
     const navItems = [
         { id: 'analytics', label: 'Analytics', icon: 'fa-chart-line' },
+        { id: 'leads', label: 'Leads', icon: 'fa-user-clock' },
         { id: 'franchises', label: 'Franchise Requests', icon: 'fa-store' },
         { id: 'support', label: 'Support Tickets', icon: 'fa-headset' },
         { id: 'careers', label: 'Careers', icon: 'fa-briefcase' },
@@ -255,6 +257,10 @@ export default function AdminDashboard() {
 
                 {
                     activeTab === 'franchises' && <FranchiseRequestsTab />
+                }
+
+                {
+                    activeTab === 'leads' && <LeadsTab />
                 }
 
                 {
