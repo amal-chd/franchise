@@ -53,7 +53,7 @@ function initAdmin() {
                 clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
                 privateKey: privateKey,
             }),
-            storageBucket: process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID}.appspot.com`,
+            storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'the-kada-franchise-assets',
         });
 
         console.log('Firebase Admin initialized successfully');
@@ -89,7 +89,7 @@ function getStorageBucket() {
         throw new Error('Firebase Admin not initialized. Check your environment variables.');
     }
     return admin.storage().bucket(
-        process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID}.appspot.com`
+        process.env.FIREBASE_STORAGE_BUCKET || 'the-kada-franchise-assets'
     );
 }
 

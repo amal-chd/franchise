@@ -50,7 +50,7 @@ export async function GET() {
                             clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
                             privateKey: privateKey,
                         }),
-                        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID}.appspot.com`,
+                        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'the-kada-franchise-assets',
                     }, strategy.name); // unique name per strategy
 
                     console.log(`Success with strategy: ${strategy.name}`);
@@ -92,6 +92,70 @@ export async function GET() {
         // Attempt a read operation to verify permissions and connection
         const testDoc = await firestore.collection('test_connectivity').doc('ping').get();
 
+        // STORAGE WRITABILITY TEST
+        const storageResults: any = {
+            configuredBucket: admin.app().options.storageBucket,
+            writeConfigured: 'pending',
+            writeExplicit: 'pending',
+            buckets: []
+        };
+
+        try {
+            // Access the underlying @google-cloud/storage client
+            // admin.storage().bucket() returns a Bucket
+            // bucket.storage returns the Storage client
+            const gcsClient = admin.storage().bucket().storage;
+            const [buckets] = await gcsClient.getBuckets();
+            storageResults.buckets = buckets.map((b: any) => b.name || b.id);
+
+            // AUTO-FIX: Try to create a custom bucket if no buckets exist
+            if (buckets.length === 0 || storageResults.writeExplicit.includes('404')) {
+                try {
+                    const newBucketName = `the-kada-franchise-assets`; // Custom name to avoid domain verification
+                    // Check if it exists in the list
+                    const exists = buckets.find((b: any) => b.name === newBucketName);
+                    if (!exists) {
+                        storageResults.creationAttempt = `Attempting to create ${newBucketName}...`;
+                        await gcsClient.createBucket(newBucketName, {
+                            location: 'asia-south1',
+                        });
+                        storageResults.creationAttempt = 'Success!';
+
+                        // Retry write
+                        const explicitBucket = admin.storage().bucket(newBucketName);
+                        await explicitBucket.file(`test_write_after_create_${Date.now()}.txt`).save('ping');
+                        storageResults.writeAfterCreate = 'success';
+                        storageResults.createdBucketName = newBucketName;
+                    }
+                } catch (err: any) {
+                    storageResults.creationAttempt = `Failed: ${err.message}`;
+                }
+            }
+
+        } catch (e: any) {
+            storageResults.buckets = `failed: ${e.message}`;
+        }
+
+        try {
+            const bucket = admin.storage().bucket(); // uses default
+            const file = bucket.file(`test_write_${Date.now()}.txt`);
+            await file.save('ping');
+            await file.delete();
+            storageResults.writeConfigured = 'success';
+        } catch (e: any) {
+            storageResults.writeConfigured = `failed: ${e.message}`;
+        }
+
+        try {
+            const explicitBucket = admin.storage().bucket(`${projectId}.appspot.com`);
+            const file = explicitBucket.file(`test_write_explicit_${Date.now()}.txt`);
+            await file.save('ping');
+            await file.delete();
+            storageResults.writeExplicit = 'success';
+        } catch (e: any) {
+            storageResults.writeExplicit = `failed: ${e.message}`;
+        }
+
         return NextResponse.json({
             status: 'success',
             message: 'Firebase is connected and readable.',
@@ -99,11 +163,13 @@ export async function GET() {
                 projectId,
                 appsInitialized: apps,
                 nodeEnv: process.env.NODE_ENV,
+                storageBucketEnv: process.env.FIREBASE_STORAGE_BUCKET,
             },
             firestore: {
                 connected: true,
                 exists: testDoc.exists
-            }
+            },
+            storage: storageResults
         });
     } catch (error: any) {
         console.error('Connectivity test failed:', error);
