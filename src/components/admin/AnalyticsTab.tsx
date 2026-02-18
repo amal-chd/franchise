@@ -7,6 +7,7 @@ import {
 export default function AnalyticsTab() {
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<any>(null);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         fetchAnalytics();
@@ -14,13 +15,19 @@ export default function AnalyticsTab() {
 
     const fetchAnalytics = async () => {
         try {
+            setError(null);
             const res = await fetch('/api/admin/analytics?refresh=true');
             if (res.ok) {
                 const json = await res.json();
                 setData(json);
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                console.error('Analytics API Error:', errData);
+                setError(errData.error || errData.message || `Error ${res.status}: Failed to fetch analytics`);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to fetch analytics', error);
+            setError(error.message || 'Network error occurred');
         } finally {
             setLoading(false);
         }
@@ -32,7 +39,23 @@ export default function AnalyticsTab() {
         </div>
     );
 
-    if (!data) return <div className="p-8 text-center text-slate-500">Failed to load analytics data.</div>;
+    if (error) return (
+        <div className="p-8 text-center">
+            <div className="inline-block p-4 rounded-lg bg-red-50 text-red-600 mb-4">
+                <i className="fas fa-exclamation-circle text-2xl mb-2"></i>
+                <p className="font-semibold">Failed to load analytics data</p>
+                <p className="text-sm opacity-80 mt-1">{error}</p>
+            </div>
+            <button
+                onClick={fetchAnalytics}
+                className="block mx-auto mt-4 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-full text-sm font-medium transition-colors"
+            >
+                Try Again
+            </button>
+        </div>
+    );
+
+    if (!data) return null;
 
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
