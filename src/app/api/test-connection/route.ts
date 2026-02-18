@@ -50,7 +50,7 @@ export async function GET() {
                             clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
                             privateKey: privateKey,
                         }),
-                        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID}.firebasestorage.app`,
+                        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID}.appspot.com`,
                     }, strategy.name); // unique name per strategy
 
                     console.log(`Success with strategy: ${strategy.name}`);
